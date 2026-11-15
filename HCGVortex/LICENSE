@@ -1,0 +1,19 @@
+HCG Vortex
+Copyright (c) 2026 Hakmi Capital Group. All rights reserved.
+
+HCG Vortex is distributed free of charge through the HCG Repo. Permission is
+granted to download, install and use HCG Vortex on devices you own or are
+authorized to administer. Redistribution, modification for redistribution,
+or sale is not permitted without written permission from Hakmi Capital Group.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+-- Draft terms: to be confirmed by Hakmi Capital Group before public release.
+
+Build tooling (not distributed in the package): Theos (GPLv3), allemande
+(Linux test builds only). The package links at runtime against the device's
+Substrate-compatible hooking library (ElleKit) and PreferenceLoader.

@@ -1,0 +1,63 @@
+# HCG Vortex — canonical build on macOS with Xcode (native iOS 14+ arm64e ABI).
+#
+# Builds and validates the rootless package and uploads it as a workflow
+# artifact. It does NOT publish to the HCG Repo, sign releases, or deploy to
+# any device.
+name: HCG Vortex build
+
+on:
+  push:
+    paths:
+      - "HCGVortex/**"
+      - ".github/workflows/hcg-vortex.yml"
+  pull_request:
+    paths:
+      - "HCGVortex/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: HCGVortex
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          brew install ldid xz dpkg make
+          echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
+
+      - name: Install Theos
+        run: |
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$HOME/theos"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
+      - name: Toolchain report
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          make --version | head -1
+          git -C "$THEOS" log -1 --format='Theos %h %cd'
+
+      - name: Build + validate (requires native new arm64e ABI)
+        run: scripts/build.sh
+
+      - name: Package listing
+        run: |
+          DEB=$(ls packages/*.deb)
+          dpkg-deb -I "$DEB"
+          dpkg-deb -c "$DEB"
+          shasum -a 256 "$DEB"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hcg-vortex-rootless-deb
+          path: HCGVortex/packages/*.deb
+          if-no-files-found: error
+          retention-days: 30

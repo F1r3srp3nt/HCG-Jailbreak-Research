@@ -1,0 +1,465 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>items</key>
+	<array>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>The preset applies to both swipe directions. Choose “Per-Swipe Effects” to set each direction separately below. “Restore Default Behavior” switches to the stock iOS animation without touching your other settings.</string>
+			<key>label</key>
+			<string>General</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>id</key>
+			<string>enabled</string>
+			<key>key</key>
+			<string>enabled</string>
+			<key>label</key>
+			<string>Enable Vortex</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>id</key>
+			<string>preset</string>
+			<key>key</key>
+			<string>preset</string>
+			<key>label</key>
+			<string>Animation Preset</string>
+			<key>validTitles</key>
+			<array>
+				<string>Reverse Slide</string>
+				<string>Vertical Rise</string>
+				<string>Vertical Fall</string>
+				<string>Custom Directions</string>
+				<string>Per-Swipe Effects</string>
+				<string>iOS Default</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>reverse-slide</string>
+				<string>vertical-rise</string>
+				<string>vertical-fall</string>
+				<string>custom</string>
+				<string>per-direction</string>
+				<string>stock</string>
+			</array>
+		</dict>
+		<dict>
+			<key>action</key>
+			<string>restoreDefaultBehavior:</string>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>id</key>
+			<string>restoreDefault</string>
+			<key>label</key>
+			<string>Restore Default Behavior</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Swipe effects are used with the “Per-Swipe Effects” preset. The two direction controls define the “Custom Directions” effect: where the incoming page enters from and where the outgoing page exits to. Your actual page navigation is never changed — only how it looks.</string>
+			<key>label</key>
+			<string>Directional Controls</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>id</key>
+			<string>swipeLeftEffect</string>
+			<key>key</key>
+			<string>swipeLeftEffect</string>
+			<key>label</key>
+			<string>Swipe Left Effect</string>
+			<key>validTitles</key>
+			<array>
+				<string>Reverse Slide</string>
+				<string>Vertical Rise</string>
+				<string>Vertical Fall</string>
+				<string>Custom Directions</string>
+				<string>iOS Default</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>reverse-slide</string>
+				<string>vertical-rise</string>
+				<string>vertical-fall</string>
+				<string>custom</string>
+				<string>stock</string>
+			</array>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>id</key>
+			<string>swipeRightEffect</string>
+			<key>key</key>
+			<string>swipeRightEffect</string>
+			<key>label</key>
+			<string>Swipe Right Effect</string>
+			<key>validTitles</key>
+			<array>
+				<string>Reverse Slide</string>
+				<string>Vertical Rise</string>
+				<string>Vertical Fall</string>
+				<string>Custom Directions</string>
+				<string>iOS Default</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>reverse-slide</string>
+				<string>vertical-rise</string>
+				<string>vertical-fall</string>
+				<string>custom</string>
+				<string>stock</string>
+			</array>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>id</key>
+			<string>incomingDirection</string>
+			<key>key</key>
+			<string>incomingDirection</string>
+			<key>label</key>
+			<string>Incoming Page From</string>
+			<key>validTitles</key>
+			<array>
+				<string>Left</string>
+				<string>Right</string>
+				<string>Top</string>
+				<string>Bottom</string>
+				<string>Top Left</string>
+				<string>Top Right</string>
+				<string>Bottom Left</string>
+				<string>Bottom Right</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>left</string>
+				<string>right</string>
+				<string>up</string>
+				<string>down</string>
+				<string>up-left</string>
+				<string>up-right</string>
+				<string>down-left</string>
+				<string>down-right</string>
+			</array>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>id</key>
+			<string>outgoingDirection</string>
+			<key>key</key>
+			<string>outgoingDirection</string>
+			<key>label</key>
+			<string>Outgoing Page To</string>
+			<key>validTitles</key>
+			<array>
+				<string>Left</string>
+				<string>Right</string>
+				<string>Top</string>
+				<string>Bottom</string>
+				<string>Top Left</string>
+				<string>Top Right</string>
+				<string>Bottom Left</string>
+				<string>Bottom Right</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>left</string>
+				<string>right</string>
+				<string>up</string>
+				<string>down</string>
+				<string>up-left</string>
+				<string>up-right</string>
+				<string>down-left</string>
+				<string>down-right</string>
+			</array>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>id</key>
+			<string>reverseAnimation</string>
+			<key>key</key>
+			<string>reverseAnimation</string>
+			<key>label</key>
+			<string>Reverse Animation</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>0 = visuals track your finger exactly. Higher values let the visual transition trail the gesture and glide to completion over the chosen time (seconds).</string>
+			<key>label</key>
+			<string>Duration</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>id</key>
+			<string>duration</string>
+			<key>key</key>
+			<string>duration</string>
+			<key>label</key>
+			<string></string>
+			<key>max</key>
+			<real>1.0</real>
+			<key>min</key>
+			<real>0.0</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Above 1.0 the visual transition completes earlier in the swipe; below 1.0 it holds back. Start and end positions are always exact.</string>
+			<key>label</key>
+			<string>Speed Multiplier</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>id</key>
+			<string>speed</string>
+			<key>key</key>
+			<string>speed</string>
+			<key>label</key>
+			<string></string>
+			<key>max</key>
+			<real>4.0</real>
+			<key>min</key>
+			<real>0.25</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>How far the outgoing page travels. Below 1.0 it moves less and fades out (parallax) while the incoming page covers it.</string>
+			<key>label</key>
+			<string>Animation Intensity</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>id</key>
+			<string>intensity</string>
+			<key>key</key>
+			<string>intensity</string>
+			<key>label</key>
+			<string></string>
+			<key>max</key>
+			<real>1.0</real>
+			<key>min</key>
+			<real>0.1</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Animation</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>id</key>
+			<string>easing</string>
+			<key>key</key>
+			<string>easing</string>
+			<key>label</key>
+			<string>Easing Mode</string>
+			<key>validTitles</key>
+			<array>
+				<string>Linear</string>
+				<string>Ease In</string>
+				<string>Ease Out</string>
+				<string>Ease In-Out</string>
+				<string>Sine</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>linear</string>
+				<string>ease-in</string>
+				<string>ease-out</string>
+				<string>ease-in-out</string>
+				<string>sine</string>
+			</array>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>id</key>
+			<string>fadePages</string>
+			<key>key</key>
+			<string>fadePages</string>
+			<key>label</key>
+			<string>Fade Pages</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Engine status is reported by SpringBoard after each respring. HCG Vortex makes no network connections and collects no analytics or telemetry.</string>
+			<key>label</key>
+			<string>Development</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSTitleValueCell</string>
+			<key>get</key>
+			<string>versionString:</string>
+			<key>id</key>
+			<string>version</string>
+			<key>label</key>
+			<string>Version</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSTitleValueCell</string>
+			<key>get</key>
+			<string>engineStatus:</string>
+			<key>id</key>
+			<string>engineStatus</string>
+			<key>label</key>
+			<string>Engine Status</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSTitleValueCell</string>
+			<key>get</key>
+			<string>engineDetail:</string>
+			<key>id</key>
+			<string>engineDetail</string>
+			<key>label</key>
+			<string>Engine Detail</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSTitleValueCell</string>
+			<key>get</key>
+			<string>systemVersion:</string>
+			<key>id</key>
+			<string>systemVersion</string>
+			<key>label</key>
+			<string>This Device</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSTitleValueCell</string>
+			<key>get</key>
+			<string>compatibilityTarget:</string>
+			<key>id</key>
+			<string>compatibilityTarget</string>
+			<key>label</key>
+			<string>Test Target</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>id</key>
+			<string>diagnosticLogging</string>
+			<key>key</key>
+			<string>diagnosticLogging</string>
+			<key>label</key>
+			<string>Diagnostic Logging</string>
+		</dict>
+		<dict>
+			<key>action</key>
+			<string>resetPreferences:</string>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>id</key>
+			<string>resetPreferences</string>
+			<key>isDestructive</key>
+			<true/>
+			<key>label</key>
+			<string>Reset Preferences</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>© 2026 Hakmi Capital Group · HCG Vortex is free software distributed through the HCG Repo.</string>
+		</dict>
+	</array>
+	<key>title</key>
+	<string>HCG Vortex</string>
+</dict>
+</plist>

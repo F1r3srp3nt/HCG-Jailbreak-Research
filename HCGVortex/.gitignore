@@ -5,3 +5,4 @@ packages/
 *.newabi
 *.allemande.log
 tests/build/
+__pycache__/

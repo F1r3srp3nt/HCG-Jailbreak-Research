@@ -1,9 +1,8 @@
-# HCG Vortex — Linux smoke test.
+# HCG Vortex — Linux source checks.
 #
-# Confirms GitHub Actions can run on this repository at all (the macOS
-# build has been cancelled before a runner was assigned), and runs the
-# host unit tests for the animation math core. Builds no package and
-# publishes nothing.
+# Runs the host unit tests for the animation math core and the SpringBoard
+# compatibility-gate tests (via GNUstep's Objective-C runtime). Builds no
+# package and publishes nothing.
 name: HCG Vortex Linux check
 
 on:
@@ -33,3 +32,9 @@ jobs:
 
       - name: Math core unit tests (ASan/UBSan)
         run: make -C tests test
+
+      - name: Install GNUstep (Objective-C runtime for gate tests)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq gnustep-devel
+
+      - name: Compatibility gate tests (GNUstep)
+        run: make -C tests compat-gnustep

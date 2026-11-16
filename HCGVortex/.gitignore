@@ -1,5 +1,5 @@
 .theos/
-packages/
+/packages/
 *.deb
 .DS_Store
 *.newabi

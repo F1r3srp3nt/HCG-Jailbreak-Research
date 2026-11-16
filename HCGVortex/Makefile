@@ -26,6 +26,7 @@ TWEAK_NAME = HCGVortex
 HCGVortex_FILES = \
 	src/Tweak.x \
 	src/VortexCore.m \
+	src/VortexCompatibility.m \
 	src/VortexNavigation.m \
 	src/VortexAnimationEngine.m \
 	src/VortexPreferences.m \
@@ -36,7 +37,7 @@ HCGVortex_FILES = \
 	effects/VerticalFall.m \
 	effects/VortexEffectRegistry.m
 
-HCGVortex_CFLAGS = -fobjc-arc $(VORTEX_WARNINGS) -DVORTEX_VERSION=\"$(VORTEX_VERSION)\"
+HCGVortex_CFLAGS = -fobjc-arc -fobjc-arc-exceptions $(VORTEX_WARNINGS) -DVORTEX_VERSION=\"$(VORTEX_VERSION)\"
 HCGVortex_FRAMEWORKS = UIKit QuartzCore
 
 include $(THEOS_MAKE_PATH)/tweak.mk

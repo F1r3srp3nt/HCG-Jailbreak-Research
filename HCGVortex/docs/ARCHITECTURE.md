@@ -56,6 +56,23 @@ Mapping to the spec's conceptual modules:
 | HCGVortexPreferences | `src/VortexPreferences.{h,m}` (compiled into both binaries) |
 | HCGVortexSettings | `preferences/*` |
 
+## Startup safety (in order)
+
+1. **Kill switch file** present: no hooks.
+2. **Compatibility gate** (`VortexCompatibility.m`): every class, superclass
+   relation and selector Vortex relies on must exist, and both hooked
+   selectors must be implemented by `SBFolderView` itself. Otherwise: no
+   hooks. Tested against fake runtime classes in `tests/test_compat.m` (macOS
+   CI and GNUstep on Linux), including mutation checks.
+3. **Launch guard:** after 3 consecutive SpringBoard launches that each
+   ended within 30 s, no hooks until the user toggles Enable Vortex.
+4. **Install, then verify:** both method implementations must have changed
+   after `%init`. Otherwise status is *Fault* and Vortex never reports
+   *Active*.
+5. **Runtime:** hook entry points catch Objective-C exceptions, restore every
+   layer and trip the engine. Both binaries build with `-fobjc-arc-exceptions`
+   so ARC cleans up correctly on those paths.
+
 ## Frame pipeline (per `scrollViewDidScroll:`)
 
 1. **Gate** — enabled, not stock, not tripped, root folder view, its icon

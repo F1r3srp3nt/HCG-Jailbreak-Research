@@ -44,6 +44,9 @@
         return;
     }
     [VortexPreferences writeValue:value forKey:key];
+    // Changing the master switch is the user's explicit "try again" after the
+    // launch guard auto-disabled Vortex; it takes effect at the next respring.
+    if ([key isEqualToString:VortexKeyEnabled]) [VortexPreferences setConsecutiveUnstableLaunches:0];
     [VortexPreferences postChangeNotification];
 }
 
@@ -143,6 +146,7 @@
         @"incompatible" : @"Incompatible — stock",
         @"kill-switch" : @"Kill switch on",
         @"fault" : @"Fault — stock",
+        @"auto-disabled" : @"Auto-disabled — stock",
     };
     return labels[state] ?: state;
 }
@@ -207,6 +211,7 @@
                destructive:YES
                    handler:^{
                        [VortexPreferences resetAllValues];
+                       [VortexPreferences setConsecutiveUnstableLaunches:0];
                        [VortexPreferences postChangeNotification];
                        [self reloadSpecifiers];
                    }];

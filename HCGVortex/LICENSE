@@ -12,7 +12,9 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
 
--- Draft terms: to be confirmed by Hakmi Capital Group before public release.
+-- DRAFT, NOT A DECIDED LICENCE. Hakmi Capital Group has not chosen licence
+-- terms. See distribution/README.md ("Licence: unresolved"). Do not publish
+-- the package until this is decided.
 
 Build tooling (not distributed in the package): Theos (GPLv3), allemande
 (Linux test builds only). The package links at runtime against the device's

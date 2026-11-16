@@ -1,0 +1,21 @@
+# PROPOSAL for F1r3srp3nt/HCG-repo: imports/hcg-vortex-0.1.0-alpha-rootless.toml
+# Not applied. HCG-repo's "Prepare packages" workflow fetches this pinned CI artifact
+# and imports it with the expected package, version, architecture and SHA-256.
+#
+# The <fill: …> values are deliberately invalid until filled in: HCG-repo refuses
+# anything that is not a full commit SHA. Fill them from the macOS run of the commit
+# that passed device testing (PR #1 lists the current run, commit and SHA-256).
+# Artifacts expire after 30 days; re-run the workflow if needed.
+
+[request]
+package = "com.hakmicapitalgroup.vortex"
+version = "0.1.0~alpha"
+architecture = "iphoneos-arm64"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 0                                    # <fill: HCG Vortex build run id>
+commit = "<fill: 40-char commit sha of that run>"
+artifact = "hcg-vortex-rootless-deb"
+sha256 = "<fill: sha256 of the .deb from that run's Package listing step>"

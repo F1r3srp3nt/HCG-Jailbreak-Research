@@ -20,13 +20,23 @@ Packages → HCG Vortex → **Remove** → respring when prompted.
 
 ## 3. SpringBoard keeps crashing (safe mode)
 
-If SpringBoard crashes repeatedly, ElleKit/Dopamine start SpringBoard in
-**safe mode** without tweaks. From safe mode, open Sileo/Zebra and remove
-HCG Vortex as in §2.
+If SpringBoard crashes repeatedly, ElleKit starts SpringBoard in **safe mode**
+without tweaks. From safe mode, remove HCG Vortex over SSH (§5). While HCG
+Repo's suspected Sileo crash is being investigated, prefer SSH over Sileo.
 
-Dopamine also lets you disable tweak injection entirely from the Dopamine app
-(Settings → "Tweak Injection" off, then userspace reboot). Re-enable it after
-removing the package.
+If you can't get in at all: reboot. Dopamine is semi-untethered, so the phone
+starts as stock iOS with no tweaks. Before jailbreaking again, turn off tweak
+injection in the Dopamine app (the setting's name varies by version). Then
+jailbreak, remove the package over SSH, re-enable tweak injection and use the
+app's userspace reboot. The full sequence is in
+`docs/DEVICE_TEST_HANDOFF.md` §7.
+
+## Automatic stop (launch guard)
+
+If three SpringBoard launches in a row each end within 30 seconds, HCG Vortex
+stops installing its hooks. Settings shows *Engine Status: Auto-disabled*.
+Collect crash logs first, then toggle **Enable Vortex** off and on to re-arm
+it at the next respring.
 
 ## 4. Kill switch over SSH (keep the package installed, load nothing)
 

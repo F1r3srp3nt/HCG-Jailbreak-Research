@@ -5,6 +5,7 @@
 
 #import "VortexCore.h"
 #import "VortexAnimationEngine.h"
+#import "VortexCompatibility.h"
 #import "VortexLog.h"
 #import "VortexPreferences.h"
 #import "VortexSpringBoard.h"
@@ -19,6 +20,7 @@ os_log_t VortexLogHandle(void) {
     return handle;
 }
 
+static Class gFolderViewClass = Nil;
 static Class gRootFolderViewClass = Nil;
 static BOOL gHooksInstalled = NO;
 
@@ -47,52 +49,30 @@ static NSString *VortexStateForConfiguration(VortexConfiguration *config) {
 
 #pragma mark - Compatibility
 
-static NSString *VortexRequireClass(const char *name, Class superclass, Class *out) {
-    Class cls = objc_getClass(name);
-    if (!cls) return [NSString stringWithFormat:@"class %s not found", name];
-    if (superclass && ![cls isSubclassOfClass:superclass])
-        return [NSString stringWithFormat:@"class %s is not a %@", name, NSStringFromClass(superclass)];
-    if (out) *out = cls;
-    return nil;
-}
-
-static NSString *VortexRequireInstanceMethod(Class cls, SEL sel) {
-    if (!class_getInstanceMethod(cls, sel))
-        return [NSString stringWithFormat:@"-[%@ %@] not found", NSStringFromClass(cls), NSStringFromSelector(sel)];
-    return nil;
-}
-
 NSString *VortexCoreCompatibilityFailure(void) {
-    Class folderView = Nil, rootFolderView = Nil, scrollView = Nil, listView = Nil;
-    NSString *failure = nil;
-    if ((failure = VortexRequireClass(VORTEX_SB_FOLDER_VIEW_CLASS, [UIView class], &folderView))) return failure;
-    if ((failure = VortexRequireClass(VORTEX_SB_ROOT_FOLDER_VIEW_CLASS, folderView, &rootFolderView))) return failure;
-    if ((failure = VortexRequireClass(VORTEX_SB_ICON_SCROLL_VIEW_CLASS, [UIScrollView class], &scrollView))) return failure;
-    if ((failure = VortexRequireClass(VORTEX_SB_ICON_LIST_VIEW_CLASS, [UIView class], &listView))) return failure;
-
-    // Hooked selectors.
-    if ((failure = VortexRequireInstanceMethod(folderView, @selector(scrollViewDidScroll:)))) return failure;
-    if ((failure = VortexRequireInstanceMethod(folderView, @selector(layoutSubviews)))) return failure;
-    // Read-only accessors the engine depends on.
-    if ((failure = VortexRequireInstanceMethod(rootFolderView, @selector(scrollView)))) return failure;
-
-    // Hook-engine safety: we hook SBFolderView's OWN implementations, never
-    // an inherited one, so %orig always has a real IMP to call.
-    unsigned int count = 0;
-    BOOL ownsScroll = NO, ownsLayout = NO;
-    Method *methods = class_copyMethodList(folderView, &count);
-    for (unsigned int i = 0; i < count; i++) {
-        SEL sel = method_getName(methods[i]);
-        if (sel == @selector(scrollViewDidScroll:)) ownsScroll = YES;
-        if (sel == @selector(layoutSubviews)) ownsLayout = YES;
+    VortexResolvedClasses classes;
+    NSString *failure = VortexCheckCompatibility(&VortexDefaultSpringBoardClassNames, [UIView class],
+                                                 [UIScrollView class], &classes);
+    if (!failure) {
+        gFolderViewClass = classes.folderView;
+        gRootFolderViewClass = classes.rootFolderView;
     }
-    free(methods);
-    if (!ownsScroll) return @"SBFolderView does not implement -scrollViewDidScroll: itself";
-    if (!ownsLayout) return @"SBFolderView does not implement -layoutSubviews itself";
-
-    gRootFolderViewClass = rootFolderView;
-    return nil;
+    return failure;
 }
+
+#pragma mark - Launch guard
+
+/// Marks this SpringBoard launch as stable once it has run long enough.
+@interface VortexLaunchGuard : NSObject
++ (void)markStable;
+@end
+
+@implementation VortexLaunchGuard
++ (void)markStable {
+    [VortexPreferences setConsecutiveUnstableLaunches:0];
+    VortexLogDebug("launch marked stable");
+}
+@end
 
 /// Non-fatal observations worth surfacing in diagnostics.
 static NSString *VortexCompatibilityNotes(void) {
@@ -155,6 +135,23 @@ void VortexCoreBootstrap(VortexHookInstaller installer) {
             return;
         }
 
+        // Crash-loop guard: Objective-C exceptions are caught below, but a
+        // hard crash is not. After repeated launches that end quickly, stay
+        // out of SpringBoard until the user re-enables Vortex in Settings.
+        NSInteger unstable = [VortexPreferences consecutiveUnstableLaunches];
+        if (VortexLaunchGuardShouldDisable(unstable)) {
+            VortexReportStatus(@"auto-disabled",
+                               [NSString stringWithFormat:@"%ld consecutive SpringBoard launches ended within %.0f s; "
+                                                          @"no hooks installed. Turn Enable Vortex off and on to retry.",
+                                                          (long)unstable, VORTEX_STABLE_AFTER_SECONDS]);
+            return;
+        }
+        [VortexPreferences setConsecutiveUnstableLaunches:unstable + 1];
+        [[VortexLaunchGuard class] performSelector:@selector(markStable)
+                                        withObject:nil
+                                        afterDelay:VORTEX_STABLE_AFTER_SECONDS
+                                           inModes:@[ NSRunLoopCommonModes ]];
+
         VortexConfiguration *config = [VortexPreferences loadConfiguration];
         VortexDiagnosticLoggingEnabled = config.diagnosticLogging;
         [VortexAnimationEngine sharedEngine].configuration = config;
@@ -163,13 +160,20 @@ void VortexCoreBootstrap(VortexHookInstaller installer) {
                                         (__bridge CFStringRef)VortexPreferencesChangedNotification, NULL,
                                         CFNotificationSuspensionBehaviorDeliverImmediately);
 
+        VortexHookIMPs before = VortexCurrentHookIMPs(gFolderViewClass);
         @try {
             installer();
-            gHooksInstalled = YES;
         } @catch (NSException *exception) {
             VortexReportStatus(@"fault", [NSString stringWithFormat:@"hook installation raised %@", exception.reason]);
             return;
         }
+        // Only report "active" if the hook engine really replaced both methods.
+        NSString *notInstalled = VortexVerifyHooksInstalled(before, VortexCurrentHookIMPs(gFolderViewClass));
+        if (notInstalled) {
+            VortexReportStatus(@"fault", notInstalled);
+            return;
+        }
+        gHooksInstalled = YES;
         VortexReportStatus(VortexStateForConfiguration(config), VortexCompatibilityNotes());
     }
 }

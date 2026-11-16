@@ -35,15 +35,23 @@ each produced thousands of failures.
 ## Device test plan (requires explicit authorization)
 
 ### Install
-1. Copy the `.deb` to the device; install with Sileo/Zebra (**Install from
-   file**) or `sudo dpkg -i com.hakmicapitalgroup.vortex_0.1.0~alpha_iphoneos-arm64.deb`
-   then `sbreload`/respring.
-2. Settings → HCG Vortex opens (this alone verifies the Preferences bundle
-   loads in the arm64e Preferences process).
-3. Engine Status = **Active**. Record Engine Detail.
+Follow **`docs/DEVICE_TEST_HANDOFF.md`**. It covers confirming the device
+(`scripts/device-info.sh`), verifying the Xcode artifact, and installing
+with `dpkg` over SSH: no Sileo, no HCG Repo for the first test. Its steps:
+- **A:** kill switch on;
+- **B:** disabled baseline;
+- **C:** one effect at a time;
+- **D:** preferences persistence;
+- **E:** enable/disable;
+- **F:** respring stability;
+- **G:** uninstall.
 
 If the status is **Incompatible**, record the detail, stop, and update
 `docs/SPRINGBOARD_RESEARCH.md`. The Home Screen should be fully stock.
+
+Wait at least 30 s after each respring before the next: three quick
+SpringBoard restarts in a row trip the launch guard (Engine Status
+**Auto-disabled**), which is a safety feature, not a test failure.
 
 ### Functional matrix
 Run each with Duration 0 and Duration 0.4, Speed 1 and 2, Linear and Ease

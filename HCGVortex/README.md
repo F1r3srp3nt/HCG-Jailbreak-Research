@@ -68,8 +68,8 @@ HCGVortex/
 ├── preferences/  Settings bundle (PreferenceLoader)
 ├── layout/       DEBIAN/postrm (purge-only cleanup)
 ├── tests/        host unit tests for the math core
-├── scripts/      build.sh · validate.sh · generate_root_plist.py · repo_entry.py
-├── distribution/ HCG Repo listing kit (depiction, icon, screenshot placeholders)
+├── scripts/      build.sh · macos-build.sh · install-sdk.sh · validate.sh · device-info.sh · …
+├── distribution/ HCG Repo listing kit (proposed HCG-repo package.toml + import request, icon)
 └── docs/         ARCHITECTURE · SPRINGBOARD_RESEARCH · COMPATIBILITY · TESTING · RECOVERY · BUILD
 ```
 

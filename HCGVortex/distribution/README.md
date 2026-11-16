@@ -1,38 +1,51 @@
 # HCG Repo distribution kit — HCG Vortex
 
-Prepared for the existing HCG Repo. **Nothing here publishes anything**, and no
-HCG Repo infrastructure has been changed. A maintainer applies these by hand
-after review and after on-device verification.
+**Nothing here publishes anything, and HCG Repo has not been changed.**
 
-| Item | File / source |
+## HCG Repo
+
+| | |
 |---|---|
-| Package | `packages/com.hakmicapitalgroup.vortex_0.1.0~alpha_iphoneos-arm64.deb` from the **macOS CI artifact** (native arm64e ABI) |
-| `Packages` stanza | `python3 scripts/repo_entry.py <deb>` (set `HCG_REPO_BASE` to the repo URL) |
-| Sileo native depiction | `depiction.json` (replace `REPLACE-WITH-HCG-REPO-URL`) |
-| Icon | `icon-512.png` |
-| Header image | to be created (`header.png`, 1500×500 recommended) |
-| Screenshots | `screenshots/` — placeholder until device capture |
-| Changelog | `../CHANGELOG.md` |
-| Install / recovery | `../docs/RECOVERY.md` |
-| Compatibility | `../docs/COMPATIBILITY.md` |
+| APT source | `https://repo.hakmicapitalgroup.com/repo/` (the old `https://f1r3srp3nt.github.io/HCG-repo/repo/` redirects to it) |
+| Website | `https://repo.hakmicapitalgroup.com/` |
+| Source repository | [`F1r3srp3nt/HCG-repo`](https://github.com/F1r3srp3nt/HCG-repo) |
 
-## Listing metadata
+Read from HCG-repo's `README.md`, `config/` and `docs/` on 16 Nov 2026. HCG-repo generates `Depiction`, `SileoDepiction`, `Icon` and `Header` itself, from `packages/<id>/package.toml` and its base URL. So this kit no longer hand-writes depiction URLs or a separate Sileo depiction file.
 
-| Field | Value |
+## Proposed files for HCG-repo
+
+| Proposal (here) | Destination in HCG-repo |
 |---|---|
-| Package | `com.hakmicapitalgroup.vortex` |
-| Name | HCG Vortex |
-| Section / Category | Tweaks |
-| Price | Free (no payment integration) |
-| Author / Maintainer | Hakmi Capital Group |
-| Architecture | `iphoneos-arm64` (rootless) |
-| Description | HCG Vortex is an advanced Home Screen animation engine featuring directional overrides, customizable transitions, and modular animation effects. |
+| `hcg-repo/packages/com.hakmicapitalgroup.vortex/package.toml` | `packages/com.hakmicapitalgroup.vortex/package.toml` |
+| `hcg-repo/packages/com.hakmicapitalgroup.vortex/CHANGELOG.md` | `packages/com.hakmicapitalgroup.vortex/CHANGELOG.md` |
+| `hcg-repo/packages/com.hakmicapitalgroup.vortex/icon.png` (180 px) | `packages/com.hakmicapitalgroup.vortex/icon.png` |
+| `hcg-repo/imports/hcg-vortex-0.1.0-alpha-rootless.toml` | `imports/hcg-vortex-0.1.0-alpha-rootless.toml` (fill in run, commit, SHA-256) |
 
-## Release checklist
+HCG-repo's **Prepare packages** workflow imports a pinned artifact on a review branch. Publishing stays HCG-repo's manual **Publish repository** workflow. `python3 scripts/repo_entry.py <deb>` prints the control fields and hashes for a manual cross-check. It no longer prints presentation URLs.
 
-- [ ] macOS CI build green; `validate.sh --require-new-abi` passed
-- [ ] Device tests in `docs/TESTING.md` executed and recorded
-- [ ] Screenshots captured on device
-- [ ] LICENSE terms confirmed by Hakmi Capital Group
-- [ ] Repo URL substituted in `depiction.json` / `repo_entry.py` output
-- [ ] Maintainer adds the `.deb` + stanza with the repo's own tooling
+## Before anything is proposed to HCG-repo
+
+- [ ] First device test passed (`docs/DEVICE_TEST_HANDOFF.md`), on a device confirmed by `scripts/device-info.sh`
+- [ ] HCG Repo's suspected Sileo crash resolved or ruled out (HCG-repo `docs/SILEO_STABILITY.md`)
+- [ ] **Licence decided** (see below)
+- [ ] Real on-device screenshots in `screenshots/`
+- [ ] Import request filled from the device-tested commit's macOS CI run
+- [ ] HCG-repo `[versions."0.1.0~alpha"]` device-test evidence recorded there, or the listing stays *Experimental*
+
+## Licence: unresolved
+
+`../LICENSE` is **draft wording** (all rights reserved; free to install and use; no redistribution). No licence has been chosen. Hakmi Capital Group needs to decide:
+
+- proprietary freeware, as drafted, or an open-source licence (the source repository is public);
+- whether redistribution or forks are allowed;
+- warranty and liability wording, reviewed by whoever handles HCG's legal terms.
+
+Until then, the package must not be published.
+
+## Other assets
+
+| Item | Status |
+|---|---|
+| `icon-512.png` | Source icon (512 px) |
+| Header image | Not created (`header.jpg` optional in HCG-repo) |
+| `screenshots/` | Placeholder; capture on the tested device only |

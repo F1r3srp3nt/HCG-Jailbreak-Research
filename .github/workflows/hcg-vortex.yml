@@ -49,6 +49,9 @@ jobs:
           make --version | head -1
           git -C "$THEOS" log -1 --format='Theos %h %cd'
 
+      - name: Compatibility gate tests (Apple Objective-C runtime)
+        run: make -C tests compat
+
       - name: Build + validate (requires native new arm64e ABI)
         run: scripts/build.sh
 

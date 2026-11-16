@@ -42,11 +42,12 @@ extern NSString *const VortexKeyFadePages;
 extern NSString *const VortexKeyDiagnosticLogging;
 
 // Status keys (domain VortexStatusDomain)
-extern NSString *const VortexStatusKeyState;      // "active" | "disabled" | "incompatible" | "kill-switch" | "fault"
+extern NSString *const VortexStatusKeyState;      // "active" | "disabled" | "incompatible" | "kill-switch" | "auto-disabled" | "fault"
 extern NSString *const VortexStatusKeyDetail;
 extern NSString *const VortexStatusKeySystemVersion;
 extern NSString *const VortexStatusKeyTweakVersion;
 extern NSString *const VortexStatusKeyTimestamp;
+extern NSString *const VortexStatusKeyUnstableLaunches; // launch guard counter (see VortexCompatibility.h)
 
 // Effect / preset identifiers
 extern NSString *const VortexEffectIdentifierStock;
@@ -106,6 +107,10 @@ extern NSString *const VortexPresetPerDirection;          // use swipe-left / sw
 /// Engine status as last reported by SpringBoard (may be empty).
 + (NSDictionary<NSString *, id> *)readStatus;
 + (void)writeStatus:(NSDictionary<NSString *, id> *)status;
+
+/// Launch guard counter, stored in the status domain.
++ (NSInteger)consecutiveUnstableLaunches;
++ (void)setConsecutiveUnstableLaunches:(NSInteger)count;
 
 @end
 

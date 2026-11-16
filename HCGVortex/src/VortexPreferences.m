@@ -33,6 +33,7 @@ NSString *const VortexStatusKeyDetail = @"detail";
 NSString *const VortexStatusKeySystemVersion = @"systemVersion";
 NSString *const VortexStatusKeyTweakVersion = @"tweakVersion";
 NSString *const VortexStatusKeyTimestamp = @"timestamp";
+NSString *const VortexStatusKeyUnstableLaunches = @"unstableLaunches";
 
 NSString *const VortexEffectIdentifierStock = @"stock";
 NSString *const VortexEffectIdentifierReverseSlide = @"reverse-slide";
@@ -247,6 +248,20 @@ NSString *const VortexPresetPerDirection = @"per-direction";
         CFPreferencesSetAppValue((__bridge CFStringRef)key, (__bridge CFPropertyListRef)status[key],
                                  (__bridge CFStringRef)VortexStatusDomain);
     }
+    CFPreferencesAppSynchronize((__bridge CFStringRef)VortexStatusDomain);
+}
+
++ (NSInteger)consecutiveUnstableLaunches {
+    CFPreferencesAppSynchronize((__bridge CFStringRef)VortexStatusDomain);
+    CFPropertyListRef value = CFPreferencesCopyAppValue((__bridge CFStringRef)VortexStatusKeyUnstableLaunches,
+                                                        (__bridge CFStringRef)VortexStatusDomain);
+    id number = value ? CFBridgingRelease(value) : nil;
+    return [number isKindOfClass:[NSNumber class]] ? MAX([number integerValue], 0) : 0;
+}
+
++ (void)setConsecutiveUnstableLaunches:(NSInteger)count {
+    CFPreferencesSetAppValue((__bridge CFStringRef)VortexStatusKeyUnstableLaunches,
+                             (__bridge CFPropertyListRef)@(MAX(count, 0)), (__bridge CFStringRef)VortexStatusDomain);
     CFPreferencesAppSynchronize((__bridge CFStringRef)VortexStatusDomain);
 }
 

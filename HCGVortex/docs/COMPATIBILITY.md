@@ -23,11 +23,15 @@
 | Deployment target | iOS 15.0 (rootless floor); behaviour gated at runtime |
 | Depends | `mobilesubstrate (>= 0.9.5000)` (provided by ElleKit on Dopamine), `preferenceloader`, `firmware (>= 15.0)` |
 
-## Jailbreak note — please confirm
+## Device and jailbreak: unconfirmed
 
-As far as public information goes up to this project's knowledge, Dopamine's
-published support range was iOS 15.0–16.x. The brief states the test device
-runs **Dopamine on iOS 17.4**; please confirm the exact Dopamine build in use.
+The brief names an iPhone 11 Pro Max on **iOS 17.4** with Dopamine. HCG-repo's
+HCG Nexus listing names a different confirmed target: iPhone 13 Pro, iOS 16.5,
+Dopamine rootless. As far as public information goes up to this project's
+knowledge, Dopamine's published support range was iOS 15.0–16.x. None of this
+is assumed. `scripts/device-info.sh` reports the real model, iOS version and
+build, jailbreak and versions before any install
+(`docs/DEVICE_TEST_HANDOFF.md`, step 0).
 Nothing in HCG Vortex is specific to one jailbreak: it needs a rootless
 `/var/jb` layout, a Substrate-compatible hooking library (ElleKit) and
 PreferenceLoader.

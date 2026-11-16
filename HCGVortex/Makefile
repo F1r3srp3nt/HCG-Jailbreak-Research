@@ -9,9 +9,12 @@
 
 THEOS_PACKAGE_SCHEME ?= rootless
 ARCHS ?= arm64 arm64e
-# latest installed SDK, deploy to iOS 15.0 (the rootless floor). The runtime
-# compatibility gate — not the deployment target — decides whether hooks run.
-TARGET ?= iphone:clang:latest:15.0
+# Patched iPhoneOS16.5.sdk from theos/sdks (scripts/install-sdk.sh) on every
+# platform: Xcode's public SDK lacks the private Preferences.framework stub the
+# Settings bundle links. On macOS the compiler is still Xcode's clang, so
+# arm64e keeps the native ABI. Deploy to iOS 15.0 (the rootless floor); the
+# runtime compatibility gate decides whether hooks run.
+TARGET ?= iphone:clang:16.5:15.0
 
 include $(THEOS)/makefiles/common.mk
 

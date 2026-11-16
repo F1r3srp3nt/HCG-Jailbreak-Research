@@ -10,9 +10,9 @@ on:
     paths:
       - "HCGVortex/**"
       - ".github/workflows/hcg-vortex.yml"
-  pull_request:
-    paths:
-      - "HCGVortex/**"
+  # No pull_request trigger: this repo's PRs come from same-repo branches,
+  # whose push runs already attach to the PR. Both triggers together ran the
+  # macOS build twice per commit.
   workflow_dispatch:
 
 permissions:
@@ -38,6 +38,9 @@ jobs:
         run: |
           git clone --recursive --depth 1 https://github.com/theos/theos.git "$HOME/theos"
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
+      - name: Install patched iPhoneOS16.5 SDK (private framework stubs)
+        run: scripts/install-sdk.sh
 
       - name: Toolchain report
         run: |

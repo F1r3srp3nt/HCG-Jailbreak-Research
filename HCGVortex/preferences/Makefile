@@ -1,7 +1,8 @@
 # HCG Vortex — Settings bundle (PreferenceLoader)
 THEOS_PACKAGE_SCHEME ?= rootless
 ARCHS ?= arm64 arm64e
-TARGET ?= iphone:clang:latest:15.0
+# Same pinned patched SDK as the tweak (see ../Makefile).
+TARGET ?= iphone:clang:16.5:15.0
 
 include $(THEOS)/makefiles/common.mk
 

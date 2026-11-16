@@ -3,7 +3,8 @@
 #
 #   cd HCGVortex && scripts/macos-build.sh
 #
-# Uses the same path as CI: Xcode's iPhoneOS SDK and clang, Theos, ldid,
+# Uses the same path as CI: Xcode's clang, the patched iPhoneOS16.5.sdk
+# (scripts/install-sdk.sh), Theos, ldid,
 # dpkg, GNU make; then scripts/build.sh, which builds, packages and runs
 # scripts/validate.sh --require-new-abi (the arm64e slices must carry the
 # native iOS 14+ pointer-auth ABI from Xcode).
@@ -38,6 +39,7 @@ case "$devdir" in
 esac
 xcrun --sdk iphoneos --show-sdk-path >/dev/null 2>&1 || problems+=("No iPhoneOS SDK from xcrun. Open Xcode once, accept the license (sudo xcodebuild -license accept) and install the iOS platform.")
 [ -d "$THEOS/makefiles" ] || problems+=("Theos not found at \$THEOS=$THEOS. Run: git clone --recursive https://github.com/theos/theos.git \"$THEOS\"")
+[ -d "$THEOS/sdks/iPhoneOS16.5.sdk/System/Library/PrivateFrameworks/Preferences.framework" ] || problems+=("Patched iPhoneOS16.5.sdk missing from \$THEOS/sdks. Run: THEOS=\"$THEOS\" scripts/install-sdk.sh")
 for tool in ldid dpkg-deb dpkg xz python3; do
 	command -v "$tool" >/dev/null 2>&1 || problems+=("Missing '$tool'. Run: brew install ldid dpkg xz make")
 done
@@ -50,7 +52,8 @@ make --version 2>/dev/null | head -1 | grep -q 'GNU Make [4-9]' || problems+=("G
 	echo "arch: $(uname -m)"
 	echo "xcode-select: $devdir"
 	xcodebuild -version 2>&1
-	echo "iphoneos SDK: $(xcrun --sdk iphoneos --show-sdk-version 2>&1)"
+	echo "Xcode iphoneos SDK: $(xcrun --sdk iphoneos --show-sdk-version 2>&1) (not used for linking)"
+	echo "build SDK: $THEOS/sdks/iPhoneOS16.5.sdk ($( [ -d "$THEOS/sdks/iPhoneOS16.5.sdk" ] && echo present || echo MISSING))"
 	xcrun clang --version 2>&1 | head -1
 	make --version 2>&1 | head -1
 	echo "ldid: $(command -v ldid || echo missing)"

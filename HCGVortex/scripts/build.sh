@@ -16,8 +16,8 @@ cd "$(dirname "$0")/.."
 
 : "${THEOS:?THEOS is not set — install Theos (https://theos.dev/docs/installation) and export THEOS}"
 [ -d "$THEOS/makefiles" ] || { echo "ERROR: \$THEOS ($THEOS) is not a Theos checkout" >&2; exit 1; }
-ls -d "$THEOS"/sdks/iPhoneOS*.sdk >/dev/null 2>&1 || [ "$(uname -s)" = Darwin ] || {
-	echo "ERROR: no iPhoneOS SDK in $THEOS/sdks (see docs/BUILD.md)" >&2; exit 1; }
+[ -d "$THEOS/sdks/iPhoneOS16.5.sdk/System/Library/PrivateFrameworks/Preferences.framework" ] || {
+	echo "ERROR: patched iPhoneOS16.5.sdk missing from $THEOS/sdks — run scripts/install-sdk.sh" >&2; exit 1; }
 
 ARGS=(package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless)
 VALIDATE_ARGS=()

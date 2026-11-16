@@ -2,10 +2,9 @@
 # Not applied. HCG-repo's "Prepare packages" workflow fetches this pinned CI artifact
 # and imports it with the expected package, version, architecture and SHA-256.
 #
-# The <fill: …> values are deliberately invalid until filled in: HCG-repo refuses
-# anything that is not a full commit SHA. Fill them from the macOS run of the commit
-# that passed device testing (PR #1 lists the current run, commit and SHA-256).
-# Artifacts expire after 30 days; re-run the workflow if needed.
+# Release candidate: HCG-Jailbreak-Research commit 7d5e5b9, macOS (Xcode 16.4) CI run
+# 43970942708, artifact kept until 2027-02-14. If the device test forces a rebuild,
+# replace all three values below with the new run's; never edit only one.
 
 [request]
 package = "com.hakmicapitalgroup.vortex"
@@ -15,7 +14,7 @@ architecture = "iphoneos-arm64"
 [source]
 kind = "github-artifact"
 repository = "F1r3srp3nt/HCG-Jailbreak-Research"
-run_id = 0                                    # <fill: HCG Vortex build run id>
-commit = "<fill: 40-char commit sha of that run>"
+run_id = 43970942708
+commit = "7d5e5b9153e9e7246d87e6f3bf4f7c6927d42ad4"
 artifact = "hcg-vortex-rootless-deb"
-sha256 = "<fill: sha256 of the .deb from that run's Package listing step>"
+sha256 = "bb0af72745a36158d4022c1b97ebc9800847cf4b1fb42ca14d05b9fc07673eea"

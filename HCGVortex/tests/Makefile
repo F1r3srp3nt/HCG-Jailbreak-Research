@@ -17,7 +17,8 @@ $(BUILD)/test_compat: test_compat.m ../src/VortexCompatibility.m ../src/VortexCo
 	$(CC) -fno-objc-arc -Wall -Wextra -Werror -Wno-unused-parameter $(SANITIZE) -framework Foundation -o $@ test_compat.m ../src/VortexCompatibility.m
 
 # Same tests on Linux with GNUstep (CI Linux check): apt-get install gnustep-devel
-GNUSTEP_OBJC_FLAGS = $(shell gnustep-config --objc-flags 2>/dev/null)
+# Drop -MMD -MP: they would write .d dependency files into tests/.
+GNUSTEP_OBJC_FLAGS = $(filter-out -MMD -MP,$(shell gnustep-config --objc-flags 2>/dev/null))
 GNUSTEP_BASE_LIBS = $(shell gnustep-config --base-libs 2>/dev/null)
 compat-gnustep: test_compat.m ../src/VortexCompatibility.m ../src/VortexCompatibility.h
 	@mkdir -p $(BUILD)

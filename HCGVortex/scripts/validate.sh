@@ -216,13 +216,40 @@ case $? in 0) ;; 3) WARNS=$((WARNS + 1)) ;; *) FAILS=$((FAILS + 1)) ;; esac
 # ---------------------------------------------------------------------------
 section "6. SpringBoard injection"
 FILTER="$JB/Library/MobileSubstrate/DynamicLibraries/HCGVortex.plist"
-if grep -q '"com.apple.springboard"' "$FILTER" && [ "$(grep -o '"[a-z.]*"' "$FILTER" | sort -u | wc -l)" -eq 1 ]; then
+# Theos leaves the filter as an old-style (OpenStep) text plist on Linux but
+# converts it to a binary plist on macOS; read whichever format it is.
+if python3 - "$FILTER" <<'PY'
+import plistlib, re, sys
+data = open(sys.argv[1], "rb").read()
+if data.startswith(b"bplist") or data.lstrip().startswith(b"<?xml"):
+    d = plistlib.loads(data)
+    ok = (set(d) == {"Filter"} and set(d["Filter"]) == {"Bundles"}
+          and d["Filter"]["Bundles"] == ["com.apple.springboard"])
+else:  # OpenStep text: { Filter = { Bundles = ( "com.apple.springboard" ); }; }
+    text = data.decode("utf-8", "replace")
+    ok = (re.findall(r"\b([A-Za-z]+)\s*=", text) == ["Filter", "Bundles"]
+          and re.findall(r'"([^"]*)"', text) == ["com.apple.springboard"])
+sys.exit(0 if ok else 1)
+PY
+then
 	pass "filter injects into com.apple.springboard only"
 else
-	fail "unexpected filter: $(cat "$FILTER")"
+	fail "unexpected filter: $(python3 -c 'import sys;print(repr(open(sys.argv[1],"rb").read()[:200]))' "$FILTER")"
 fi
+
+# Printable runs of >= 4 bytes from the whole file (what GNU `strings -a`
+# prints). Done in Python so Linux and macOS give identical results: Apple's
+# `strings` scans Mach-O files differently and missed symbol names.
+printable_runs() {
+	python3 -c '
+import re, sys
+for path in sys.argv[1:]:
+    for run in re.findall(rb"[\x20-\x7e]{4,}", open(path, "rb").read()):
+        print(run.decode("ascii"))' "$@"
+}
 DYLIB="$JB/Library/MobileSubstrate/DynamicLibraries/HCGVortex.dylib"
-strings -a "$DYLIB" > "$WORK/dylib.strings"   # captured once: avoids SIGPIPE under pipefail
+PREFS="$JB/Library/PreferenceBundles/HCGVortexPrefs.bundle/HCGVortexPrefs"
+printable_runs "$DYLIB" > "$WORK/dylib.strings"
 for s in SBFolderView SBRootFolderView SBIconListView 'scrollViewDidScroll:' layoutSubviews setSublayerTransform: _MSHookMessageEx; do
 	grep -qx -- "$s" "$WORK/dylib.strings" && pass "binary references $s" || fail "binary lacks $s"
 done
@@ -230,8 +257,15 @@ done
 # ---------------------------------------------------------------------------
 section "7. Forbidden capabilities"
 BAD='^_(socket|connect|getaddrinfo|posix_spawn|posix_spawnp|system|execve|execv|fork|vfork|setuid|seteuid|setgid|ptrace|nw_[a-z_]+)$|NSURLSession|NSURLConnection|CFNetwork|SecItem|LAContext'
-hits=$(for b in "$DYLIB" "$JB/Library/PreferenceBundles/HCGVortexPrefs.bundle/HCGVortexPrefs"; do strings -a "$b"; done | grep -E "$BAD" | sort -u)
-[ -z "$hits" ] && pass "no networking, process-spawning, privilege, keychain or auth APIs referenced" || fail "suspicious symbols: $hits"
+printable_runs "$DYLIB" "$PREFS" > "$WORK/all.strings"
+# Self-check: the scan must see the imports we know are there, or a clean
+# result below would mean nothing.
+if grep -qx '_objc_msgSend' "$WORK/all.strings" && grep -qx '_CFPreferencesCopyAppValue' "$WORK/all.strings"; then
+	hits=$(grep -E "$BAD" "$WORK/all.strings" | sort -u || true)
+	[ -z "$hits" ] && pass "no networking, process-spawning, privilege, keychain or auth APIs referenced" || fail "suspicious symbols: $hits"
+else
+	fail "symbol scan cannot see known imports (_objc_msgSend, _CFPreferencesCopyAppValue); forbidden-API check is not trustworthy"
+fi
 
 # ---------------------------------------------------------------------------
 section "8. Install / remove simulation (scratch root, not a device)"
@@ -241,7 +275,7 @@ if command -v dpkg >/dev/null 2>&1; then
 	: > "$R/admin/status"
 	DPKG=(dpkg --root="$R/root" --admindir="$R/admin" --force-not-root --force-depends --force-architecture --force-script-chrootless --log=/dev/null)
 	if "${DPKG[@]}" -i "$DEB" >"$WORK/dpkg.log" 2>&1; then
-		n=$(cd "$R/root" && find . -type f | wc -l)
+		n=$(cd "$R/root" && find . -type f | wc -l | tr -d " ")
 		pass "installed into scratch root ($n files)"
 		if "${DPKG[@]}" -r com.hakmicapitalgroup.vortex >>"$WORK/dpkg.log" 2>&1; then
 			left=$(cd "$R/root" && find . -type f)

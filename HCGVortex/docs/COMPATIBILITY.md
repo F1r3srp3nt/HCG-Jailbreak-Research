@@ -8,7 +8,7 @@
 | Source implemented | Yes |
 | Math core | Unit-tested on host (2.2 M checks) |
 | Build (Linux, open-source toolchain + allemande) | Successful, validated |
-| Build (macOS, Xcode — canonical) | **Not yet verified.** `macos-14` CI jobs were rejected ("configuration 'macos-14-arm64-us-default' is not supported"); workflow moved to `macos-15`. Local `scripts/macos-build.sh` provided, not yet executed |
+| Build (macOS, Xcode — canonical) | **Passed in CI** (run 43921760517, Xcode 16.4, `macos-15`): compiled, packaged, `validate.sh --require-new-abi` 0 failures / 0 warnings. Local `scripts/macos-build.sh` not yet run on a personal Mac |
 | Package validated (metadata, paths, slices, signatures, removal simulation) | Yes (`scripts/validate.sh`) |
 | Device installation | Not performed (requires explicit authorization) |
 | Runtime behaviour | Not verified |

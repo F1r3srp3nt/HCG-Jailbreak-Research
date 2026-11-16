@@ -20,7 +20,7 @@ PreferenceLoader. No other libraries (no Cephei, no Swift runtime).
 
 ## macOS (canonical)
 
-Not yet run successfully anywhere. One-time setup:
+Verified in CI (GitHub `macos-15`, Xcode 16.4). One-time setup on your own Mac:
 
 ```sh
 sudo xcode-select -s /Applications/Xcode.app/Contents/Developer   # full Xcode, not Command Line Tools
@@ -80,6 +80,10 @@ use the macOS build for anything distributed.
     arm64e, but the Settings bundle failed with `ld: framework 'Preferences'
     not found` because Theos picked Xcode's iOS 18.5 SDK. Fixed by pinning
     the patched iPhoneOS16.5.sdk (`scripts/install-sdk.sh`).
+  - Two validator checks then failed on macOS only (binary-plist filter;
+    Apple's `strings` missing import names). Fixed; run 43921760517 passed
+    `validate.sh --require-new-abi` with 0 failures and 0 warnings and
+    uploaded the `.deb` as artifact `hcg-vortex-rootless-deb`.
 * `.github/workflows/hcg-vortex-linux-check.yml` runs the math unit tests on
   Ubuntu and passes.
 

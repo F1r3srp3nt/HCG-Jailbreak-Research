@@ -14,7 +14,7 @@ the opposite way, or move along any of eight directions.
 |---|---|
 | Source implemented | ✅ |
 | Linux build + validation | ✅ open-source toolchain + allemande; `validate.sh` 0 failures, 1 expected warning |
-| macOS (Xcode) compilation | ⏳ not verified — `macos-14` runner label rejected by GitHub, CI moved to `macos-15`; `scripts/macos-build.sh` ready for a local Mac |
+| macOS (Xcode) build + validation | ✅ CI on `macos-15` (Xcode 16.4): compiled, packaged, validated with native arm64e; artifact `hcg-vortex-rootless-deb` |
 | Package validated | ✅ `scripts/validate.sh` (one expected warning on Linux builds) |
 | Device installation | ⏳ not performed — needs authorization |
 | Runtime behaviour verified | ⏳ not performed |

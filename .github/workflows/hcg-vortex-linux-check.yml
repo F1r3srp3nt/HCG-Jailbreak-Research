@@ -38,3 +38,6 @@ jobs:
 
       - name: Compatibility gate tests (GNUstep)
         run: make -C tests compat-gnustep
+
+      - name: Compatibility gate clang diagnostics (as Apple clang -Werror)
+        run: make -C tests compat-lint

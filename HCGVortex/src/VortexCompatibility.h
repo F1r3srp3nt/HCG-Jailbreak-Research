@@ -51,7 +51,9 @@ typedef struct {
     IMP _Nullable layoutSubviews;
 } VortexHookIMPs;
 
-VortexHookIMPs VortexCurrentHookIMPs(Class folderView);
+/// Accepts Nil (returns NULL IMPs): VortexCore calls it before the gate has
+/// resolved the class only if the gate failed, and the tests exercise it.
+VortexHookIMPs VortexCurrentHookIMPs(Class _Nullable folderView);
 
 /// nil when both hooked selectors now point at different implementations than
 /// before installation (i.e. the hook engine really swapped them).

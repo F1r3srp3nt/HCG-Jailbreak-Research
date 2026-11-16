@@ -13,7 +13,8 @@ the opposite way, or move along any of eight directions.
 | Stage | State |
 |---|---|
 | Source implemented | ✅ |
-| Build successful | ✅ Linux toolchain + allemande · macOS CI workflow provided |
+| Linux build + validation | ✅ open-source toolchain + allemande; `validate.sh` 0 failures, 1 expected warning |
+| macOS (Xcode) compilation | ⏳ not run — CI jobs never got a runner; `scripts/macos-build.sh` ready for a local Mac |
 | Package validated | ✅ `scripts/validate.sh` (one expected warning on Linux builds) |
 | Device installation | ⏳ not performed — needs authorization |
 | Runtime behaviour verified | ⏳ not performed |

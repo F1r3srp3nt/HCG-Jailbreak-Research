@@ -8,7 +8,7 @@
 | Source implemented | Yes |
 | Math core | Unit-tested on host (2.2 M checks) |
 | Build (Linux, open-source toolchain + allemande) | Successful, validated |
-| Build (macOS, Xcode — canonical) | Workflow provided (`.github/workflows/hcg-vortex.yml`); see its run for status |
+| Build (macOS, Xcode — canonical) | **Not run.** CI jobs were cancelled before a runner was assigned (cause unidentified); local `scripts/macos-build.sh` provided, not yet executed |
 | Package validated (metadata, paths, slices, signatures, removal simulation) | Yes (`scripts/validate.sh`) |
 | Device installation | Not performed (requires explicit authorization) |
 | Runtime behaviour | Not verified |

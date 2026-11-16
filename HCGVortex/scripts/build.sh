@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # HCG Vortex — reproducible rootless build.
 #
-#   THEOS=~/theos scripts/build.sh
+#   THEOS=~/theos scripts/build.sh [extra make arguments, e.g. messages=yes]
 #
 # macOS + Xcode (canonical, native iOS 14+ arm64e ABI):
 #     builds, packages, validates with --require-new-abi
@@ -43,7 +43,7 @@ fi
 MAKE="${MAKE:-make}"
 "$MAKE" clean >/dev/null
 rm -rf packages
-"$MAKE" "${ARGS[@]}"
+"$MAKE" "${ARGS[@]}" "$@"
 
 DEB=$(ls -t packages/*.deb | head -1)
 echo "==> built $DEB"

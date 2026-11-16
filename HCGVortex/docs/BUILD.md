@@ -20,11 +20,34 @@ PreferenceLoader. No other libraries (no Cephei, no Swift runtime).
 
 ## macOS (canonical)
 
+Not yet run successfully anywhere. One-time setup:
+
 ```sh
-export THEOS=~/theos                      # https://theos.dev/docs/installation-macos
-cd HCGVortex
-MAKE=gmake scripts/build.sh               # builds, packages, validates --require-new-abi
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer   # full Xcode, not Command Line Tools
+sudo xcodebuild -license accept
+xcrun --sdk iphoneos --show-sdk-version                           # must print a version
+brew install ldid dpkg xz make
+git clone --recursive https://github.com/theos/theos.git ~/theos
 ```
+
+Build, package and validate with a complete log:
+
+```sh
+git clone https://github.com/F1r3srp3nt/HCG-Jailbreak-Research.git
+cd HCG-Jailbreak-Research && git checkout claude/optimistic-sagan-xsa3b2
+cd HCGVortex
+THEOS=~/theos scripts/macos-build.sh
+```
+
+`scripts/macos-build.sh` checks the toolchain first, records it (macOS,
+Xcode, SDK, clang, make, ldid, dpkg, Theos and project commits) at the top of
+`build-logs/macos-build-<UTC timestamp>.log`, then runs `scripts/build.sh
+messages=yes` (every compiler and linker command) and appends all output to
+the same log. It exits with the build's status and prints the package path and
+SHA-256, normally
+`packages/com.hakmicapitalgroup.vortex_0.1.0~alpha_iphoneos-arm64.deb`.
+`build.sh` runs `validate.sh --require-new-abi` on macOS, so success means the
+arm64e slices carry Xcode's native iOS 14+ ABI.
 
 ## Linux (test builds)
 
@@ -45,9 +68,15 @@ use the macOS build for anything distributed.
 
 ## CI
 
-`.github/workflows/hcg-vortex.yml` builds on `macos-14` with Xcode, runs
-`scripts/build.sh` (which requires the native new ABI) and uploads the `.deb`
-as a workflow artifact. It never publishes or deploys.
+* `.github/workflows/hcg-vortex.yml` is meant to build on `macos-14` with
+  Xcode and upload the `.deb` as an artifact. **It has never run:** every
+  job so far was cancelled about a second after queueing with no runner
+  assigned (`runner_id: 0`, empty check output). The cause is not yet
+  identified; see the run page annotations.
+* `.github/workflows/hcg-vortex-linux-check.yml` runs the math unit tests on
+  Ubuntu and passes.
+
+Neither workflow publishes or deploys.
 
 ## Make variables
 

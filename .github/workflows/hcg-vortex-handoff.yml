@@ -10,6 +10,11 @@
 name: HCG Vortex handoff archive
 
 on:
+  # Runs once when this file changes (no other workflow matches it), so it is
+  # registered; afterwards dispatch it manually for other runs.
+  push:
+    paths:
+      - ".github/workflows/hcg-vortex-handoff.yml"
   workflow_dispatch:
     inputs:
       run_id:
@@ -39,11 +44,11 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      RUN_ID: ${{ inputs.run_id }}
-      ARTIFACT_ID: ${{ inputs.artifact_id }}
-      EXPECTED_COMMIT: ${{ inputs.commit }}
-      EXPECTED_SHA256: ${{ inputs.sha256 }}
-      EXPECTED_VERSION: ${{ inputs.version }}
+      RUN_ID: ${{ inputs.run_id || '43970942708' }}
+      ARTIFACT_ID: ${{ inputs.artifact_id || '14278312698' }}
+      EXPECTED_COMMIT: ${{ inputs.commit || '7d5e5b9153e9e7246d87e6f3bf4f7c6927d42ad4' }}
+      EXPECTED_SHA256: ${{ inputs.sha256 || 'bb0af72745a36158d4022c1b97ebc9800847cf4b1fb42ca14d05b9fc07673eea' }}
+      EXPECTED_VERSION: ${{ inputs.version || '0.1.0~beta1' }}
       ARTIFACT_NAME: hcg-vortex-rootless-deb
       PACKAGE: com.hakmicapitalgroup.vortex
     steps:
@@ -79,7 +84,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: hcg-vortex-rootless-deb
-          run-id: ${{ inputs.run_id }}
+          run-id: ${{ env.RUN_ID }}
           github-token: ${{ github.token }}
           path: downloaded
 
@@ -104,7 +109,7 @@ jobs:
       - name: Check out the source commit (for validate.sh)
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit }}
+          ref: ${{ env.EXPECTED_COMMIT }}
           path: src
 
       - name: Re-validate the downloaded package from its own source commit

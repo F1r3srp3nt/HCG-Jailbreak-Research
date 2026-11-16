@@ -48,7 +48,7 @@ Xcode, SDK, clang, make, ldid, dpkg, Theos and project commits) at the top of
 messages=yes` (every compiler and linker command) and appends all output to
 the same log. It exits with the build's status and prints the package path and
 SHA-256, normally
-`packages/com.hakmicapitalgroup.vortex_0.1.0~alpha_iphoneos-arm64.deb`.
+`packages/com.hakmicapitalgroup.vortex_0.1.0~beta1_iphoneos-arm64.deb`.
 `build.sh` runs `validate.sh --require-new-abi` on macOS, so success means the
 arm64e slices carry Xcode's native iOS 14+ ABI.
 
@@ -96,11 +96,13 @@ Neither workflow publishes or deploys.
 | `THEOS_PACKAGE_SCHEME` | `rootless` | install prefix `/var/jb`, `iphoneos-arm64` |
 | `ARCHS` | `arm64 arm64e` | fat binary |
 | `TARGET` | `iphone:clang:16.5:15.0` | pinned patched SDK, iOS 15 deployment |
-| `FINALPACKAGE` | unset | set to `1` for release version string `0.1.0~alpha` |
+| `FINALPACKAGE` | unset | set to `1` for the release version string (no build suffix) |
 | `VORTEX_ABI_CONVERT` | unset | `1` = run allemande on staged binaries |
 | `ALLEMANDE` | `allemande` | path to the converter |
 
 ## Versioning
 
-Debian version `0.1.0~alpha` (the `~` sorts *before* `0.1.0`, so the final
-0.1.0 upgrades cleanly). User-facing version string: `0.1.0-alpha`.
+The only version source is `Version:` in `control` (currently `0.1.0~beta1`).
+`~` sorts *before* the release: `0.1.0~alpha < 0.1.0~beta1 < 0.1.0~rc1 < 0.1.0`.
+The binaries show it with `-` (`0.1.0-beta1`); `validate.sh` checks both binaries
+and the Settings bundle's `CFBundleVersion` carry it.

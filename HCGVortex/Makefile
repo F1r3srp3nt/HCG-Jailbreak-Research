@@ -18,7 +18,9 @@ TARGET ?= iphone:clang:16.5:15.0
 
 include $(THEOS)/makefiles/common.mk
 
-VORTEX_VERSION := 0.1.0-alpha
+# Single source of truth: the Version field of ./control (0.1.0~beta1 is shown
+# to users as 0.1.0-beta1). validate.sh checks the binaries carry it.
+VORTEX_VERSION := $(subst ~,-,$(shell sed -n 's/^Version: *//p' $(THEOS_PROJECT_DIR)/control))
 VORTEX_WARNINGS := -Wall -Wextra -Wno-unused-parameter -Werror
 
 TWEAK_NAME = HCGVortex

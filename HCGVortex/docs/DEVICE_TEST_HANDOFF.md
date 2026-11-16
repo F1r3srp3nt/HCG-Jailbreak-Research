@@ -1,4 +1,4 @@
-# Device test handoff — HCG Vortex 0.1.0-alpha
+# Device test handoff — HCG Vortex 0.1.0-beta1
 
 Two statuses are tracked separately:
 
@@ -42,12 +42,12 @@ iOS versions other than 17.x are **untested**. The compatibility gate decides at
 1. Download artifact `hcg-vortex-rootless-deb` from the macOS run linked in PR #1, and unzip it.
 2. Check the hash against the one in the PR, which matches the run's *Package listing* step:
    ```sh
-   shasum -a 256 com.hakmicapitalgroup.vortex_0.1.0~alpha_iphoneos-arm64.deb
-   dpkg-deb -f com.hakmicapitalgroup.vortex_0.1.0~alpha_iphoneos-arm64.deb Package Version Architecture Depends
+   shasum -a 256 com.hakmicapitalgroup.vortex_0.1.0~beta1_iphoneos-arm64.deb
+   dpkg-deb -f com.hakmicapitalgroup.vortex_0.1.0~beta1_iphoneos-arm64.deb Package Version Architecture Depends
    ```
 3. Copy it to the phone and check the hash there too:
    ```sh
-   scp com.hakmicapitalgroup.vortex_0.1.0~alpha_iphoneos-arm64.deb mobile@<iphone-ip>:/var/mobile/Documents/
+   scp com.hakmicapitalgroup.vortex_0.1.0~beta1_iphoneos-arm64.deb mobile@<iphone-ip>:/var/mobile/Documents/
    ssh mobile@<iphone-ip> 'shasum -a 256 /var/mobile/Documents/com.hakmicapitalgroup.vortex_*.deb || sha256sum /var/mobile/Documents/com.hakmicapitalgroup.vortex_*.deb'
    ```
 
@@ -59,7 +59,7 @@ Run these over SSH. `sudo` needs the mobile password you set for the jailbreak (
 
 ```sh
 touch /var/mobile/Library/Preferences/com.hakmicapitalgroup.vortex.disabled
-sudo dpkg -i /var/mobile/Documents/com.hakmicapitalgroup.vortex_0.1.0~alpha_iphoneos-arm64.deb
+sudo dpkg -i /var/mobile/Documents/com.hakmicapitalgroup.vortex_0.1.0~beta1_iphoneos-arm64.deb
 sbreload
 ```
 

@@ -1,37 +1,50 @@
 # PROPOSAL for F1r3srp3nt/HCG-repo: packages/com.hakmicapitalgroup.vortex/package.toml
-# Not applied. Copy into HCG-repo on a review branch only after the first device test,
-# the licence decision and the HCG Repo / Sileo investigation (see ../../../README.md).
+# Not applied. See HCGVortex/distribution/HCG-REPO-HANDOFF.md.
 #
-# Presentation and review metadata for HCG Vortex (jailbreak tweak).
+# Presentation and review metadata for HCG Vortex (free experimental beta).
 # Version, architecture and dependencies come from the .deb itself.
 # Icon: HCG-Jailbreak-Research HCGVortex/distribution/icon-512.png, scaled to 180 px.
+# Header: scripts/make_listing_header.py (HCG chrome mark from the HCG Terminal header,
+# the Vortex icon and a BETA badge).
 
 [display]
-summary = "Home Screen page transitions that move independently of your swipe: Reverse Slide, Vertical Rise, Vertical Fall and custom directions."
+summary = "BETA: Home Screen page transitions that move independently of your swipe: Reverse Slide, Vertical Rise, Vertical Fall and custom directions."
 icon = "icon.png"
+header = "header.jpg"
 tint = "#00E5FF"
 notes = """
+**Free experimental beta.** Expect rough edges and report problems.
+
 HCG Vortex changes how Home Screen page transitions look without changing how navigation works. Swipe left and you still land on the next page, but the transition can run in reverse, rise from below, fall from above, or follow any of eight directions.
 
 Folders, Today View, App Library and jiggle mode keep the normal iOS animation. Settings apply live, with no respring.
 """
 limitations = """
-- **Not yet run on a physical device.** Built with Xcode and package-validated in CI only.
-- Rootless only (`iphoneos-arm64`). The binaries target iOS 15.0 and later, but only iOS 17.x was designed for, from an iOS 17.0.3 header dump. On any version, Vortex installs no hooks unless every SpringBoard method it needs is present.
-- Needs a tweak injector (ElleKit or another Substrate-compatible one) and PreferenceLoader.
-- Install only one Home Screen page-transition tweak at a time.
+**Tested:** see the version's device-test record. Until one is recorded, no configuration has been tested.
+
+**Untested** (may work, not verified):
+- any other device, iOS version or jailbreak than the recorded test setup;
+- iPad, landscape Home Screen;
+- alongside other tweaks that change Home Screen paging. Install only one.
+
+The package's minimum of iOS 15.0 is a build setting, not a compatibility claim. Vortex was designed from iOS 17 SpringBoard headers. On any version it installs no hooks unless every SpringBoard method it needs is present, and Settings › HCG Vortex › *Engine Status* then reads *Incompatible*.
+
+**Known issues**
+- Beta: the safety checks reduce but cannot rule out SpringBoard crashes.
+- Animated page jumps (tapping page dots) may use the stock animation.
+- Rootless only (`iphoneos-arm64`). Needs ElleKit (or another Substrate-compatible injector) and PreferenceLoader.
 """
 install = """
-1. Install **HCG Vortex** and accept the dependencies offered (PreferenceLoader, an injector).
+1. Install **HCG Vortex (Beta)** and accept the dependencies offered (PreferenceLoader, an injector).
 2. Respring when you choose.
-3. Open **Settings › HCG Vortex**. *Engine Status* should read *Active*.
+3. Open **Settings › HCG Vortex**. *Engine Status* should read *Active*. *Incompatible* means your iOS build lacks something Vortex needs: it stays inactive and your Home Screen is unchanged.
 4. Pick an **Animation Preset**. Changes apply immediately.
 """
 removal = """
 1. **Turn it off:** Settings › HCG Vortex › Enable Vortex → off. Stock animation immediately.
-2. **Uninstall:** remove **HCG Vortex** in your package manager, then respring.
-3. Settings remain in `/var/mobile/Library/Preferences/com.hakmicapitalgroup.vortex.plist`. Delete it, or purge the package, to erase them.
-4. **If SpringBoard keeps crashing:** reboot. Dopamine is semi-untethered, so the phone starts without tweaks. Then remove HCG Vortex before re-enabling tweak injection.
+2. **Uninstall:** remove **HCG Vortex (Beta)** in your package manager, then respring.
+3. Settings remain in `/var/mobile/Library/Preferences/com.hakmicapitalgroup.vortex.plist`. Purge the package or delete the file to erase them.
+4. **If SpringBoard keeps crashing:** after 3 quick crashes Vortex stops loading itself (*Engine Status: Auto-disabled*). Otherwise, over SSH: `touch /var/mobile/Library/Preferences/com.hakmicapitalgroup.vortex.disabled` and respring. If you can't get in, reboot: Dopamine is semi-untethered, so the phone starts without tweaks; remove HCG Vortex before re-enabling tweak injection.
 """
 
 [review]
@@ -40,5 +53,6 @@ allow_setuid = []
 # imported binaries carry any, the import fails until they are reviewed and recorded here.
 
 [access]
-# Free and public.
+# Free beta: an explicit, per-package exception to the paid / HCG Connect flow.
+# Only this package is public; Nexus and Terminal Unleashed keep their own levels.
 level = "public"

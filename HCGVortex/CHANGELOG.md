@@ -1,5 +1,26 @@
 # Changelog — HCG Vortex
 
+## 0.1.0-beta1 (Debian version `0.1.0~beta1`)
+
+First public beta release candidate: free and experimental. Device testing is
+recorded in PR #1 / the release summary before publication.
+
+### Added
+- Startup safety: tested compatibility gate (`VortexCompatibility.m`), hook
+  installation verified after `%init`, launch guard after 3 quick SpringBoard
+  restarts, `-fobjc-arc-exceptions`.
+- Device-test handoff (`docs/DEVICE_TEST_HANDOFF.md`) and read-only device
+  report (`scripts/device-info.sh`).
+- HCG-repo listing proposal: package metadata, BETA header, changelog, pinned
+  import request.
+
+### Changed
+- Package name shows **(Beta)**; description starts "Free experimental beta."
+- The version comes only from `control`; `validate.sh` fails if the binaries or
+  the Settings bundle carry a different one (rebuild, never rename).
+- Build SDK pinned to the patched iOS 16.5 SDK on every platform; Xcode compiles
+  on macOS (native arm64e).
+
 ## 0.1.0-alpha (Debian version `0.1.0~alpha`)
 
 First alpha. **Not yet verified on a device** — see docs/TESTING.md.

@@ -1,4 +1,4 @@
-# PROPOSAL for F1r3srp3nt/HCG-repo: imports/hcg-vortex-0.1.0-alpha-rootless.toml
+# PROPOSAL for F1r3srp3nt/HCG-repo: imports/hcg-vortex-0.1.0-beta1-rootless.toml
 # Not applied. HCG-repo's "Prepare packages" workflow fetches this pinned CI artifact
 # and imports it with the expected package, version, architecture and SHA-256.
 #
@@ -9,7 +9,7 @@
 
 [request]
 package = "com.hakmicapitalgroup.vortex"
-version = "0.1.0~alpha"
+version = "0.1.0~beta1"
 architecture = "iphoneos-arm64"
 
 [source]

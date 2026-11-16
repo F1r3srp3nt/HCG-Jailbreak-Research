@@ -10,7 +10,7 @@
 # native iOS 14+ pointer-auth ABI from Xcode).
 #
 # Writes:  build-logs/macos-build-<UTC timestamp>.log  (environment + full build)
-#          packages/com.hakmicapitalgroup.vortex_0.1.0~alpha_iphoneos-arm64.deb
+#          packages/com.hakmicapitalgroup.vortex_0.1.0~beta1_iphoneos-arm64.deb
 # Exit status is the build's. Never installs to a device, never publishes.
 
 set -uo pipefail

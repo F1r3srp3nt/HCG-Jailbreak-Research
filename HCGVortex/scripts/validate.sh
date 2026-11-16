@@ -98,14 +98,17 @@ if [ -z "$DEB" ] || [ ! -f "$DEB" ]; then
 fi
 section "3. Package metadata — $(basename "$DEB")"
 field() { dpkg-deb -f "$DEB" "$1" 2>/dev/null; }
-[ "$(field Package)" = "com.hakmicapitalgroup.vortex" ] && pass "Package: com.hakmicapitalgroup.vortex" || fail "Package is '$(field Package)'"
-[ "$(field Name)" = "HCG Vortex" ] && pass "Name: HCG Vortex" || fail "Name is '$(field Name)'"
-[ "$(field Architecture)" = "iphoneos-arm64" ] && pass "Architecture: iphoneos-arm64 (rootless)" || fail "Architecture is '$(field Architecture)'"
-case "$(field Version)" in
-	0.1.0~alpha) pass "Version: 0.1.0~alpha (displays as 0.1.0-alpha; sorts before 0.1.0)" ;;
-	0.1.0~alpha*) warn "Version: $(field Version) (non-final build; use FINALPACKAGE=1 for distribution)" ;;
-	*) fail "Version is '$(field Version)'" ;;
-esac
+SRC_CONTROL="$ROOT/control"
+src_field() { sed -n "s/^$1: *//p" "$SRC_CONTROL"; }
+for f in Package Name Version Architecture; do
+	if [ "$(field "$f")" = "$(src_field "$f")" ]; then
+		pass "$f: $(field "$f") (matches source control)"
+	else
+		fail "$f is '$(field "$f")', source control says '$(src_field "$f")'"
+	fi
+done
+[ "$(field Architecture)" = "iphoneos-arm64" ] && pass "rootless architecture iphoneos-arm64" || fail "Architecture is '$(field Architecture)'"
+VORTEX_DISPLAY_VERSION=$(src_field Version | tr '~' '-')
 [ "$(field Section)" = "Tweaks" ] && pass "Section: Tweaks" || fail "Section is '$(field Section)'"
 deps=$(field Depends)
 for d in mobilesubstrate preferenceloader firmware; do
@@ -146,6 +149,16 @@ for s in preinst postinst prerm; do
 done
 
 # ---------------------------------------------------------------------------
+python3 - "$JB" "$VORTEX_DISPLAY_VERSION" <<'PY' && pass "Info.plist CFBundleVersion and both binaries carry version $VORTEX_DISPLAY_VERSION (rebuilt, not renamed)" || fail "version mismatch inside the package (expected $VORTEX_DISPLAY_VERSION): rebuild, do not rename"
+import plistlib, sys
+jb, version = sys.argv[1], sys.argv[2]
+info = plistlib.load(open(f"{jb}/Library/PreferenceBundles/HCGVortexPrefs.bundle/Info.plist", "rb"))
+assert info["CFBundleVersion"] == version, info["CFBundleVersion"]
+for rel in ("Library/MobileSubstrate/DynamicLibraries/HCGVortex.dylib",
+            "Library/PreferenceBundles/HCGVortexPrefs.bundle/HCGVortexPrefs"):
+    assert (b"\0" + version.encode() + b"\0") in open(f"{jb}/{rel}", "rb").read(), rel
+PY
+
 section "5. Mach-O binaries"
 python3 - "$JB" "$REQUIRE_NEW_ABI" <<'PY'
 import struct, sys

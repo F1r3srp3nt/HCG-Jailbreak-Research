@@ -89,7 +89,7 @@ static NSString *VortexCompatibilityNotes(void) {
     if (root && !class_getInstanceMethod(root, @selector(isEditing)))
         [notes addObject:@"-isEditing missing; edit-mode bypass unavailable"];
     NSOperatingSystemVersion v = [[NSProcessInfo processInfo] operatingSystemVersion];
-    if (v.majorVersion != 17) [notes addObject:[NSString stringWithFormat:@"iOS %ld is outside the v0.1.0 test target (17.4)", (long)v.majorVersion]];
+    if (v.majorVersion != 17) [notes addObject:[NSString stringWithFormat:@"iOS %ld: hooks were designed from iOS 17 headers; this version is untested", (long)v.majorVersion]];
     return [notes componentsJoinedByString:@"; "];
 }
 

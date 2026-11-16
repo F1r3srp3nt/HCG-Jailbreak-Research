@@ -70,7 +70,9 @@ jobs:
           name: hcg-vortex-rootless-deb
           path: HCGVortex/packages/*.deb
           if-no-files-found: error
-          retention-days: 30
+          # Long enough for device testing and the HCG-repo import, after which
+          # the .deb lives in HCG-repo's pool with provenance.
+          retention-days: 90
 
       # Kept for diagnosis only. Never distribute this artifact.
       - name: Upload UNVALIDATED package (validation failed)

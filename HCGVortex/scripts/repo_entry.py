@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Prints the control fields and hashes of a built HCG Vortex .deb.
 
-    python3 scripts/repo_entry.py packages/com.hakmicapitalgroup.vortex_0.1.0~alpha_iphoneos-arm64.deb
+    python3 scripts/repo_entry.py packages/com.hakmicapitalgroup.vortex_0.1.0~beta1_iphoneos-arm64.deb
 
 Read-only. For cross-checking what HCG-repo's importer records. HCG-repo
 (https://repo.hakmicapitalgroup.com/repo/) adds Filename, Depiction,

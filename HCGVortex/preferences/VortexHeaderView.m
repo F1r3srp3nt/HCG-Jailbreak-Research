@@ -7,7 +7,7 @@
 #import <QuartzCore/QuartzCore.h>
 
 #ifndef VORTEX_VERSION
-#define VORTEX_VERSION "0.1.0-alpha"
+#error "VORTEX_VERSION must come from the Makefile (control Version)"
 #endif
 
 static UIColor *VortexRGB(unsigned int hex, CGFloat alpha) {

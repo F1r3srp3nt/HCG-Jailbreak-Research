@@ -8,6 +8,9 @@ include $(THEOS)/makefiles/common.mk
 
 BUNDLE_NAME = HCGVortexPrefs
 
+# Same version source as the tweak: ../control.
+VORTEX_VERSION := $(subst ~,-,$(shell sed -n 's/^Version: *//p' $(CURDIR)/../control))
+
 # VortexPreferences.m + VortexMath.c are shared with the tweak so validation
 # and defaults are identical in SpringBoard and in Settings.
 HCGVortexPrefs_FILES = \
@@ -18,6 +21,6 @@ HCGVortexPrefs_FILES = \
 HCGVortexPrefs_FRAMEWORKS = UIKit QuartzCore
 HCGVortexPrefs_PRIVATE_FRAMEWORKS = Preferences
 HCGVortexPrefs_INSTALL_PATH = /Library/PreferenceBundles
-HCGVortexPrefs_CFLAGS = -fobjc-arc -fobjc-arc-exceptions -Wall -Wextra -Wno-unused-parameter -Werror -DVORTEX_VERSION=\"0.1.0-alpha\" -I../src
+HCGVortexPrefs_CFLAGS = -fobjc-arc -fobjc-arc-exceptions -Wall -Wextra -Wno-unused-parameter -Werror -DVORTEX_VERSION=\"$(VORTEX_VERSION)\" -I../src
 
 include $(THEOS_MAKE_PATH)/bundle.mk

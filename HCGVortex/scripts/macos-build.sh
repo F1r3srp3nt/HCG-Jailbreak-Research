@@ -13,7 +13,7 @@
 # Exit status is the build's. Never installs to a device, never publishes.
 
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 if [ "$(uname -s)" != Darwin ]; then
 	echo "ERROR: this script is for macOS; on Linux use scripts/build.sh with ALLEMANDE=" >&2
@@ -70,7 +70,7 @@ fi
 
 echo "== build (full log: $LOG)"
 echo "== build" >>"$LOG"
-MAKE=make scripts/build.sh messages=yes 2>&1 | tee -a "$LOG"
+MAKE="make" scripts/build.sh messages=yes 2>&1 | tee -a "$LOG"
 status=${PIPESTATUS[0]}
 
 DEB="$(ls -t packages/*.deb 2>/dev/null | head -1 || true)"

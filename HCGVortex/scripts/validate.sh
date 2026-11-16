@@ -18,7 +18,7 @@
 # this validates the BUILD, not runtime behaviour on SpringBoard.
 
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 ROOT=$(pwd)
 
 DEB=""

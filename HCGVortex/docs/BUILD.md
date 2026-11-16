@@ -68,11 +68,12 @@ use the macOS build for anything distributed.
 
 ## CI
 
-* `.github/workflows/hcg-vortex.yml` is meant to build on `macos-14` with
-  Xcode and upload the `.deb` as an artifact. **It has never run:** every
-  job so far was cancelled about a second after queueing with no runner
-  assigned (`runner_id: 0`, empty check output). The cause is not yet
-  identified; see the run page annotations.
+* `.github/workflows/hcg-vortex.yml` builds on a GitHub-hosted macOS runner
+  with Xcode and uploads the `.deb` as an artifact. The first four jobs used
+  `macos-14` and were cancelled before a runner was assigned; GitHub's
+  annotation on each was `The configuration 'macos-14-arm64-us-default' is
+  not supported`. The workflow now uses `macos-15`; see the latest run for
+  whether that label is accepted and the build passes.
 * `.github/workflows/hcg-vortex-linux-check.yml` runs the math unit tests on
   Ubuntu and passes.
 

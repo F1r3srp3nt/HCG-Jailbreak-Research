@@ -14,7 +14,7 @@ the opposite way, or move along any of eight directions.
 |---|---|
 | Source implemented | ✅ |
 | Linux build + validation | ✅ open-source toolchain + allemande; `validate.sh` 0 failures, 1 expected warning |
-| macOS (Xcode) compilation | ⏳ not run — CI jobs never got a runner; `scripts/macos-build.sh` ready for a local Mac |
+| macOS (Xcode) compilation | ⏳ not verified — `macos-14` runner label rejected by GitHub, CI moved to `macos-15`; `scripts/macos-build.sh` ready for a local Mac |
 | Package validated | ✅ `scripts/validate.sh` (one expected warning on Linux builds) |
 | Device installation | ⏳ not performed — needs authorization |
 | Runtime behaviour verified | ⏳ not performed |

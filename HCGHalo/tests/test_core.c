@@ -97,7 +97,6 @@ static void check_path_invariants(const HaloBorderPath *p, const HaloDisplayGeom
         CHECK(ops[0].kind == HaloBezierMove && ops[n - 1].kind == HaloBezierClose, "%s: bezier framing", label);
         CHECK(NEAR(ops[n - 2].x, ops[0].x, 1e-6) && NEAR(ops[n - 2].y, ops[0].y, 1e-6), "%s: bezier not closed", label);
         double cx = ops[0].x, cy = ops[0].y;
-        int seg = 0;
         for (int i = 1; i < n - 1; i++) {
             if (ops[i].kind == HaloBezierCurve) {
                 // find the arc this piece belongs to (by end point lying on a circle)
@@ -111,7 +110,6 @@ static void check_path_invariants(const HaloBorderPath *p, const HaloDisplayGeom
                     if (e < best) best = e;
                 }
                 CHECK(best < 0.01, "%s: bezier midpoint %.4f pt off its arc", label, best);
-                seg++;
             }
             cx = ops[i].x;
             cy = ops[i].y;
@@ -184,7 +182,7 @@ static void test_geometry_notch(void) {
 }
 
 static void test_geometry_sanitize(void) {
-    HaloDisplayGeometry bad = {NAN, 896, 39, HaloCutoutNotch, 209, 30, 6, 20, 0};
+    HaloDisplayGeometry bad = {((double)NAN), 896, 39, HaloCutoutNotch, 209, 30, 6, 20, 0};
     HaloBorderPath p;
     CHECK(halo_build_border(&bad, 1, 1, &p) == 0 && p.count == 0, "NaN width must fail");
     HaloDisplayGeometry tiny = {5, 5, 1, HaloCutoutNone, 0, 0, 0, 0, 0};
@@ -192,7 +190,7 @@ static void test_geometry_sanitize(void) {
 
     HaloDisplayGeometry g = geometry11ProMax();
     g.notchWidth = 1e6;
-    g.notchOuterRadius = INFINITY;
+    g.notchOuterRadius = ((double)INFINITY);
     g.notchInnerRadius = -5;
     g.notchOffsetX = 500;
     g.cornerRadius = 1e6;
@@ -213,7 +211,7 @@ static void test_geometry_sanitize(void) {
     HaloDisplayGeometry ng = geometry11ProMax();
     CHECK(halo_build_border(&ng, -10, 1, &p) == 1, "negative offset clamps");
     check_path_invariants(&p, &ng, 0, "negative-offset");
-    CHECK(halo_build_border(&ng, NAN, 1, &p) == 1, "NaN offset clamps");
+    CHECK(halo_build_border(&ng, ((double)NAN), 1, &p) == 1, "NaN offset clamps");
     CHECK(halo_build_border(&ng, 1e9, 1, &p) == 1, "huge offset clamps");
 }
 
@@ -283,7 +281,7 @@ static void test_hex(void) {
     CHECK(strcmp(out, "#7B61FF") == 0, "format %s", out);
     const char *bad[] = {NULL, "", "#", "#12345", "#1234567", "#GG0000", "zzzzzz", "#12 456"};
     for (unsigned i = 0; i < sizeof bad / sizeof bad[0]; i++) CHECK(!halo_parse_hex(bad[i], &c), "accepted bad hex %u", i);
-    HaloRGB weird = {NAN, -1, 7};
+    HaloRGB weird = {((double)NAN), -1, 7};
     halo_format_hex(weird, out);
     CHECK(strcmp(out, "#0000FF") == 0, "format clamps: %s", out);
     for (int v = 0; v < 256; v++) {
@@ -331,10 +329,10 @@ static void test_appearance(void) {
     a.mode = (HaloMode)99;
     a.colourStyle = (HaloColourStyle)-3;
     a.colourCount = 0;
-    a.brightness = NAN;
+    a.brightness = ((double)NAN);
     a.thickness = 100;
     a.glow = -1;
-    a.inset = INFINITY;
+    a.inset = ((double)INFINITY);
     a.speed = 0;
     a.clockwise = 42;
     a.colourRepeat = 9;
@@ -349,7 +347,7 @@ static void test_appearance(void) {
 
     a = d;
     a.colours[1].r = 7;
-    a.colours[2].g = NAN;
+    a.colours[2].g = ((double)NAN);
     s = halo_sanitize_appearance(a);
     CHECK(s.colours[1].r == 1 && s.colours[2].g == 0, "colour channels clamped");
 }
@@ -414,7 +412,7 @@ static void test_patterns(void) {
     for (int m = 0; m < HaloModeCount; m++) {
         CHECK(halo_period((HaloMode)m, 1) > 0, "period > 0");
         CHECK(NEAR(halo_period((HaloMode)m, 2), halo_period((HaloMode)m, 1) / 2, 1e-12), "period scales with speed");
-        CHECK(halo_period((HaloMode)m, NAN) > 0 && halo_period((HaloMode)m, 1000) > 0, "period sanitises speed");
+        CHECK(halo_period((HaloMode)m, ((double)NAN)) > 0 && halo_period((HaloMode)m, 1000) > 0, "period sanitises speed");
     }
 }
 
@@ -479,7 +477,7 @@ static void test_profiles(void) {
     }
     CHECK(implemented == 1, "exactly one implemented profile in 0.1.0~beta1 (%d)", implemented);
 
-    HaloCalibration cal = {100, -100, NAN, 3};
+    HaloCalibration cal = {100, -100, ((double)NAN), 3};
     HaloCalibration c = halo_sanitize_calibration(cal);
     CHECK(c.cornerRadius == HALO_CAL_CORNER_MAX && c.notchWidth == HALO_CAL_NOTCH_WIDTH_MIN && c.notchHeight == 0 &&
               c.notchOffsetX == 3, "calibration clamps");

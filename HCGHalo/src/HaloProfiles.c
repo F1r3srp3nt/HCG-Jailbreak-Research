@@ -10,10 +10,6 @@
 #include <math.h>
 #include <string.h>
 
-extern const HaloProfile kHaloProfiles[];
-extern const int kHaloProfileCount;
-extern const char *const kHaloDefaultProfileID;
-
 int halo_profile_count(void) {
     return kHaloProfileCount;
 }

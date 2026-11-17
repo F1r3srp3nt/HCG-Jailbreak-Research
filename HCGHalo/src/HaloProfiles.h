@@ -54,6 +54,11 @@ typedef struct {
 /// never accepted as a stored value and the Settings row is disabled.
 #define HALO_PROFILE_AUTOMATIC "automatic"
 
+/// The generated table (HaloProfiles.generated.c). Use the functions below.
+extern const HaloProfile kHaloProfiles[];
+extern const int kHaloProfileCount;
+extern const char *const kHaloDefaultProfileID;
+
 int halo_profile_count(void);
 const HaloProfile *halo_profile_at(int index);
 /// Returns NULL for unknown identifiers and for "automatic".

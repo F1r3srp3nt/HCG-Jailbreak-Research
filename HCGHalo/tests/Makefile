@@ -2,7 +2,8 @@
 CC ?= cc
 CFLAGS ?= -std=c11 -O1 -g -Wall -Wextra -Werror -Wshadow -Wdouble-promotion -Wno-unused-parameter
 SANITIZE ?= -fsanitize=address,undefined -fno-sanitize-recover=all
-BUILD ?= build
+# One build directory per compiler, so switching CC really recompiles.
+BUILD ?= build/$(notdir $(firstword $(CC)))
 CORE := ../src/HaloGeometry.c ../src/HaloConfig.c ../src/HaloProfiles.c ../src/HaloProfiles.generated.c
 HEADERS := ../src/HaloGeometry.h ../src/HaloConfig.h ../src/HaloProfiles.h
 

@@ -1,11 +1,24 @@
 # Device testing: HCG Vortex 0.1.0~beta1
 
-## Status: NOT TESTED
+## Status
 
-**No device testing has occurred for 0.1.0~beta1.** It has never been installed on a phone. No device,
-iOS version or jailbreak is known to work with this build.
+| | |
+|---|---|
+| **Installation** | **FAILED: observed unpacking failure** (17 Nov 2026). Zebra downloaded the package, then `dpkg-deb: error: <decompress> subprocess was killed by signal (Bus error: 10)`. Nothing was installed. Record: `HCGVortex/docs/INSTALL-FAILURE-0.1.0-beta1.md` |
+| **Runtime** | **NOT TESTED.** The tweak never ran on any device |
+| Cause | Not confirmed (under investigation) |
 
-What has been verified is limited to the build:
+The phone was recorded in HCG-repo as iPhone 11 Pro Max, iOS 17.4, Dopamine 2.x (rootless), Zebra 1.1.x. Those
+details have not been confirmed with `scripts/device-info.sh`.
+
+Note: this file was updated after the beta1 handoff archive was produced. The archive's copy, written before the
+install attempt, says "NOT TESTED".
+
+So HCG-repo should record the install attempt with `stage = "install"` and `result = "fail"`, and must not record
+any runtime result. beta1's bytes and SHA-256 (`bb0af727…07673eea`) stay unchanged. The packaging-only follow-up is
+0.1.0~beta2.
+
+What has been verified for beta1 is limited to the build:
 - Xcode CI compile and link;
 - package validation (`validate.sh --require-new-abi`);
 - host unit tests;
@@ -13,9 +26,6 @@ What has been verified is limited to the build:
 - an HCG-repo dry run in a scratch copy.
 
 None of these shows that the tweak works on a device.
-
-So HCG-repo must keep `[versions."0.1.0~beta1"]` absent, or `status = "experimental"`, with **no
-`device_tests` entry**. Its listing then reads "Not yet tested on any device."
 
 ## Recording a test later (HCG-repo `package.toml`)
 

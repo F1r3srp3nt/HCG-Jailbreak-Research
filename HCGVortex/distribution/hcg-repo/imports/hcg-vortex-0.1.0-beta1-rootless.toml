@@ -1,0 +1,20 @@
+# PROPOSAL for F1r3srp3nt/HCG-repo: imports/hcg-vortex-0.1.0-beta1-rootless.toml
+# Not applied. HCG-repo's "Prepare packages" workflow fetches this pinned CI artifact
+# and imports it with the expected package, version, architecture and SHA-256.
+#
+# Release candidate: HCG-Jailbreak-Research commit 7d5e5b9, macOS (Xcode 16.4) CI run
+# 43970942708, artifact kept until 2027-02-14. If the device test forces a rebuild,
+# replace all three values below with the new run's; never edit only one.
+
+[request]
+package = "com.hakmicapitalgroup.vortex"
+version = "0.1.0~beta1"
+architecture = "iphoneos-arm64"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 43970942708
+commit = "7d5e5b9153e9e7246d87e6f3bf4f7c6927d42ad4"
+artifact = "hcg-vortex-rootless-deb"
+sha256 = "bb0af72745a36158d4022c1b97ebc9800847cf4b1fb42ca14d05b9fc07673eea"

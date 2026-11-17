@@ -1,0 +1,46 @@
+# HCG Vortex — Linux source checks.
+#
+# Runs the host unit tests for the animation math core and the SpringBoard
+# compatibility-gate tests (via GNUstep's Objective-C runtime). Builds no
+# package and publishes nothing.
+name: HCG Vortex Linux check
+
+on:
+  push:
+    paths:
+      - "HCGVortex/**"
+      - ".github/workflows/hcg-vortex-linux-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: HCGVortex
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Runner report
+        run: |
+          echo "Runner: $RUNNER_OS $RUNNER_ARCH ($ImageOS)"
+          cc --version | head -1
+
+      - name: Math core unit tests (ASan/UBSan)
+        run: make -C tests test
+
+      - name: Install GNUstep (Objective-C runtime for gate tests)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq gnustep-devel
+
+      - name: Compatibility gate tests (GNUstep)
+        run: make -C tests compat-gnustep
+
+      - name: Compatibility gate clang diagnostics (as Apple clang -Werror)
+        run: make -C tests compat-lint
+
+      - name: Packaging format regression tests (gzip-only members)
+        run: make -C tests deb-format

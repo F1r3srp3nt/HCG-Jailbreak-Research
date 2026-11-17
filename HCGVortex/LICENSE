@@ -1,0 +1,41 @@
+HCG Vortex — Freeware Licence
+Copyright (c) 2026 Hakmi Capital Group. All rights reserved.
+
+1. Permission. Hakmi Capital Group ("HCG") grants you, free of charge, a
+   personal, non-exclusive, non-transferable licence to download HCG Vortex
+   from HCG's official channels (including HCG Repo) and to install and use it
+   on devices you own or are authorised to administer.
+
+2. Restrictions. Without HCG's prior written permission you may not:
+   (a) redistribute HCG Vortex or any part of it, including by re-hosting,
+       mirroring or bundling it in another package or repository;
+   (b) distribute modified versions of HCG Vortex or works based on it;
+   (c) sell, rent or sublicense HCG Vortex.
+
+3. Source code. The source code is published for transparency. Publication
+   does not grant open-source rights: apart from the rights GitHub's Terms of
+   Service give users of public repositories (such as viewing and forking on
+   GitHub), the source code is licensed only as set out in this licence.
+
+4. Beta software. Versions labelled alpha, beta or release candidate are
+   experimental. They may not work on your device and may cause SpringBoard to
+   crash or restart. Use them at your own risk. HCG has no obligation to provide
+   support, updates or fixes.
+
+5. Third-party components. HCG Vortex is built with Theos and Logos, which are
+   licensed under the GNU GPL v3 and state that projects built with them are not
+   derivative works. The distributed package contains no third-party code; at
+   runtime it uses the device's own system frameworks, tweak injector and
+   PreferenceLoader.
+
+6. No warranty. HCG VORTEX IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+7. Limitation of liability. TO THE EXTENT PERMITTED BY LAW, IN NO EVENT SHALL
+   HCG BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN CONTRACT,
+   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH HCG VORTEX OR
+   ITS USE.
+
+8. Termination. This licence ends automatically if you breach it. On
+   termination, uninstall HCG Vortex and delete any copies.

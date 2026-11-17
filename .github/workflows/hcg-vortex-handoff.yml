@@ -1,0 +1,271 @@
+# HCG Vortex — HCG Repo import handoff archive (any version).
+#
+# Downloads one validated "HCG Vortex build" artifact and proves where it came
+# from through the GitHub API: run -> commit, and the artifact ID. It recomputes
+# the SHA-256 on a separate runner and refuses anything but the expected value,
+# then re-runs validate.sh from the source commit and checks the archive format.
+# It compares the package with a baseline build (beta1 by default) and
+# accounts for every difference. Then it bundles the .deb with its metadata,
+# changelog, licence, device-test status, comparison and import manifest under
+# SHA256SUMS, extracts the archive again, verifies it and uploads it.
+# It publishes nothing and changes no repository.
+#
+# Handoff text comes from HCGVortex/distribution/handoff/<display version>/
+# on this branch (0.1.0~beta2 -> 0.1.0-beta2).
+name: HCG Vortex handoff archive
+
+on:
+  # Runs once when this file changes (no other workflow matches it), using the
+  # pinned fallbacks below; dispatch it manually for other builds.
+  push:
+    paths:
+      - ".github/workflows/hcg-vortex-handoff.yml"
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "HCG Vortex build run that produced the .deb"
+      artifact_id:
+        description: "Expected artifact ID"
+      commit:
+        description: "Expected source commit (40 chars)"
+      sha256:
+        description: "Expected .deb SHA-256"
+      version:
+        description: "Expected Debian version"
+      baseline_run_id:
+        description: "Build run of the baseline package to compare against"
+      baseline_sha256:
+        description: "Expected SHA-256 of the baseline package"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  handoff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      # Pinned fallbacks (used by the push run): 0.1.0~beta2.
+      RUN_ID: ${{ inputs.run_id || '44012915117' }}
+      ARTIFACT_ID: ${{ inputs.artifact_id || '14297382250' }}
+      EXPECTED_COMMIT: ${{ inputs.commit || 'b212cdbdcda98fdda0d7a924cb8acd388a2183ed' }}
+      EXPECTED_SHA256: ${{ inputs.sha256 || 'a326759a697899ee938b3db3ccc62521994c01084880b43802c0769f90179395' }}
+      EXPECTED_VERSION: ${{ inputs.version || '0.1.0~beta2' }}
+      # Baseline: 0.1.0~beta1, kept unchanged.
+      BASELINE_RUN_ID: ${{ inputs.baseline_run_id || '43970942708' }}
+      BASELINE_SHA256: ${{ inputs.baseline_sha256 || 'bb0af72745a36158d4022c1b97ebc9800847cf4b1fb42ca14d05b9fc07673eea' }}
+      ARTIFACT_NAME: hcg-vortex-rootless-deb
+      PACKAGE: com.hakmicapitalgroup.vortex
+    steps:
+      - name: Names for this version
+        run: |
+          set -euo pipefail
+          DISPLAY_VERSION=$(printf '%s' "$EXPECTED_VERSION" | tr '~' '-')
+          echo "DISPLAY_VERSION=$DISPLAY_VERSION" >> "$GITHUB_ENV"
+          echo "OUT=hcg-vortex-$DISPLAY_VERSION-handoff" >> "$GITHUB_ENV"
+
+      - name: Check the run and artifact through the GitHub API
+        run: |
+          set -euo pipefail
+          gh api "repos/$REPO/actions/runs/$RUN_ID" > run.json
+          python3 - <<'PY'
+          import json, os
+          r = json.load(open("run.json"))
+          checks = {
+              "workflow": (r["path"].split("@")[0], ".github/workflows/hcg-vortex.yml"),
+              "conclusion": (r["conclusion"], "success"),
+              "head_sha": (r["head_sha"], os.environ["EXPECTED_COMMIT"]),
+          }
+          for k, (got, want) in checks.items():
+              print(f"{k}: {got}")
+              assert got == want, f"{k}: expected {want}, got {got}"
+          PY
+          gh api "repos/$REPO/actions/runs/$RUN_ID/artifacts" > artifacts.json
+          python3 - <<'PY'
+          import json, os
+          arts = [a for a in json.load(open("artifacts.json"))["artifacts"] if a["name"] == os.environ["ARTIFACT_NAME"]]
+          assert len(arts) == 1, arts
+          a = arts[0]
+          print("artifact:", a["id"], a["name"], a["size_in_bytes"], "expires", a["expires_at"], "expired", a["expired"])
+          assert str(a["id"]) == os.environ["ARTIFACT_ID"], "artifact ID mismatch"
+          assert not a["expired"]
+          json.dump(a, open("artifact.json", "w"))
+          PY
+
+      - name: Download the artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hcg-vortex-rootless-deb
+          run-id: ${{ env.RUN_ID }}
+          github-token: ${{ github.token }}
+          path: downloaded
+
+      - name: Download the baseline artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hcg-vortex-rootless-deb
+          run-id: ${{ env.BASELINE_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: baseline
+
+      - name: Recompute SHA-256 and read the package
+        run: |
+          set -euo pipefail
+          ls -l downloaded baseline
+          [ "$(find downloaded -maxdepth 1 -name '*.deb' | wc -l)" -eq 1 ] || { echo "expected exactly one .deb"; exit 1; }
+          DEB=$(find downloaded -maxdepth 1 -name '*.deb')
+          FILE=$(basename "$DEB")
+          [ "$FILE" = "${PACKAGE}_${EXPECTED_VERSION}_iphoneos-arm64.deb" ] || { echo "unexpected file name $FILE"; exit 1; }
+          GOT=$(sha256sum "$DEB" | cut -d' ' -f1)
+          echo "recomputed sha256: $GOT"
+          echo "expected sha256:   $EXPECTED_SHA256"
+          [ "$GOT" = "$EXPECTED_SHA256" ] || { echo "SHA-256 MISMATCH"; exit 1; }
+          [ "$(dpkg-deb -f "$DEB" Package)" = "$PACKAGE" ]
+          [ "$(dpkg-deb -f "$DEB" Version)" = "$EXPECTED_VERSION" ]
+          [ "$(dpkg-deb -f "$DEB" Architecture)" = "iphoneos-arm64" ]
+          BASE=$(find baseline -maxdepth 1 -name '*.deb')
+          BGOT=$(sha256sum "$BASE" | cut -d' ' -f1)
+          echo "baseline $(basename "$BASE") sha256: $BGOT"
+          [ "$BGOT" = "$BASELINE_SHA256" ] || { echo "BASELINE SHA-256 MISMATCH"; exit 1; }
+          echo "DEB=$DEB" >> "$GITHUB_ENV"
+          echo "FILE=$FILE" >> "$GITHUB_ENV"
+          echo "BASE=$BASE" >> "$GITHUB_ENV"
+
+      - name: Check out the source commit (for validate.sh)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_COMMIT }}
+          path: src
+
+      - name: Re-validate the downloaded package from its own source commit
+        run: |
+          set -euo pipefail
+          src/HCGVortex/scripts/validate.sh "$PWD/$DEB" --require-new-abi | tee validate.txt
+
+      - name: Check out handoff text (this branch)
+        uses: actions/checkout@v4
+        with:
+          path: handoff-src
+
+      - name: Archive format and decompression (exit statuses kept)
+        run: |
+          set -uo pipefail
+          {
+            echo "# $FILE"
+            echo
+            echo "## check_deb_format.py (gzip-only members, full decompression)"
+            python3 -I src/HCGVortex/scripts/check_deb_format.py "$DEB"; echo "exit status: $?"
+            echo
+            echo "## dpkg-deb --fsys-tarfile | wc -c ($(dpkg-deb --version | head -1))"
+            dpkg-deb --fsys-tarfile "$DEB" > data.tar; echo "dpkg-deb exit status: $?, $(wc -c < data.tar) bytes"
+            echo
+            echo "## gzip -t on each member"
+            mkdir -p members && (cd members && ar x "../$DEB" && ls -l && file * && for m in *.gz; do gzip -t "$m"; echo "gzip -t $m exit status: $?"; done)
+          } | tee format.txt
+          grep -q "^exit status: 0$" format.txt
+          grep -q "^dpkg-deb exit status: 0," format.txt
+          ! grep -E "gzip -t .* exit status: [1-9]" format.txt
+
+      - name: Compare with the baseline and account for every difference
+        run: |
+          set -euo pipefail
+          python3 -I handoff-src/HCGVortex/scripts/compare_debs.py "$BASE" "$DEB" --markdown comparison.md
+
+      - name: Assemble the handoff
+        run: |
+          set -euo pipefail
+          TEXT="handoff-src/HCGVortex/distribution/handoff/$DISPLAY_VERSION"
+          [ -d "$TEXT" ] || { echo "no handoff text at $TEXT"; exit 1; }
+          mkdir -p "$OUT/imports"
+          cp "$DEB" "$OUT/"
+          cp "$TEXT"/*.md "$OUT/"
+          cp "$TEXT"/imports/*.toml "$OUT/imports/"
+          [ -d "$TEXT/hcg-repo" ] && cp -R "$TEXT/hcg-repo" "$OUT/hcg-repo"
+          cp handoff-src/HCGVortex/LICENSE "$OUT/LICENSE"
+          cp comparison.md "$OUT/COMPARISON.md"
+          cp format.txt "$OUT/FORMAT.txt"
+          cp validate.txt "$OUT/VALIDATE.txt"
+          dpkg-deb -f "$OUT/$FILE" > "$OUT/control.txt"
+          dpkg-deb -c "$OUT/$FILE" > "$OUT/contents.txt"
+          # The import manifest must pin exactly what is in this archive.
+          grep -qx "sha256 = \"$EXPECTED_SHA256\"" "$OUT/imports/"*.toml
+          grep -qx "commit = \"$EXPECTED_COMMIT\"" "$OUT/imports/"*.toml
+          grep -qx "run_id = $RUN_ID" "$OUT/imports/"*.toml
+          grep -qx "version = \"$EXPECTED_VERSION\"" "$OUT/imports/"*.toml
+          grep -qx 'channel = "candidate"' "$OUT/imports/"*.toml
+          SIZE=$(stat -c %s "$OUT/$FILE")
+          python3 - "$OUT" "$FILE" "$SIZE" <<'PY'
+          import json, os, sys
+          out, file, size = sys.argv[1], sys.argv[2], int(sys.argv[3])
+          run = json.load(open("run.json")); art = json.load(open("artifact.json"))
+          label = "Packaging compatibility candidate — installation fix not yet device-verified."
+          prov = {
+              "package": os.environ["PACKAGE"], "version": os.environ["EXPECTED_VERSION"],
+              "architecture": "iphoneos-arm64", "file": file, "size_bytes": size,
+              "sha256": os.environ["EXPECTED_SHA256"],
+              "label": label,
+              "package_format": "debian-binary, control.tar.gz, data.tar.gz (gzip); see FORMAT.txt",
+              "source": {"repository": os.environ["REPO"], "commit": run["head_sha"]},
+              "build": {"workflow": run["path"].split("@")[0], "run_id": run["id"],
+                        "run_url": run["html_url"], "conclusion": run["conclusion"],
+                        "artifact_id": art["id"], "artifact_name": art["name"],
+                        "artifact_expires_at": art["expires_at"]},
+              "baseline": {"run_id": int(os.environ["BASELINE_RUN_ID"]), "sha256": os.environ["BASELINE_SHA256"],
+                           "comparison": "COMPARISON.md"},
+              "verification": {
+                  "handoff_run_url": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['REPO']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+                  "sha256_recomputed_from_fresh_download": True,
+                  "revalidated_with": "HCGVortex/scripts/validate.sh --require-new-abi at the source commit (VALIDATE.txt)",
+              },
+              "device_testing": "installation not yet attempted; runtime untested: see DEVICE-TESTING.md",
+              "licence": "proprietary freeware: see LICENSE",
+          }
+          json.dump(prov, open(f"{out}/provenance.json", "w"), indent=2, ensure_ascii=False)
+          rows = [
+              ("Label", f"**{label}**"),
+              ("Package", f"`{prov['package']}` `{prov['version']}` `{prov['architecture']}`"),
+              ("File", f"`{file}` ({size} bytes)"),
+              ("SHA-256", f"`{prov['sha256']}`: recomputed from a fresh artifact download in the handoff run, not copied from the build log"),
+              ("Format", "`debian-binary`, `control.tar.gz`, `data.tar.gz`, all gzip, each fully decompressed. `dpkg-deb --fsys-tarfile` exit 0. See FORMAT.txt"),
+              ("Source commit", f"`{os.environ['REPO']}@{run['head_sha']}` (read from the build run through the GitHub API)"),
+              ("Build", f"`{prov['build']['workflow']}` run [{run['id']}]({run['html_url']}), conclusion `{run['conclusion']}`. macOS 15, Xcode, Theos `8167f59` (pinned)"),
+              ("Artifact", f"`{art['name']}`, ID {art['id']}, expires {art['expires_at']}"),
+              ("Re-validation", f"`validate.sh --require-new-abi` from the source commit, in the handoff run: {prov['verification']['handoff_run_url']}"),
+              ("Compared with", f"baseline run {os.environ['BASELINE_RUN_ID']}, SHA-256 `{os.environ['BASELINE_SHA256']}` (unchanged). See COMPARISON.md"),
+              ("Device testing", "**None for this build.** Installation not yet attempted; runtime untested. See DEVICE-TESTING.md"),
+              ("Licence", "Proprietary freeware. See LICENSE"),
+          ]
+          md = [f"# Provenance: {file}", "", "| | |", "|---|---|"] + [f"| {k} | {v} |" for k, v in rows]
+          open(f"{out}/PROVENANCE.md", "w").write("\n".join(md) + "\n")
+          PY
+          ( cd "$OUT" && find . -type f | sed 's|^\./||' | LC_ALL=C sort | xargs -d '\n' sha256sum > ../SHA256SUMS.tmp )
+          mv SHA256SUMS.tmp "$OUT/SHA256SUMS"
+          cat "$OUT/SHA256SUMS"
+          tar -czf "$OUT.tar.gz" "$OUT"
+          sha256sum "$OUT.tar.gz" | tee "$OUT.tar.gz.sha256"
+
+      - name: Extract the archive again and verify it
+        run: |
+          set -euo pipefail
+          rm -rf verify && mkdir verify
+          sha256sum -c "$OUT.tar.gz.sha256"
+          tar -xzf "$OUT.tar.gz" -C verify
+          ( cd "verify/$OUT" && sha256sum -c SHA256SUMS )
+          GOT=$(sha256sum "verify/$OUT/$FILE" | cut -d' ' -f1)
+          [ "$GOT" = "$EXPECTED_SHA256" ] && echo "extracted .deb sha256 OK: $GOT"
+          cmp "verify/$OUT/$FILE" "$DEB" && echo "extracted .deb byte-identical to the downloaded artifact"
+          python3 -I src/HCGVortex/scripts/check_deb_format.py "verify/$OUT/$FILE"
+          ls -lR "verify/$OUT"
+
+      - name: Upload the handoff archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OUT }}
+          path: |
+            ${{ env.OUT }}.tar.gz
+            ${{ env.OUT }}.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 90

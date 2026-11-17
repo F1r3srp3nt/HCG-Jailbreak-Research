@@ -1,0 +1,12 @@
+#!/bin/sh
+# HCG Vortex — dpkg post-removal script.
+# Only on "purge" (explicit request to delete configuration) does it remove
+# HCG Vortex's OWN preference files. Plain "remove" (the Sileo/Zebra default)
+# keeps your settings so a reinstall restores them.
+set -e
+if [ "$1" = "purge" ]; then
+	rm -f /var/mobile/Library/Preferences/com.hakmicapitalgroup.vortex.plist \
+	      /var/mobile/Library/Preferences/com.hakmicapitalgroup.vortex.status.plist \
+	      /var/mobile/Library/Preferences/com.hakmicapitalgroup.vortex.disabled
+fi
+exit 0

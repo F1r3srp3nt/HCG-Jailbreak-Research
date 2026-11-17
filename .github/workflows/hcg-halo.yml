@@ -1,0 +1,115 @@
+# HCG Halo — canonical build on macOS with Xcode (native iOS 14+ arm64e ABI).
+#
+# Runs the host and iOS Simulator tests, builds and validates the rootless
+# package, and uploads it as a workflow artifact. It does NOT publish to HCG
+# Repo, sign releases, or deploy to any device. Configuration follows the
+# HCG Vortex build workflow (same runner image, pinned Theos and SDK).
+name: HCG Halo build
+
+on:
+  push:
+    paths:
+      - "HCGHalo/**"
+      - "!HCGHalo/distribution/**"
+      - "!HCGHalo/docs/**"
+      - "!HCGHalo/**/*.md"
+      - ".github/workflows/hcg-halo.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults:
+      run:
+        # Explicit bash = bash --noprofile --norc -eo pipefail (a failing command before | tee fails the step).
+        shell: bash
+        working-directory: HCGHalo
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          brew install ldid xz dpkg make
+          echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
+
+      # Pinned to the Theos commit HCG Vortex builds with, so the packager
+      # (vendor/dm.pl) and its compression settings are known.
+      - name: Install Theos (pinned)
+        env:
+          THEOS_COMMIT: 8167f59de02fd32cf45b16bfcb1330dfa5c9974c
+        run: |
+          git init -q "$HOME/theos"
+          git -C "$HOME/theos" fetch -q --depth 1 https://github.com/theos/theos.git "$THEOS_COMMIT"
+          git -C "$HOME/theos" checkout -q FETCH_HEAD
+          git -C "$HOME/theos" submodule update -q --init --recursive --depth 1
+          [ "$(git -C "$HOME/theos" rev-parse HEAD)" = "$THEOS_COMMIT" ]
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
+      - name: Install patched iPhoneOS16.5 SDK (private framework stubs)
+        run: scripts/install-sdk.sh
+
+      - name: Toolchain report
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          make --version | head -1
+          git -C "$THEOS" log -1 --format='Theos %H %cd'
+          git -C "$THEOS" submodule status vendor/dm.pl
+
+      - name: Host unit tests (geometry, config, profiles; ASan/UBSan)
+        run: make -C tests test
+
+      - name: Generated files up to date
+        run: make -C tests generated
+
+      - name: Packaging format regression tests (gzip-only members)
+        run: make -C tests deb-format
+
+      - name: Runtime tests in the iOS Simulator (renderer, overlay, preferences)
+        run: scripts/run-simulator-tests.sh
+
+      - name: Build + validate (requires native new arm64e ABI and a clean commit)
+        run: scripts/build.sh 2>&1 | tee "$RUNNER_TEMP/build-validate.log"
+
+      - name: Package listing and checksums
+        if: always() && hashFiles('HCGHalo/packages/*.deb') != ''
+        run: |
+          DEB=$(ls packages/*.deb)
+          dpkg-deb -I "$DEB"
+          dpkg-deb -c "$DEB"
+          shasum -a 256 "$DEB"
+          {
+            echo "### HCG Halo package"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| File | \`$(basename "$DEB")\` |"
+            echo "| Size | $(stat -f %z "$DEB") bytes |"
+            echo "| SHA-256 | \`$(shasum -a 256 "$DEB" | cut -d' ' -f1)\` |"
+            echo "| Commit | \`$GITHUB_SHA\` |"
+            echo
+            echo "Build and package validation only. Not installed on any device by this workflow."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload validated package
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hcg-halo-rootless-deb
+          path: HCGHalo/packages/*.deb
+          if-no-files-found: error
+          retention-days: 90
+
+      # Kept for diagnosis only. Never distribute this artifact.
+      - name: Upload UNVALIDATED package (validation failed)
+        if: failure() && hashFiles('HCGHalo/packages/*.deb') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: hcg-halo-rootless-deb-UNVALIDATED
+          path: HCGHalo/packages/*.deb
+          retention-days: 7

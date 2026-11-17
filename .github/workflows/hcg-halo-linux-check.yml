@@ -1,0 +1,55 @@
+# HCG Halo — Linux source checks.
+#
+# Host unit tests for the pure C core (geometry, configuration, profiles),
+# generated-file freshness and the packaging-format regression tests. Builds
+# no package and publishes nothing.
+name: HCG Halo Linux check
+
+on:
+  push:
+    paths:
+      - "HCGHalo/**"
+      - "!HCGHalo/distribution/**"
+      - "!HCGHalo/docs/**"
+      - "!HCGHalo/**/*.md"
+      - ".github/workflows/hcg-halo-linux-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        # Explicit bash = bash --noprofile --norc -eo pipefail (a failing command before | tee fails the step).
+        shell: bash
+        working-directory: HCGHalo
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Runner report
+        run: |
+          echo "Runner: $RUNNER_OS $RUNNER_ARCH ($ImageOS)"
+          cc --version | head -1
+          clang --version | head -1
+          python3 --version
+
+      - name: Core unit tests, GCC (ASan/UBSan)
+        run: make -C tests test BUILD=build/gcc CC=gcc
+
+      - name: Core unit tests, Clang (ASan/UBSan)
+        run: make -C tests test BUILD=build/clang CC=clang
+
+      - name: Generated files up to date
+        run: make -C tests generated
+
+      - name: Packaging format regression tests (gzip-only members)
+        run: make -C tests deb-format
+
+      - name: Scripts parse
+        run: |
+          python3 -m py_compile scripts/*.py tests/*.py
+          for f in scripts/*.sh; do bash -n "$f"; done

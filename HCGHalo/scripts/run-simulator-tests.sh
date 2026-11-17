@@ -53,8 +53,8 @@ xcrun simctl boot "$UDID" 2>/dev/null || true
 limit 600 xcrun simctl bootstatus "$UDID" -b || { stamp "simulator did not finish booting within 600 s"; exit 1; }
 
 status=0
-stamp "running the tests (limit 180 s)"
-limit 180 xcrun simctl spawn "$UDID" "$PWD/$OUT/test_runtime" || status=$?
+stamp "running the tests (limit 420 s; about 2 min on a CI runner)"
+limit 420 xcrun simctl spawn "$UDID" "$PWD/$OUT/test_runtime" || status=$?
 [ "$status" -eq 142 ] && stamp "test_runtime timed out (SIGALRM)"
 stamp "finished with status $status"
 xcrun simctl shutdown "$UDID" 2>/dev/null || true

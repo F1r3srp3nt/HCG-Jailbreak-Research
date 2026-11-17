@@ -17,7 +17,7 @@ version. It reports:
       - code signature: the LC_CODE_SIGNATURE blob (ldid ad-hoc signature,
         which hashes the pages above, so it changes whenever they do),
       - unexplained: anything else;
-  * text files (plists) as a line diff.
+  * property lists key by key (binary or XML); other text files as a line diff.
 
 Exit status 1 if any difference is unexplained (an unexpected file, a mode or
 owner change, or Mach-O bytes outside the three categories). Standard library
@@ -29,6 +29,7 @@ import gzip
 import hashlib
 import io
 import lzma
+import plistlib
 import struct
 import sys
 import tarfile
@@ -210,6 +211,21 @@ def main():
                     f"(`{old_ver.decode()}` -> `{new_ver.decode()}`), {c['LC_UUID']} in LC_UUID, "
                     f"{c['code signature']} inside the code signatures ({result['signature_bytes']} bytes in total), 0 elsewhere")
             continue
+        if oc[:8] == b"bplist00" or oc.lstrip()[:5] == b"<?xml":
+            # Property lists (binary on macOS builds): compare key by key.
+            try:
+                op, np_ = plistlib.loads(oc), plistlib.loads(nc)
+            except Exception as e:  # noqa: BLE001 - report any parse failure as a problem
+                problems.append(f"{key}: plist does not parse ({e})")
+                say(head + f". **Plist does not parse:** {e}")
+                continue
+            if isinstance(op, dict) and isinstance(np_, dict):
+                changes = [(k, op.get(k), np_.get(k)) for k in sorted(set(op) | set(np_)) if op.get(k) != np_.get(k)]
+                say(head + ". Plist keys changed: " + ("; ".join(f"`{k}` `{ov}` -> `{nv}`" for k, ov, nv in changes) or "none (encoding only)"))
+                for k, ov, nv in changes:
+                    if not (isinstance(ov, str) and isinstance(nv, str) and ov.replace(old_ver.decode(), new_ver.decode()) == nv):
+                        problems.append(f"{key}: plist key {k} changed beyond the version")
+                continue
         if b"\0" not in oc[:4096] and b"\0" not in nc[:4096]:
             diff = [d for d in difflib.unified_diff(oc.decode().splitlines(), nc.decode().splitlines(), lineterm="", n=0)
                     if d[:1] in "+-" and d[:3] not in ("+++", "---")]

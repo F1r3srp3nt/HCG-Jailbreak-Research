@@ -258,16 +258,19 @@ static NSString *const kBlinkKey = @"halo.blink";
     return layer;
 }
 
-- (CGColorRef)inkWithAlpha:(CGFloat)alpha {
-    if (_inkIsMask) return [UIColor colorWithWhite:1 alpha:alpha].CGColor;
-    return [UIColor colorWithRed:(CGFloat)_solid.r green:(CGFloat)_solid.g blue:(CGFloat)_solid.b alpha:alpha].CGColor;
+// Colours are passed around as UIColor objects and turned into CGColor only
+// where a layer property takes it: a CGColorRef taken from a temporary
+// UIColor and kept in a variable or returned can dangle under ARC.
+- (UIColor *)inkWithAlpha:(CGFloat)alpha {
+    if (_inkIsMask) return [UIColor colorWithWhite:1 alpha:alpha];
+    return [UIColor colorWithRed:(CGFloat)_solid.r green:(CGFloat)_solid.g blue:(CGFloat)_solid.b alpha:alpha];
 }
 
-- (CAShapeLayer *)strokeIn:(CALayer *)parent width:(CGFloat)width colour:(CGColorRef)colour {
+- (CAShapeLayer *)strokeIn:(CALayer *)parent width:(CGFloat)width colour:(UIColor *)colour {
     CAShapeLayer *s = [self addLayer:[CAShapeLayer layer] to:parent];
     s.path = _path;
     s.fillColor = nil;
-    s.strokeColor = colour;
+    s.strokeColor = colour.CGColor;
     s.lineWidth = width;
     s.lineJoin = kCALineJoinRound;
     s.lineCap = kCALineCapRound;
@@ -288,13 +291,13 @@ static NSString *const kBlinkKey = @"halo.blink";
     }
     [layers addObject:[self strokeIn:_ink width:t colour:[self inkWithAlpha:alpha]]];
     if (t >= 2 * _unit) {
-        CGColorRef hot;
+        UIColor *hot;
         if (_inkIsMask) {
-            hot = [UIColor colorWithWhite:1 alpha:0.42 * alpha].CGColor;
+            hot = [UIColor colorWithWhite:1 alpha:0.42 * alpha];
         } else {
             HaloRGB c = _solid;
             hot = [UIColor colorWithRed:(CGFloat)(c.r + (1 - c.r) * 0.65) green:(CGFloat)(c.g + (1 - c.g) * 0.65)
-                                   blue:(CGFloat)(c.b + (1 - c.b) * 0.65) alpha:0.8 * alpha].CGColor;
+                                   blue:(CGFloat)(c.b + (1 - c.b) * 0.65) alpha:0.8 * alpha];
         }
         [layers addObject:[self strokeIn:_root width:t * 0.32f colour:hot]];
     }
@@ -454,7 +457,7 @@ static NSString *const kBlinkKey = @"halo.blink";
         node.path = dot;
         CGPathRelease(dot);
         node.fillRule = kCAFillRuleEvenOdd; // filled dot inside a thin ring: a circuit "via"
-        node.fillColor = [self inkWithAlpha:0.9];
+        node.fillColor = [self inkWithAlpha:0.9].CGColor;
         CAKeyframeAnimation *blink = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
         blink.values = @[ @0.25, @1.0, @0.25, @0.25 ];
         blink.keyTimes = @[ @0, @0.12, @0.4, @1 ];

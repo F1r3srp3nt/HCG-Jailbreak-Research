@@ -5,9 +5,9 @@
 | Item | Status |
 |---|---|
 | Source implemented | Yes: five modes, Settings, presets and the iPhone 11 Pro Max profile |
-| Host unit tests (C core) | Pass |
-| iOS Simulator runtime tests (renderer, overlay, preferences) | Run in macOS CI. See `distribution/handoff/` for the run used |
-| Package build + validation (macOS / Xcode) | CI workflow **HCG Halo build**. See `distribution/handoff/` |
+| Host unit tests (C core) | Pass (Linux GCC/Clang, macOS) |
+| iOS Simulator runtime tests (renderer, overlay, preferences) | Pass, 310 checks (macOS CI run 44062061609) |
+| Package build + validation (macOS / Xcode) | Pass, 0 failures, 0 warnings (run 44062061609, commit `ab439f8`; native arm64e ABI `0x80000002`) |
 | Device installation | **Not performed** |
 | Runtime behaviour on a device | **Not verified** |
 

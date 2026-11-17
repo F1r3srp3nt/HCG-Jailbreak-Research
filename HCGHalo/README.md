@@ -32,10 +32,11 @@ re-arming after the crash-loop guard has stopped Halo.
 
 | Check | Result |
 |---|---|
-| Host unit tests (geometry, config, profiles: ~9.4 M checks, ASan/UBSan) | Pass (Linux; also run in CI) |
-| iOS Simulator runtime tests (renderer, overlay hit-testing, preferences) | Run in macOS CI: see the PR / `docs/TESTING.md` |
-| Linux test build + `validate.sh` | Pass, with 0 failures and 2 expected warnings (legacy arm64e ABI converted with allemande; uncommitted tree) |
-| Canonical macOS/Xcode build + `validate.sh --require-new-abi` | CI workflow **HCG Halo build**: see `distribution/handoff/` |
+| Host unit tests (geometry, config, profiles: ~9.4 M checks, ASan/UBSan) | **Pass**: Linux (GCC, Clang) and macOS CI |
+| iOS Simulator runtime tests (310 checks: renderer, overlay hit-testing, preferences) | **Pass**: macOS CI run [44062061609](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44062061609) |
+| Canonical macOS/Xcode build + `validate.sh --require-new-abi` | **Pass, 0 failures, 0 warnings**: run 44062061609, commit `ab439f8`, native arm64e ABI |
+| Package | `com.hakmicapitalgroup.halo_0.1.0~beta1_iphoneos-arm64.deb`, 264,782 bytes, SHA-256 `c0a3301c9b38cdac812d439fb919c3a77bfcb7999c52ea174d799e88ba24c9af`, artifact `hcg-halo-rootless-deb` (ID 14317739735) |
+| HCG-repo dry run with its own tools (Linux test build) | `inspect`, candidate import, `validate`, `build`, `smoke` and candidate `verify`: OK; promotion to stable refused |
 | Installed on a device | **No** |
 | Runtime on a device | **Not tested** |
 

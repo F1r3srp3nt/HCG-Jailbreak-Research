@@ -4,9 +4,13 @@ CFLAGS ?= -std=c11 -O1 -Wall -Wextra -Werror
 SANITIZE ?= -fsanitize=address,undefined
 BUILD := build
 
-.PHONY: test compat compat-gnustep compat-lint clean
+.PHONY: test compat compat-gnustep compat-lint deb-format clean
 test: $(BUILD)/test_math
 	$(abspath $(BUILD))/test_math
+
+# Packaging regression check (gzip-only .deb members). Python standard library.
+deb-format:
+	python3 -I test_deb_format.py
 
 # Compatibility gate tests: need an Objective-C runtime + Foundation (macOS).
 compat: $(BUILD)/test_compat

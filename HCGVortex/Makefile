@@ -16,10 +16,20 @@ ARCHS ?= arm64 arm64e
 # runtime compatibility gate decides whether hooks run.
 TARGET ?= iphone:clang:16.5:15.0
 
+# Package format (0.1.0~beta2 onwards): gzip for every member. Theos 8167f59
+# packages with vendor/dm.pl, whose default here would be data.tar.lzma at
+# level 9 (lzma-alone, 64 MiB dictionary). beta1 shipped that, and on one phone
+# dpkg-deb's <decompress> subprocess died with a Bus error unpacking it. That
+# cause is not confirmed; gzip is the conservative, universally supported
+# choice. Fixed (:=) so FINALPACKAGE and local builds match CI; validate.sh
+# section 3a rejects any other format.
+THEOS_PLATFORM_DEB_COMPRESSION_TYPE := gzip
+THEOS_PLATFORM_DEB_COMPRESSION_LEVEL := 9
+
 include $(THEOS)/makefiles/common.mk
 
-# Single source of truth: the Version field of ./control (0.1.0~beta1 is shown
-# to users as 0.1.0-beta1). validate.sh checks the binaries carry it.
+# Single source of truth: the Version field of ./control (0.1.0~beta2 is shown
+# to users as 0.1.0-beta2). validate.sh checks the binaries carry it.
 VORTEX_VERSION := $(subst ~,-,$(shell sed -n 's/^Version: *//p' $(THEOS_PROJECT_DIR)/control))
 VORTEX_WARNINGS := -Wall -Wextra -Wno-unused-parameter -Werror
 

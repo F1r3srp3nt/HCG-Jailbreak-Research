@@ -7,6 +7,8 @@
 #   1. Host unit tests for the math core
 #   2. Settings layout / preference identifiers are consistent with the code
 #   3. Package metadata (id, version, rootless architecture, dependencies)
+#  3a. Archive format: gzip members only, each fully decompressed (CRC and
+#      length checked), plus dpkg-deb --fsys-tarfile with its exit status
 #   4. Every payload path lives under /var/jb (rootless), required files exist
 #   5. Mach-O: fat arm64 + arm64e, code signature present in every slice,
 #      arm64e pointer-auth ABI reported (and enforced with --require-new-abi)
@@ -114,6 +116,37 @@ deps=$(field Depends)
 for d in mobilesubstrate preferenceloader firmware; do
 	echo "$deps" | grep -q "$d" && pass "Depends includes $d" || fail "Depends lacks $d ($deps)"
 done
+
+# ---------------------------------------------------------------------------
+# Regression check for the packaging selected in 0.1.0~beta2: gzip members
+# only (beta1's data.tar.lzma failed to unpack on one phone; cause unconfirmed).
+section "3a. Archive format (gzip members, full decompression)"
+FAILS_BEFORE_FMT=$FAILS
+FMT_OUT=$(python3 -I "$ROOT/scripts/check_deb_format.py" "$DEB" 2>&1)
+FMT_RC=$?
+DATA_RAW=""
+while IFS= read -r line; do
+	case "$line" in
+		"PASS "*) pass "${line#PASS }" ;;
+		"FAIL "*) fail "${line#FAIL }" ;;
+		"INFO data_uncompressed_bytes="*) DATA_RAW=${line#INFO data_uncompressed_bytes=} ;;
+		*) echo "  $line" ;;
+	esac
+done <<< "$FMT_OUT"
+[ "$FMT_RC" -eq 0 ] || [ "$FAILS" -gt "$FAILS_BEFORE_FMT" ] || fail "check_deb_format.py exited $FMT_RC without reporting a failure"
+# Second, independent decompressor: dpkg-deb's own (the path that failed on
+# the phone for beta1). Keep its real exit status.
+if [ -n "$DATA_RAW" ]; then
+	dpkg-deb --fsys-tarfile "$DEB" > "$WORK/data.tar" 2>"$WORK/fsys.err"
+	FSYS_RC=$?
+	FSYS_BYTES=$(wc -c < "$WORK/data.tar" | tr -d ' ')
+	if [ "$FSYS_RC" -eq 0 ] && [ "$FSYS_BYTES" = "$DATA_RAW" ]; then
+		pass "dpkg-deb --fsys-tarfile exit 0, $FSYS_BYTES bytes (same as the gzip check)"
+	else
+		cat "$WORK/fsys.err"
+		fail "dpkg-deb --fsys-tarfile exit $FSYS_RC, $FSYS_BYTES bytes (gzip check: $DATA_RAW)"
+	fi
+fi
 
 # ---------------------------------------------------------------------------
 section "4. Payload layout"

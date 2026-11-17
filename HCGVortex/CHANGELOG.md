@@ -1,5 +1,37 @@
 # Changelog — HCG Vortex
 
+## 0.1.0-beta2 (Debian version `0.1.0~beta2`)
+
+**Packaging compatibility candidate — installation fix not yet device-verified.**
+
+Packaging-only rebuild. The tweak source, hooks, settings and dependencies are the same as 0.1.0~beta1.
+
+### Why
+- 0.1.0~beta1 failed to install on one phone (iPhone 11 Pro Max, iOS 17.4, Dopamine, Zebra, as recorded in
+  HCG-repo). Download worked; unpacking failed with `dpkg-deb: error: <decompress> subprocess was killed by signal
+  (Bus error: 10)`. Nothing was installed, so the tweak never ran.
+- beta1's `data.tar.lzma` is lzma-alone with a 64 MiB dictionary (Theos's defaults). That file is intact and
+  decompresses on Linux. **The cause of the phone failure is not confirmed.** It is under investigation
+  (`docs/INSTALL-FAILURE-0.1.0-beta1.md`).
+
+### Changed
+- Package members are now all gzip (`control.tar.gz`, `data.tar.gz`), set in `Makefile` through Theos's supported
+  `THEOS_PLATFORM_DEB_COMPRESSION_TYPE` / `_LEVEL`.
+- CI pins Theos to `8167f59de02fd32cf45b16bfcb1330dfa5c9974c`, the commit that built beta1.
+- The description starts with the candidate label above.
+
+### Added
+- `scripts/check_deb_format.py` and `validate.sh` section 3a: the members must be exactly `debian-binary`,
+  `control.tar.gz` and `data.tar.gz`, each fully decompressed with CRC-32 and length checked, and
+  `dpkg-deb --fsys-tarfile` must succeed with the same size.
+- `tests/test_deb_format.py` (`make -C tests deb-format`, run in both CI workflows), including a beta1-shaped lzma
+  case that must be rejected.
+- `scripts/compare_debs.py`: accounts for every byte that differs between two builds.
+
+### Not changed
+- beta1's file and SHA-256 (`bb0af727…07673eea`) are kept exactly as they are. They are never rebuilt or relabelled.
+- Runtime behaviour is **untested** on any device, for beta1 and beta2 alike.
+
 ## 0.1.0-beta1 (Debian version `0.1.0~beta1`)
 
 First public beta release candidate: free and experimental. Device testing is

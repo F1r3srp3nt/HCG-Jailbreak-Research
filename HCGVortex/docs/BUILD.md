@@ -27,8 +27,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer   # full Xcode, 
 sudo xcodebuild -license accept
 xcrun --sdk iphoneos --show-sdk-version                           # must print a version
 brew install ldid dpkg xz make
-git clone --recursive https://github.com/theos/theos.git ~/theos
+git init ~/theos && git -C ~/theos fetch --depth 1 https://github.com/theos/theos.git 8167f59de02fd32cf45b16bfcb1330dfa5c9974c
+git -C ~/theos checkout FETCH_HEAD && git -C ~/theos submodule update --init --recursive --depth 1
 ```
+
+Theos is pinned to `8167f59` (the commit CI uses, and the one that built 0.1.0~beta1). The package format is set in
+`Makefile`: **gzip** for every member (`THEOS_PLATFORM_DEB_COMPRESSION_TYPE := gzip`, level 9), from 0.1.0~beta2.
+Theos's own default would be `data.tar.lzma`. `validate.sh` section 3a fails any other format, and
+`make -C tests deb-format` tests that check.
 
 Then, from `HCGVortex/` (after cloning below): `THEOS=~/theos scripts/install-sdk.sh`.
 

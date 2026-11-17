@@ -41,3 +41,6 @@ jobs:
 
       - name: Compatibility gate clang diagnostics (as Apple clang -Werror)
         run: make -C tests compat-lint
+
+      - name: Packaging format regression tests (gzip-only members)
+        run: make -C tests deb-format

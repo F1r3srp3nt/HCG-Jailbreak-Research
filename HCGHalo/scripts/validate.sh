@@ -226,22 +226,31 @@ for f in $EXPECTED_FILES; do
 done
 extra=$(cd "$JB" && find . -type f | sed 's|^\./||' | sort | comm -23 - <(echo "$EXPECTED_FILES" | sort))
 [ -z "$extra" ] && pass "no unexpected files" || fail "unexpected files: $extra"
-cmp -s "$JB/Library/PreferenceBundles/HCGHaloPrefs.bundle/Root.plist" "$ROOT/preferences/Resources/Root.plist" \
-	&& pass "packaged Root.plist is the generated one" || fail "packaged Root.plist differs from preferences/Resources/Root.plist"
+# Theos converts plists to binary on macOS and leaves XML on Linux: compare contents, not bytes.
+python3 -I -c 'import plistlib, sys; sys.exit(0 if plistlib.load(open(sys.argv[1], "rb")) == plistlib.load(open(sys.argv[2], "rb")) else 1)' \
+	"$JB/Library/PreferenceBundles/HCGHaloPrefs.bundle/Root.plist" "$ROOT/preferences/Resources/Root.plist" \
+	&& pass "packaged Root.plist has the generated content" || fail "packaged Root.plist differs from preferences/Resources/Root.plist"
 # dpkg-deb -c lists the modes and owners dpkg will apply.
 dpkg-deb -c "$DEB" > "$WORK/contents.txt"
-python3 -I - "$WORK/contents.txt" <<'PY' && pass "modes: directories 0755, files 0644, no setuid/setgid/world-writable" || fail "unexpected permissions"
+python3 -I - "$WORK/contents.txt" <<'PY' && pass "modes: directories 0755, Mach-O binaries 0755 or 0644, other files 0644; no setuid/setgid/world-writable" || fail "unexpected permissions"
 import sys
+BINARIES = {"var/jb/Library/MobileSubstrate/DynamicLibraries/HCGHalo.dylib",
+            "var/jb/Library/PreferenceBundles/HCGHaloPrefs.bundle/HCGHaloPrefs"}
 ok = True
 for line in open(sys.argv[1]):
     mode, owner, size, date, time, path = line.split(None, 5)
-    path = path.strip()
-    want = "drwxr-xr-x" if mode.startswith("d") else "-rw-r--r--"
-    if mode != want:
-        print(f"    {mode} {path} (expected {want})"); ok = False
+    path = path.strip().lstrip("./")
+    if mode.startswith("d"):
+        want = {"drwxr-xr-x"}
+    elif path in BINARIES:
+        want = {"-rwxr-xr-x", "-rw-r--r--"}  # Xcode builds keep executables 0755
+    else:
+        want = {"-rw-r--r--"}
+    if mode not in want:
+        print(f"    {mode} {path} (expected {' or '.join(sorted(want))})"); ok = False
 sys.exit(0 if ok else 1)
 PY
-if awk '{print $2}' "$WORK/contents.txt" | grep -qv '^root/\(root\|wheel\)$\|^0/\(0\|root\|wheel\)$'; then
+if awk '{print $2}' "$WORK/contents.txt" | grep -Eqv '^(root/(root|wheel)|0/(0|root|wheel))$'; then
 	warn "some entries are not owned by root: $(awk '{print $2}' "$WORK/contents.txt" | sort -u | tr '\n' ' ')"
 else
 	pass "owner: $(awk '{print $2}' "$WORK/contents.txt" | sort -u | tr '\n' ' ')"

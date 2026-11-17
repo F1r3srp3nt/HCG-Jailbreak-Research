@@ -70,9 +70,6 @@ jobs:
       - name: Packaging format regression tests (gzip-only members)
         run: make -C tests deb-format
 
-      - name: Runtime tests in the iOS Simulator (renderer, overlay, preferences)
-        run: scripts/run-simulator-tests.sh
-
       - name: Build + validate (requires native new arm64e ABI and a clean commit)
         run: scripts/build.sh 2>&1 | tee "$RUNNER_TEMP/build-validate.log"
 
@@ -113,3 +110,26 @@ jobs:
           name: hcg-halo-rootless-deb-UNVALIDATED
           path: HCGHalo/packages/*.deb
           retention-days: 7
+
+  # Separate job: a slow simulator boot never delays the package build, and
+  # its log stands on its own. A failure here still fails the run, and the
+  # handoff workflow only accepts runs whose conclusion is success.
+  simulator-tests:
+    runs-on: macos-15
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+        working-directory: HCGHalo
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Simulator report
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphonesimulator --show-sdk-version
+          xcrun simctl list runtimes
+
+      - name: Runtime tests in the iOS Simulator (renderer, overlay, preferences)
+        timeout-minutes: 15
+        run: scripts/run-simulator-tests.sh

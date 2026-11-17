@@ -12,6 +12,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Time-limited command (macOS has no GNU timeout): limit SECONDS CMD...
+limit() { local secs=$1; shift; perl -e 'alarm shift; exec @ARGV or die "exec: $!"' "$secs" "$@"; }
+stamp() { echo "==> [$(date -u +%H:%M:%S)] $*"; }
+
 [ "$(uname -s)" = Darwin ] || { echo "ERROR: needs macOS with Xcode" >&2; exit 1; }
 
 OUT=tests/build/sim
@@ -20,7 +24,7 @@ VERSION=$(sed -n 's/^Version: *//p' control | tr '~' '-')
 ARCH=$(uname -m)
 [ "$ARCH" = x86_64 ] || ARCH=arm64
 
-echo "==> building tests/test_runtime.m for the iOS Simulator ($ARCH, iOS 15.0 minimum)"
+stamp "building tests/test_runtime.m for the iOS Simulator ($ARCH, iOS 15.0 minimum)"
 xcrun --sdk iphonesimulator clang -fobjc-arc -fobjc-arc-exceptions -arch "$ARCH" -mios-simulator-version-min=15.0 \
 	-Wall -Wextra -Wno-unused-parameter -Werror \
 	-DHALO_VERSION="\"$VERSION\"" -DHALO_BUILD_ID="\"simulator-test\"" -Isrc \
@@ -44,12 +48,14 @@ print(best[1] if best else "")')
 [ -n "$UDID" ] || { echo "ERROR: no available iPhone simulator" >&2; xcrun simctl list devices available; exit 1; }
 xcrun simctl list devices | grep "$UDID" || true
 
-echo "==> booting $UDID"
+stamp "booting $UDID (a first boot on CI can take several minutes)"
 xcrun simctl boot "$UDID" 2>/dev/null || true
-xcrun simctl bootstatus "$UDID" -b
+limit 600 xcrun simctl bootstatus "$UDID" -b || { stamp "simulator did not finish booting within 600 s"; exit 1; }
 
 status=0
-echo "==> running"
-xcrun simctl spawn "$UDID" "$PWD/$OUT/test_runtime" || status=$?
+stamp "running the tests (limit 180 s)"
+limit 180 xcrun simctl spawn "$UDID" "$PWD/$OUT/test_runtime" || status=$?
+[ "$status" -eq 142 ] && stamp "test_runtime timed out (SIGALRM)"
+stamp "finished with status $status"
 xcrun simctl shutdown "$UDID" 2>/dev/null || true
 exit "$status"

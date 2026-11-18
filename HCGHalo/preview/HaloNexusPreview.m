@@ -161,6 +161,17 @@ static void Check(BOOL ok, NSString *what) {
     return count;
 }
 
+- (UIButton *)buttonLabelled:(NSString *)label {
+    NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:self.view.window ?: self.view];
+    while (queue.count) {
+        UIView *v = queue.firstObject;
+        [queue removeObjectAtIndex:0];
+        if ([v isKindOfClass:[UIButton class]] && [v.accessibilityLabel isEqualToString:label] && !v.hidden && v.window) return (UIButton *)v;
+        [queue addObjectsFromArray:v.subviews];
+    }
+    return nil;
+}
+
 /// Really on screen: in a window, and neither it nor any ancestor hidden or transparent.
 - (BOOL)borderVisible {
     HaloPanelBorderView *border = _link.borderView;
@@ -299,6 +310,35 @@ static void Check(BOOL ok, NSString *what) {
         [self applyHalo];
         Check([self borderVisible], @"Halo re-enabled: border back on the open panel");
         [self state:@"12-halo-reenabled" caption:@"HCG Halo enabled again"];
+    });
+    // Command Mode (HCG Nexus 0.3.1~beta1+): it fades the panel, and the border
+    // inside it, while shown; the panel stays open, so the border returns after.
+    STEP(2.0, {
+        UIButton *open = [self buttonLabelled:@"Command Mode"];
+        if (open) {
+            [open sendActionsForControlEvents:UIControlEventTouchUpInside];
+        } else {
+            Say(@"HALO-PREVIEW-NOTE this HCG Nexus has no Command Mode button; Command Mode steps skipped");
+        }
+    });
+    STEP(1.5, {
+        if ([self buttonLabelled:@"Close Command Mode"]) {
+            Check(![self borderVisible] && self->_link.borderView.superview != nil && [self haloViewsInHost] == 1,
+                  @"Command Mode shown: border hidden with the panel, still attached (no orphan, no duplicate)");
+            Check([HCGNexusBorderInterface activeInterface].panelState.length && [[HCGNexusBorderInterface activeInterface].panelState isEqualToString:@"open"],
+                  @"panel stays open (no close events) under Command Mode");
+            [self state:@"12b-command-mode" caption:@"Command Mode: the border fades with the panel"];
+        }
+    });
+    STEP(2.0, {
+        UIButton *close = [self buttonLabelled:@"Close Command Mode"];
+        if (close) [close sendActionsForControlEvents:UIControlEventTouchUpInside];
+    });
+    STEP(1.0, {
+        if (![self buttonLabelled:@"Close Command Mode"]) {
+            Check([self borderVisible], @"Command Mode closed: border back on the panel");
+            [self state:@"12c-after-command-mode" caption:@"Command Mode closed: border back"];
+        }
     });
     STEP(2.5, {
         [self setNexusEnabled:NO];

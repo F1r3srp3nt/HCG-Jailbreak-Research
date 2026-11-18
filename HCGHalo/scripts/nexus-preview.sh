@@ -52,7 +52,7 @@ for f in src/HaloNexusLink.m src/HaloNexusDefinition.m src/HaloPanelBorderView.m
 	xcrun --sdk iphonesimulator clang "${COMMON[@]}" -Wall -Wextra -Wno-unused-parameter -Werror -Isrc "${NEXUS_INC[@]}" \
 		-DHALO_VERSION="\"$VERSION\"" -DHALO_BUILD_ID="\"preview\"" -c "$f" -o "$OBJ/halo-$(basename "$f").o"
 done
-xcrun --sdk iphonesimulator clang "${COMMON[@]}" "$OBJ"/*.o -framework UIKit -framework QuartzCore -framework CoreGraphics \
+xcrun --sdk iphonesimulator clang "${COMMON[@]}" "$OBJ"/*.o -framework UIKit -framework QuartzCore -framework CoreGraphics -framework Network \
 	-o "$APP/HaloNexusPreview"
 cp preview/Info.plist "$APP/Info.plist"
 cp "$NEXUS_DIR/Prefs/Resources/HaloBorder.plist" "$APP/HaloBorder.plist"   # Nexus's real definition

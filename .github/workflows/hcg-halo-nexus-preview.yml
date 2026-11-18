@@ -6,8 +6,13 @@
 # preset / close / reverse / disable script, and uploads the video and the
 # console log with its structural checks (stills are taken from the video).
 #
-# This is preview evidence only: no SpringBoard, no device, no package is
-# built or published. It never installs anything on a phone.
+# A second step builds both packages' REAL Settings bundles for the simulator and
+# drives both entry points (Settings › HCG Nexus › Appearance › Halo border, and
+# Settings › HCG Halo › Nexus Panel Border) with HCG Nexus alone, both, and a
+# malformed or missing Nexus definition (scripts/settings-preview.sh).
+#
+# This is preview evidence only: no SpringBoard, no Settings app, no device, no
+# package is built or published. It never installs anything on a phone.
 name: HCG Halo × Nexus preview
 
 on:
@@ -15,6 +20,8 @@ on:
     paths:
       - "HCGHalo/preview/**"
       - "HCGHalo/scripts/nexus-preview.sh"
+      - "HCGHalo/scripts/settings-preview.sh"
+      - "HCGHalo/preferences/**"
       - "HCGHalo/src/HaloNexus*"
       - "HCGHalo/src/HaloPanelBorderView.*"
       - ".github/workflows/hcg-halo-nexus-preview.yml"
@@ -22,7 +29,7 @@ on:
     inputs:
       nexus_ref:
         description: "HCG-Nexus branch, tag or commit to preview against"
-        default: "claude/nexus-halo-border"
+        default: "claude/nexus-combined-0.3.1"
 
 permissions:
   contents: read
@@ -36,7 +43,7 @@ jobs:
         shell: bash
         working-directory: HCGHalo
     env:
-      NEXUS_REF: ${{ inputs.nexus_ref || 'claude/nexus-halo-border' }}
+      NEXUS_REF: ${{ inputs.nexus_ref || 'claude/nexus-combined-0.3.1' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -48,12 +55,24 @@ jobs:
           echo "HCG Nexus $NEXUS_REF = $(git -C "$RUNNER_TEMP/hcg-nexus" rev-parse HEAD)"
           echo "NEXUS_DIR=$RUNNER_TEMP/hcg-nexus" >> "$GITHUB_ENV"
 
+      # Only for the Preferences framework headers (vendor/include); the same
+      # pinned commit as the HCG Halo build.
+      - name: Install Theos (pinned)
+        env:
+          THEOS_COMMIT: 8167f59de02fd32cf45b16bfcb1330dfa5c9974c
+        run: |
+          git init -q "$HOME/theos"
+          git -C "$HOME/theos" fetch -q --depth 1 https://github.com/theos/theos.git "$THEOS_COMMIT"
+          git -C "$HOME/theos" checkout -q FETCH_HEAD
+          git -C "$HOME/theos" submodule update -q --init --recursive --depth 1
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
       - name: Simulator report
         run: |
           xcodebuild -version
           xcrun simctl list runtimes
 
-      - name: Build and run the preview, recording video
+      - name: Build and run the panel preview, recording video
         timeout-minutes: 20
         run: |
           {
@@ -66,7 +85,16 @@ jobs:
           status=0
           scripts/nexus-preview.sh "$RUNNER_TEMP/halo-nexus-preview" || status=$?
           cp "$RUNNER_TEMP/PROVENANCE.txt" "$RUNNER_TEMP/halo-nexus-preview/" || true
-          exit "$status"
+          echo "PANEL_PREVIEW_STATUS=$status" >> "$GITHUB_ENV"
+
+      - name: Settings entry points (both real Settings bundles), recording video
+        timeout-minutes: 20
+        run: |
+          status=0
+          scripts/settings-preview.sh "$RUNNER_TEMP/halo-settings-preview" || status=$?
+          cp "$RUNNER_TEMP/PROVENANCE.txt" "$RUNNER_TEMP/halo-settings-preview/" || true
+          echo "panel preview: ${PANEL_PREVIEW_STATUS:-?}, settings preview: $status"
+          [ "${PANEL_PREVIEW_STATUS:-1}" = 0 ] && [ "$status" = 0 ]
 
       - name: Upload preview evidence
         if: always()
@@ -79,5 +107,8 @@ jobs:
             ${{ runner.temp }}/halo-nexus-preview/inputs.sha256
             ${{ runner.temp }}/halo-nexus-preview/simulator.txt
             ${{ runner.temp }}/halo-nexus-preview/PROVENANCE.txt
+            ${{ runner.temp }}/halo-settings-preview/*.mp4
+            ${{ runner.temp }}/halo-settings-preview/console.log
+            ${{ runner.temp }}/halo-settings-preview/inputs.sha256
           retention-days: 30
           if-no-files-found: warn

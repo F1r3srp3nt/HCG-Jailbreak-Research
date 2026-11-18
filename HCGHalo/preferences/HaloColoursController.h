@@ -9,4 +9,8 @@
 #import <UIKit/UIKit.h>
 
 @interface HaloColoursController : UITableViewController
+/// Edits the HCG Nexus panel border's own palette instead of the screen edge's.
+- (instancetype)initForNexusBorder;
+/// Called after every saved change (the Nexus page refreshes its preview).
+@property (nonatomic, copy) void (^didChange)(void);
 @end

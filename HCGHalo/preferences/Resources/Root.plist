@@ -69,6 +69,52 @@
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
+			<key>id</key>
+			<string>targetGroup</string>
+			<key>label</key>
+			<string>Border Target</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.halo/preferences-changed</string>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.halo</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>id</key>
+			<string>target</string>
+			<key>key</key>
+			<string>target</string>
+			<key>label</key>
+			<string>Draw Border Around</string>
+			<key>validTitles</key>
+			<array>
+				<string>Screen Edge</string>
+				<string>HCG Nexus Panel</string>
+				<string>Both</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>screen</string>
+				<string>nexus</string>
+				<string>both</string>
+			</array>
+		</dict>
+		<dict>
+			<key>action</key>
+			<string>openNexusBorder:</string>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>id</key>
+			<string>openNexusBorder</string>
+			<key>label</key>
+			<string>Nexus Panel Border</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
 			<key>footerText</key>
 			<string>Static: a steady border. Breathing: smooth brightness pulses. Colour Flow: colours travel around the edge. Orbit: travelling light segments. Sci-Fi Circuit: circuit traces, pulses and nodes. With Reduce Motion on, every mode is shown as Static.</string>
 			<key>id</key>
@@ -465,6 +511,36 @@
 			<real>0.45</real>
 			<key>min</key>
 			<real>0.05</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>A gentle brightness swell on top of the selected mode (not Breathing). 0 turns it off.</string>
+			<key>id</key>
+			<string>pulseGroup</string>
+			<key>label</key>
+			<string>Soft Pulse</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.halo/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.halo</string>
+			<key>id</key>
+			<string>pulse</string>
+			<key>key</key>
+			<string>pulse</string>
+			<key>label</key>
+			<string></string>
+			<key>max</key>
+			<real>0.6</real>
+			<key>min</key>
+			<real>0.0</real>
 			<key>showValue</key>
 			<true/>
 		</dict>

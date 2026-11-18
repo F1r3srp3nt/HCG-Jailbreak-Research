@@ -338,12 +338,19 @@ static void test_appearance(void) {
     a.colourRepeat = 9;
     a.segments = -2;
     a.segmentLength = 2;
+    a.pulseDepth = ((double)NAN);
     s = halo_sanitize_appearance(a);
     CHECK(s.mode == d.mode && s.colourStyle == d.colourStyle && s.colourCount == d.colourCount, "enums reset");
     CHECK(s.brightness == d.brightness && s.thickness == HALO_THICKNESS_MAX && s.glow == HALO_GLOW_MIN, "clamps 1");
     CHECK(s.inset == d.inset && s.speed == HALO_SPEED_MIN && s.clockwise == 1, "clamps 2");
     CHECK(s.colourRepeat == HALO_REPEAT_MAX && s.segments == HALO_SEGMENTS_MIN &&
               s.segmentLength == HALO_SEGMENT_LENGTH_MAX, "clamps 3");
+    CHECK(s.pulseDepth == 0, "NaN pulse -> default 0");
+    a = d;
+    a.pulseDepth = 5;
+    CHECK(halo_sanitize_appearance(a).pulseDepth == HALO_PULSE_MAX, "pulse clamped to max");
+    a.pulseDepth = -1;
+    CHECK(halo_sanitize_appearance(a).pulseDepth == HALO_PULSE_MIN, "pulse clamped to min");
 
     a = d;
     a.colours[1].r = 7;

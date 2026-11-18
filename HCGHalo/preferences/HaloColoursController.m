@@ -22,10 +22,16 @@ static NSString *const kCellID = @"HaloColourCell";
 @implementation HaloColoursController {
     NSMutableArray<NSString *> *_colours;
     NSInteger _editingIndex;
+    BOOL _nexus;
 }
 
 - (instancetype)init {
     return [super initWithStyle:UITableViewStyleInsetGrouped];
+}
+
+- (instancetype)initForNexusBorder {
+    if ((self = [self init])) _nexus = YES;
+    return self;
 }
 
 + (NSArray<NSDictionary *> *)palettes {
@@ -58,7 +64,7 @@ static NSString *HaloHexFromColour(UIColor *colour) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = @"Colours";
+    self.title = _nexus ? @"Panel Colours" : @"Colours";
     if (@available(iOS 13.0, *)) self.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
     [HaloTheme styleTableView:self.tableView];
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:kCellID];
@@ -67,17 +73,26 @@ static NSString *HaloHexFromColour(UIColor *colour) {
 }
 
 - (void)reload {
-    _colours = [[HaloPreferences readValueForKey:HaloKeyColours] mutableCopy];
+    _colours = [(_nexus ? [self nexusValueForKey:HaloKeyColours] : [HaloPreferences readValueForKey:HaloKeyColours]) mutableCopy];
     [self.tableView reloadData];
 }
 
+- (id)nexusValueForKey:(NSString *)key {
+    HaloAppearance appearance = [HaloPreferences loadSettings].nexusAppearance;
+    return [HaloPreferences dictionaryFromAppearance:appearance][key];
+}
+
 - (void)save {
-    [HaloPreferences writeValue:[_colours copy] forKey:HaloKeyColours];
+    if (_nexus)
+        [HaloPreferences writeNexusAppearanceValue:[_colours copy] forKey:HaloKeyColours];
+    else
+        [HaloPreferences writeValue:[_colours copy] forKey:HaloKeyColours];
     [HaloPreferences postChangeNotification];
+    if (_didChange) _didChange();
 }
 
 - (NSString *)styleIdentifier {
-    return [HaloPreferences readValueForKey:HaloKeyColourStyle];
+    return _nexus ? [self nexusValueForKey:HaloKeyColourStyle] : [HaloPreferences readValueForKey:HaloKeyColourStyle];
 }
 
 #pragma mark Table

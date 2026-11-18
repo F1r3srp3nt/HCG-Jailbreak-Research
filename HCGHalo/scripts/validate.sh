@@ -93,13 +93,18 @@ def table(name):
     body = re.search(r"static const HaloName %s\[\] = \{(.*?)\n\};" % name, config_c, re.S).group(1)
     return [m for m in re.findall(r'\{\w+, "([a-z-]+)", "[^"]+"\}', body)]
 expect = {"mode": table("kModes"), "colourStyle": table("kStyles"), "lowPower": table("kLowPower"),
-          "cutoutMode": table("kCutout"), "direction": ["clockwise", "counterclockwise"]}
+          "cutoutMode": table("kCutout"), "direction": ["clockwise", "counterclockwise"],
+          "target": ["screen", "nexus", "both"]}
+if 'return @[ @"screen", @"nexus", @"both" ];' not in prefs:
+    bad("validTargets must be screen / nexus / both")
+if 'HaloKeyTarget : @"screen"' not in prefs:
+    bad("the border target must default to the screen edge (existing users keep 0.1.0~beta1 behaviour)")
 macro = lambda src, name: float(re.search(r"#define %s \(?(-?[\d.]+)\)?" % name, src).group(1))
 ranges = {
     "brightness": ("HALO_BRIGHTNESS", config_h), "thickness": ("HALO_THICKNESS", config_h),
     "glow": ("HALO_GLOW", config_h), "inset": ("HALO_INSET", config_h), "speed": ("HALO_SPEED", config_h),
     "colourRepeat": ("HALO_REPEAT", config_h), "segments": ("HALO_SEGMENTS", config_h),
-    "segmentLength": ("HALO_SEGMENT_LENGTH", config_h),
+    "segmentLength": ("HALO_SEGMENT_LENGTH", config_h), "pulse": ("HALO_PULSE", config_h),
     "calCornerRadius": ("HALO_CAL_CORNER", profiles_h), "calNotchWidth": ("HALO_CAL_NOTCH_WIDTH", profiles_h),
     "calNotchHeight": ("HALO_CAL_NOTCH_HEIGHT", profiles_h), "calNotchOffset": ("HALO_CAL_NOTCH_OFFSET", profiles_h),
 }
@@ -123,7 +128,7 @@ for item in plist["items"]:
         if (item.get("min"), item.get("max")) != (lo, hi):
             bad(f"{key}: slider {item.get('min')}..{item.get('max')} != code {lo}..{hi}")
 for required in ("enabled", "mode", "colourStyle", "brightness", "thickness", "glow", "inset", "speed", "direction",
-                 "lowPower", "cutoutMode"):
+                 "lowPower", "cutoutMode", "target", "pulse"):
     if required not in seen:
         bad(f"Settings lacks {required}")
 if not re.search(r"HaloKeyEnabled : @NO", prefs):
@@ -150,6 +155,32 @@ assert info["CFBundleVersion"] == version, (info["CFBundleVersion"], version)
 assert info["CFBundleShortVersionString"] == version.split("-")[0]
 assert info["CFBundleExecutable"] == entry["bundle"] == "HCGHaloPrefs"
 assert info["NSPrincipalClass"] == entry["detail"] == "HaloRootListController"
+# HCG Nexus finds the "Halo border" page through this key (contract version 1).
+assert info.get("HCGHaloNexusIntegration") == 1, info.get("HCGHaloNexusIntegration")
+PY
+python3 -I - "$ROOT" <<'PY' && pass "HCG Nexus integration constants agree (interface 1, schema 1, minimum Nexus, notification, Settings contract)" || fail "HCG Nexus integration constants disagree"
+import os, re, sys
+root = sys.argv[1]
+src = lambda p: open(os.path.join(root, p)).read()
+definition_h, definition_m, link_m = src("src/HaloNexusDefinition.h"), src("src/HaloNexusDefinition.m"), src("src/HaloNexusLink.m")
+nexus_ctl = src("preferences/HaloNexusBorderController.m")
+assert re.search(r"#define HALO_NEXUS_SCHEMA_VERSION 1\b", definition_h)
+assert re.search(r"#define HALO_NEXUS_INTERFACE_VERSION 1\b", definition_h)
+minimum = re.search(r'#define HALO_NEXUS_MIN_VERSION "([^"]+)"', definition_h).group(1)
+assert minimum == "0.3.0~beta1", minimum
+assert '@"com.hakmicapitalgroup.hcgnexus.halo-border"' in definition_m
+assert '@"HCGNexusBorderInterface"' in definition_m and '@"HCGNexusPrefs.bundle"' in definition_m and '@"HaloBorder.plist"' in definition_m
+assert 'HaloNexusBorderEventNotification = @"com.hakmicapitalgroup.hcgnexus.border-event"' in link_m
+# The panel border is UIViewController-pushable by class name from HCG Nexus.
+assert re.search(r"@interface HaloNexusBorderController : UITableViewController", src("preferences/HaloNexusBorderController.h"))
+# No copy of the Nexus definition in this project: Halo reads the installed one.
+for dirpath, _, files in os.walk(root):
+    if "/.theos" in dirpath or "/packages" in dirpath or "/tests/build" in dirpath:
+        continue
+    assert "HaloBorder.plist" not in files, f"bundled Nexus definition at {dirpath}"
+# No network access in the integration.
+for text in (definition_m, link_m, nexus_ctl):
+    assert "NSURL" not in text and "http" not in text
 PY
 
 # ---------------------------------------------------------------------------
@@ -413,6 +444,13 @@ for s in SBHomeScreenWindow SBIconController SBApplication 'frontDisplayDidChang
          com.hakmicapitalgroup.halo/preferences-changed lineDashPhase transform.rotation.z; do
 	grep -qxF -- "$s" "$WORK/dylib.strings" && pass "tweak references $s" || fail "tweak lacks $s"
 done
+for s in HCGNexusBorderInterface com.hakmicapitalgroup.hcgnexus.border-event com.hakmicapitalgroup.hcgnexus.halo-border \
+         HCGNexusPrefs.bundle HaloBorder.plist; do
+	grep -qxF -- "$s" "$WORK/dylib.strings" && pass "tweak references $s (HCG Nexus border interface 1)" || fail "tweak lacks $s"
+done
+grep -qF "HCGNexusBorderInterface" "$WORK/prefs.strings" && grep -qxF HaloNexusBorderController "$WORK/prefs.strings" \
+	&& pass "Settings bundle carries HaloNexusBorderController and the definition reader" || fail "Settings bundle lacks the Nexus panel page"
+if find "$JB" -name 'HaloBorder.plist' | grep -q .; then fail "package ships a HaloBorder.plist (must come from HCG Nexus)"; else pass "package ships no copy of the HCG Nexus border definition"; fi
 for s in HaloRootListController com.hakmicapitalgroup.halo/status-request; do
 	grep -qxF -- "$s" "$WORK/prefs.strings" && pass "Settings bundle references $s" || fail "Settings bundle lacks $s"
 done

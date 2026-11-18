@@ -147,6 +147,7 @@ STYLES = [("Single Colour", "single"), ("Multiple Colours", "multi"), ("Gradient
 DIRECTIONS = [("Clockwise", "clockwise"), ("Counter-clockwise", "counterclockwise")]
 LOW_POWER = [("Static Border", "static"), ("Keep Animating", "animate"), ("Hide Border", "hide")]
 CUTOUT = [("Trace Notch", "trace"), ("Straight Edge", "straight")]
+TARGETS = [("Screen Edge", "screen"), ("HCG Nexus Panel", "nexus"), ("Both", "both")]
 
 ITEMS = [
     group("HCG Halo", "Off after installation. Every setting on this page applies immediately, without a respring. "
@@ -156,6 +157,10 @@ ITEMS = [
     info("Rendering", "renderingStatus:", "renderingStatus"),
     info("Display Context", "displayContext:", "displayContext"),
     group(None, None, ident="statusDetailGroup"),  # footer filled in at runtime with the status detail
+
+    group("Border Target", None, ident="targetGroup"),  # footer: HCG Nexus availability, set at runtime
+    lst("target", "Draw Border Around", TARGETS),
+    button("Nexus Panel Border", "openNexusBorder:", "openNexusBorder"),
 
     group("Mode", "Static: a steady border. Breathing: smooth brightness pulses. Colour Flow: colours travel around "
           "the edge. Orbit: travelling light segments. Sci-Fi Circuit: circuit traces, pulses and nodes. "
@@ -190,6 +195,9 @@ ITEMS = [
     slider("segments", 1, 4, segments=3),
     group("Segment Length", "Orbit: length of each travelling segment.", ident="segmentLengthGroup"),
     slider("segmentLength", 0.05, 0.45),
+    group("Soft Pulse", "A gentle brightness swell on top of the selected mode (not Breathing). 0 turns it off.",
+          ident="pulseGroup"),
+    slider("pulse", 0, 0.6),
 
     group("Device Profile", None, ident="profileGroup"),  # footer: detected screen, set at runtime
     button("Device Profile", "openProfiles:", "openProfiles"),

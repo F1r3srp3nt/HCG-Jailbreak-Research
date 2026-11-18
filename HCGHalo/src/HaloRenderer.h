@@ -57,6 +57,14 @@ NS_ASSUME_NONNULL_BEGIN
 /// Removes every layer and animation. The renderer can be configured again.
 - (void)teardown;
 
+/// The centre line the renderer draws for `geometry` at `offset` (fixed
+/// points), mapped by `transform`. +1 retained; NULL if the geometry is unusable.
+/// Used by effects that must follow exactly the same path.
++ (nullable CGPathRef)newPathForGeometry:(HaloDisplayGeometry)geometry
+                                  offset:(double)offset
+                             traceCutout:(BOOL)traceCutout
+                               transform:(CGAffineTransform)transform CF_RETURNS_RETAINED;
+
 @end
 
 NS_ASSUME_NONNULL_END

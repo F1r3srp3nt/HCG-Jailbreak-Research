@@ -342,17 +342,20 @@ static void TestPreferences(void) {
     ClearAll();
 }
 
+int HaloRunNexusTests(long *checks, long *failures); // test_nexus.m
+
 int main(void) {
     @autoreleasepool {
         TestRendererModes();
         TestRendererPlans();
         TestOverlay();
         TestPreferences();
+        HaloRunNexusTests(&gChecks, &gFailures);
     }
     if (gFailures) {
         printf("%ld of %ld runtime checks FAILED\n", gFailures, gChecks);
         return 1;
     }
-    printf("All %ld runtime checks passed (renderer, overlay, preferences; iOS Simulator)\n", gChecks);
+    printf("All %ld runtime checks passed (renderer, overlay, preferences, HCG Nexus panel border; iOS Simulator)\n", gChecks);
     return 0;
 }

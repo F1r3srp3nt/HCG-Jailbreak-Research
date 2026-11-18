@@ -43,6 +43,9 @@ HCGHalo_FILES = \
 	src/HaloController.m \
 	src/HaloOverlayView.m \
 	src/HaloRenderer.m \
+	src/HaloNexusDefinition.m \
+	src/HaloNexusLink.m \
+	src/HaloPanelBorderView.m \
 	src/HaloPreferences.m \
 	src/HaloLog.m \
 	src/HaloGeometry.c \

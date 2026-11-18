@@ -1,8 +1,8 @@
 Package: com.hakmicapitalgroup.halo
 Name: HCG Halo (Beta)
-Version: 0.1.0~beta1
+Version: 0.2.0~beta1
 Architecture: iphoneos-arm64
-Description: Free public beta demo — not yet device-tested. HCG Halo draws an animated neon light border around the Home Screen edges: Static, Breathing, Colour Flow, Orbit and Sci-Fi Circuit modes, custom colours and gradients, presets and an iPhone 11 Pro Max device profile. Off after installation; enable it in Settings.
+Description: Free public beta demo. HCG Halo draws an animated neon light border around the Home Screen edges and, optionally, around the HCG Nexus panel (needs HCG Nexus 0.3.0~beta1 or later): Static, Breathing, Colour Flow, Orbit and Sci-Fi Circuit modes, custom colours and gradients, presets and an iPhone 11 Pro Max device profile. Off after installation; enable it in Settings. The Nexus panel border is not yet device-tested.
 Maintainer: Hakmi Capital Group
 Author: Hakmi Capital Group
 Section: Tweaks

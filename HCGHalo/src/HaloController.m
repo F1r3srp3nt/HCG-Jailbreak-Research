@@ -17,18 +17,27 @@
 //  costs nothing. Reduce Motion and Low Power Mode change the render plan
 //  (HaloConfig.c, halo_render_plan).
 //
+//  Targets (0.2.0~beta1): the screen edge (default), the HCG Nexus panel, or
+//  both. The panel border is owned by HaloNexusLink, which attaches to the
+//  live Nexus panel through Nexus's versioned interface; it shares this
+//  controller's enable switch, kill switch, launch guard, fault handling and
+//  screen-off / Reduce Motion / Low Power inputs. Without a compatible Nexus
+//  it stays off with a reason and the screen edge is unaffected.
+//
 //  Failure policy: anything unexpected removes the overlay and reports
 //  "fault" in Settings; Home Screen behaviour is never touched.
 //
 
 #import "HaloController.h"
 #import "HaloLog.h"
+#import "HaloNexusLink.h"
 #import "HaloOverlayView.h"
 #import "HaloPreferences.h"
 #import "HaloSpringBoard.h"
 
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
+#include <dlfcn.h>
 #include <notify.h>
 
 static NSString *const kBlankedNotification = @"com.apple.springboard.hasBlankedScreen";
@@ -72,6 +81,9 @@ static const NSTimeInterval kAttachInterval = 2.0;
     BOOL _hookAttempted;
     NSString *_frontDetection;
     NSString *_rendering;
+
+    // HCG Nexus panel border
+    HaloNexusLink *_link;
 }
 
 + (instancetype)shared {
@@ -96,6 +108,14 @@ static const NSTimeInterval kAttachInterval = 2.0;
         _frontDetection = @"not started";
         _rendering = @"Not drawing";
         _hostDescription = @"";
+        _link = [[HaloNexusLink alloc] init];
+        Dl_info info;
+        if (dladdr((const void *)&HaloControllerBootstrap, &info) && info.dli_fname)
+            _link.fallbackDefinitionPath = [HaloNexusLink definitionPathFromImagePath:@(info.dli_fname)];
+        __weak HaloController *weakSelf = self;
+        _link.stateDidChange = ^(HaloNexusLink *link) {
+            [weakSelf nexusLinkChanged];
+        };
     }
     return self;
 }
@@ -261,18 +281,24 @@ static void HaloStatusRequested(CFNotificationCenterRef center, void *observer, 
 - (void)activate {
     if (!_active) {
         _active = YES;
-        [self installFrontDisplayHookOnce];
         [self startSystemObservers];
     }
-    if (!_overlay.window) {
-        [self attachWithRetry];
+    if (_settings.targetsScreen) {
+        [self installFrontDisplayHookOnce]; // only the screen edge needs app-in-front detection
+        if (!_overlay.window) {
+            [self attachWithRetry];
+        } else {
+            [self configureOverlay];
+            [self updateVisibility];
+        }
     } else {
-        [self configureOverlay];
-        [self updateVisibility];
+        [self removeOverlay];
+        [self setState:HaloEngineStateActive detail:@"Target: HCG Nexus panel only (the screen edge is off)."];
     }
+    [self applyNexusLink];
 }
 
-- (void)deactivate {
+- (void)removeOverlay {
     _attachGeneration++; // cancels pending attach retries
     if (_overlay) {
         _overlay.delegate = nil;
@@ -281,11 +307,32 @@ static void HaloStatusRequested(CFNotificationCenterRef center, void *observer, 
         _overlay = nil;
     }
     _host = nil;
+    _rendering = @"Not drawing";
+}
+
+/// The panel border follows the same switches as the screen edge.
+- (void)applyNexusLink {
+    BOOL enabled = _active && _settings.enabled && !_faulted && !_blocked && _settings.targetsNexus;
+    [_link applySettings:_settings
+                   enabled:enabled
+              reduceMotion:UIAccessibilityIsReduceMotionEnabled()
+              lowPowerMode:[NSProcessInfo processInfo].lowPowerModeEnabled
+        reduceTransparency:UIAccessibilityIsReduceTransparencyEnabled()
+                  screenOn:_screenOn];
+}
+
+- (void)nexusLinkChanged {
+    if (!_settings.targetsScreen && _active && !_faulted && !_blocked)
+        [self setState:HaloEngineStateActive detail:@"Target: HCG Nexus panel only (the screen edge is off)."];
+}
+
+- (void)deactivate {
+    [self removeOverlay];
+    [_link stop];
     if (_active) {
         [self stopSystemObservers];
         _active = NO;
     }
-    _rendering = @"Not drawing";
 }
 
 - (void)installFrontDisplayHookOnce {
@@ -356,7 +403,7 @@ static UIWindow *HaloFindHomeScreenWindow(NSString **how) {
 }
 
 - (void)tryAttach:(NSUInteger)generation {
-    if (generation != _attachGeneration || !_active) return;
+    if (generation != _attachGeneration || !_active || !_settings.targetsScreen) return;
     @try {
         NSString *how = nil;
         UIWindow *window = HaloFindHomeScreenWindow(&how);
@@ -399,7 +446,7 @@ static UIWindow *HaloFindHomeScreenWindow(NSString **how) {
 
 - (void)haloOverlayViewDidChangeWindow:(HaloOverlayView *)view {
     if (view != _overlay) return;
-    if (!view.window && _active) {
+    if (!view.window && _active && _settings.targetsScreen) {
         // The Home Screen window went away (SpringBoard rebuilt it): find it again.
         HaloLogInfo("overlay lost its window; re-attaching");
         _host = nil;
@@ -424,6 +471,7 @@ static UIWindow *HaloFindHomeScreenWindow(NSString **how) {
 }
 
 - (void)updateVisibility {
+    [_link setScreenOn:_screenOn];
     if (!_overlay) {
         _rendering = @"Not drawing";
         return;
@@ -518,7 +566,12 @@ static BOOL HaloReadNotifyState(int token, uint64_t *state) {
     void (^refresh)(NSNotification *) = ^(NSNotification *note) {
         [weakSelf configureOverlay];
         [weakSelf updateVisibility];
+        [weakSelf applyNexusLink];
     };
+    [_observerTokens addObject:[center addObserverForName:UIAccessibilityReduceTransparencyStatusDidChangeNotification
+                                                   object:nil
+                                                    queue:[NSOperationQueue mainQueue]
+                                               usingBlock:refresh]];
     [_observerTokens addObject:[center addObserverForName:UIAccessibilityReduceMotionStatusDidChangeNotification
                                                    object:nil
                                                     queue:[NSOperationQueue mainQueue]
@@ -604,6 +657,9 @@ static BOOL HaloReadNotifyState(int token, uint64_t *state) {
             HaloStatusKeyBuildID : @HALO_BUILD_ID,
             HaloStatusKeySystemVersion : [NSProcessInfo processInfo].operatingSystemVersionString ?: @"",
             HaloStatusKeyTimestamp : [NSDate date],
+            HaloStatusKeyNexusState : _link.state ?: @"",
+            HaloStatusKeyNexusDetail : _link.detail ?: @"",
+            HaloStatusKeyNexusRendering : _link.rendering ?: @"",
         };
         [HaloPreferences writeStatus:status];
     } @catch (NSException *exception) {

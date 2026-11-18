@@ -56,6 +56,13 @@ extern NSString *const HaloKeyCalNotchWidth;
 extern NSString *const HaloKeyCalNotchHeight;
 extern NSString *const HaloKeyCalNotchOffset;
 extern NSString *const HaloKeyPresets;
+extern NSString *const HaloKeyPulse;                 // soft pulse depth (appearance)
+extern NSString *const HaloKeyTarget;                // "screen" | "nexus" | "both"
+extern NSString *const HaloKeyNexusMatchScreen;      // Nexus border uses the screen-edge appearance
+extern NSString *const HaloKeyNexusAppearance;       // dictionary of appearance keys for the Nexus border
+extern NSString *const HaloKeyNexusOpenTrace;        // light trace when the panel opens
+extern NSString *const HaloKeyNexusCloseFade;        // fade with the panel (off: disappear at once)
+extern NSString *const HaloKeyNexusWorkspacePulse;   // small pulse on workspace changes
 extern NSString *const HaloKeyDiagnosticLogging;
 
 // Status keys (HaloStatusDomain)
@@ -71,6 +78,9 @@ extern NSString *const HaloStatusKeyBuildID;
 extern NSString *const HaloStatusKeySystemVersion;
 extern NSString *const HaloStatusKeyTimestamp;
 extern NSString *const HaloStatusKeyUnstableLaunches;
+extern NSString *const HaloStatusKeyNexusState;      // "attached" | "waiting" | "off" | "unavailable"
+extern NSString *const HaloStatusKeyNexusDetail;     // human-readable reason
+extern NSString *const HaloStatusKeyNexusRendering;  // what the panel border is doing now
 
 extern NSString *const HaloEngineStateActive;        // overlay attached and managed
 extern NSString *const HaloEngineStateDisabled;      // loaded, master switch off
@@ -88,8 +98,25 @@ extern NSString *const HaloBuiltInPresetPrefix; // "builtin."
 #define HALO_MAX_PRESETS 50
 #define HALO_PRESET_NAME_MAX 40
 
+typedef NS_ENUM(NSInteger, HaloTarget) {
+    HaloTargetScreen = 0, // screen edge only (default; the 0.1.0~beta1 behaviour)
+    HaloTargetNexus = 1,  // HCG Nexus panel only
+    HaloTargetBoth = 2,
+};
+
 /// Immutable, validated snapshot of every setting.
 @interface HaloSettings : NSObject
+@property (nonatomic, readonly) HaloTarget target;
+@property (nonatomic, readonly) BOOL targetsScreen;
+@property (nonatomic, readonly) BOOL targetsNexus;
+@property (nonatomic, readonly) BOOL nexusMatchScreen;
+/// The Nexus border's own appearance (ignored while nexusMatchScreen is on).
+@property (nonatomic, readonly) HaloAppearance nexusAppearance;
+/// What the Nexus border actually uses.
+@property (nonatomic, readonly) HaloAppearance effectiveNexusAppearance;
+@property (nonatomic, readonly) BOOL nexusOpenTrace;
+@property (nonatomic, readonly) BOOL nexusCloseFade;
+@property (nonatomic, readonly) BOOL nexusWorkspacePulse;
 @property (nonatomic, readonly) BOOL enabled;
 @property (nonatomic, readonly) HaloAppearance appearance;
 @property (nonatomic, readonly) HaloLowPowerPolicy lowPowerPolicy;
@@ -110,6 +137,11 @@ extern NSString *const HaloBuiltInPresetPrefix; // "builtin."
 + (NSArray<NSString *> *)appearanceKeys;
 /// The keys "Reset Calibration" resets.
 + (NSArray<NSString *> *)calibrationKeys;
+/// The keys "Reset Nexus Lighting" resets (not the target, not the screen edge).
++ (NSArray<NSString *> *)nexusLightingKeys;
++ (NSArray<NSString *> *)validTargets;
+/// Default look of the Nexus border: the "Nexus Signature" preset.
++ (HaloAppearance)nexusSignatureAppearance;
 
 + (NSArray<NSString *> *)validModes;
 + (NSArray<NSString *> *)validColourStyles;
@@ -136,6 +168,7 @@ extern NSString *const HaloBuiltInPresetPrefix; // "builtin."
 
 + (void)resetAppearance;
 + (void)resetCalibration;
++ (void)resetNexusLighting;
 
 // Presets ---------------------------------------------------------------
 + (NSArray<NSDictionary *> *)builtInPresets;
@@ -151,6 +184,12 @@ extern NSString *const HaloBuiltInPresetPrefix; // "builtin."
 + (BOOL)deletePreset:(NSString *)identifier;
 /// Writes the preset's appearance keys. Nothing else changes.
 + (BOOL)applyPreset:(NSString *)identifier;
+/// Applies a preset to the Nexus border only (and stops matching the screen edge).
++ (BOOL)applyPresetToNexus:(NSString *)identifier;
+/// Identifier of the preset equal to the Nexus border's own appearance, or nil.
++ (nullable NSString *)matchingNexusPresetIdentifier;
+/// Writes one appearance key of the Nexus border (validated like the screen-edge key).
++ (void)writeNexusAppearanceValue:(nullable id)value forKey:(NSString *)key;
 /// Identifier of the preset whose appearance equals the current one, or nil.
 + (nullable NSString *)matchingPresetIdentifier;
 

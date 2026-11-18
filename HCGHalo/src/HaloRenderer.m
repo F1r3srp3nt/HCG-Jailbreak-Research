@@ -27,6 +27,9 @@ static NSString *const kPhaseKey = @"halo.phase";
 static NSString *const kBreatheKey = @"halo.breathe";
 static NSString *const kFlowKey = @"halo.flow";
 static NSString *const kBlinkKey = @"halo.blink";
+static NSString *const kPulseKey = @"halo.pulse";
+
+static CGPathRef HaloNewPathFromBorder(const HaloBorderPath *border, CGAffineTransform t) CF_RETURNS_RETAINED;
 
 @implementation HaloRenderer {
     CGFloat _scale;
@@ -220,6 +223,19 @@ static NSString *const kBlinkKey = @"halo.blink";
         break;
     }
 
+    // Soft pulse (e.g. the Reactor preset): a gentle brightness swell on top of
+    // an animated mode. Never with Static (nothing animates) or Breathing (which
+    // already pulses), so Reduce Motion and Low Power "static" also remove it.
+    if (_plan.animated && mode != HaloModeBreathing && a.pulseDepth > 0.01) {
+        CABasicAnimation *pulse = [CABasicAnimation animationWithKeyPath:@"opacity"];
+        pulse.fromValue = @(a.brightness);
+        pulse.toValue = @(a.brightness * (1.0 - a.pulseDepth));
+        pulse.autoreverses = YES;
+        pulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self prepare:pulse duration:1.6 / a.speed];
+        [_root addAnimation:pulse forKey:kPulseKey];
+    }
+
     // Nothing in the masked subtree changes per frame in Static / Breathing:
     // rasterise it once, so each frame only composites a cached bitmap.
     if (colourHost && (mode == HaloModeStatic || mode == HaloModeBreathing)) {
@@ -229,12 +245,24 @@ static NSString *const kBlinkKey = @"halo.blink";
 }
 
 - (CGPathRef)newTransformedPath {
+    return HaloNewPathFromBorder(&_border, _transform);
+}
+
++ (CGPathRef)newPathForGeometry:(HaloDisplayGeometry)geometry
+                         offset:(double)offset
+                    traceCutout:(BOOL)traceCutout
+                      transform:(CGAffineTransform)transform {
+    HaloBorderPath border;
+    if (!halo_build_border(&geometry, offset, traceCutout, &border)) return NULL;
+    return HaloNewPathFromBorder(&border, transform);
+}
+
+static CGPathRef HaloNewPathFromBorder(const HaloBorderPath *border, CGAffineTransform t) {
     enum { kCapacity = 256 };
     HaloBezierOp ops[kCapacity];
-    int n = halo_border_to_beziers(&_border, ops, kCapacity);
+    int n = halo_border_to_beziers(border, ops, kCapacity);
     if (n <= 0) return NULL;
     CGMutablePathRef path = CGPathCreateMutable();
-    CGAffineTransform t = _transform;
     for (int i = 0; i < n; i++) {
         const HaloBezierOp *op = &ops[i];
         switch (op->kind) {

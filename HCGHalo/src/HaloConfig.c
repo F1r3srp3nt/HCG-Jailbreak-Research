@@ -158,6 +158,7 @@ HaloAppearance halo_default_appearance(void) {
     a.colourRepeat = 1;
     a.segments = 2;
     a.segmentLength = 0.18;
+    a.pulseDepth = 0.0;
     return a;
 }
 
@@ -202,6 +203,7 @@ HaloAppearance halo_sanitize_appearance(HaloAppearance a) {
     a.colourRepeat = clampi(a.colourRepeat, HALO_REPEAT_MIN, HALO_REPEAT_MAX);
     a.segments = clampi(a.segments, HALO_SEGMENTS_MIN, HALO_SEGMENTS_MAX);
     a.segmentLength = clamp(a.segmentLength, HALO_SEGMENT_LENGTH_MIN, HALO_SEGMENT_LENGTH_MAX, d.segmentLength);
+    a.pulseDepth = clamp(a.pulseDepth, HALO_PULSE_MIN, HALO_PULSE_MAX, d.pulseDepth);
     return a;
 }
 

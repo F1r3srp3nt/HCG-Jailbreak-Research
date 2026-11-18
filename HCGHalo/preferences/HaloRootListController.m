@@ -12,6 +12,8 @@
 #import "HaloRootListController.h"
 #import "HaloColoursController.h"
 #import "HaloHeaderView.h"
+#import "HaloNexusBorderController.h"
+#import "HaloNexusDefinition.h"
 #import "HaloPreferences.h"
 #import "HaloPresetsController.h"
 #import "HaloProfileController.h"
@@ -98,6 +100,27 @@ static void HaloStatusUpdated(CFNotificationCenterRef center, void *observer, CF
     if ([screen isKindOfClass:[NSString class]] && screen.length)
         profileText = [profileText stringByAppendingFormat:@"\nThis screen: %@.", screen];
     [profileGroup setProperty:profileText forKey:@"footerText"];
+
+    // Border target: whether a compatible HCG Nexus is installed (its own
+    // definition file, next to this bundle) and what SpringBoard reports.
+    PSSpecifier *targetGroup = [self specifierForID:@"targetGroup"];
+    NSString *path = [HaloNexusDefinition installedPathNextToBundle:[NSBundle bundleForClass:[self class]]];
+    NSString *error = nil;
+    HaloNexusDefinition *definition = path ? [HaloNexusDefinition definitionAtPath:path error:&error] : nil;
+    NSMutableArray *targetLines = [NSMutableArray array];
+    [targetLines addObject:@"Screen Edge is the default. HCG Nexus Panel draws the border around the HCG Nexus panel "
+                           @"while it is shown; Both draws both."];
+    if (definition) {
+        [targetLines addObject:[NSString stringWithFormat:@"HCG Nexus %@: compatible.", definition.nexusVersion]];
+    } else {
+        [targetLines addObject:[NSString stringWithFormat:@"Requires compatible HCG Nexus for the panel targets: %@. The "
+                                                          @"screen edge is unaffected.",
+                                                          error ?: @"not installed"]];
+    }
+    NSString *nexusDetail = status[HaloStatusKeyNexusDetail];
+    if (settings.targetsNexus && [nexusDetail isKindOfClass:[NSString class]] && nexusDetail.length)
+        [targetLines addObject:[NSString stringWithFormat:@"Panel border: %@", nexusDetail]];
+    [targetGroup setProperty:[targetLines componentsJoinedByString:@"\n\n"] forKey:@"footerText"];
 }
 
 - (id)readPreferenceValue:(PSSpecifier *)specifier {
@@ -193,7 +216,7 @@ static void HaloStatusUpdated(CFNotificationCenterRef center, void *observer, CF
         }
     }
     NSString *identifier = [self specifierAtIndexPath:indexPath].identifier;
-    if ([@[ @"openPresets", @"openColours", @"openProfiles" ] containsObject:identifier]) {
+    if ([@[ @"openPresets", @"openColours", @"openProfiles", @"openNexusBorder" ] containsObject:identifier]) {
         cell.textLabel.textColor = HaloTheme.textPrimary;
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         cell.accessibilityTraits |= UIAccessibilityTraitButton;
@@ -233,6 +256,9 @@ static void HaloStatusUpdated(CFNotificationCenterRef center, void *observer, CF
 }
 
 - (NSString *)displayContext:(PSSpecifier *)specifier {
+    HaloSettings *settings = [HaloPreferences loadSettings];
+    if (settings.target == HaloTargetNexus) return @"HCG Nexus panel only";
+    if (settings.target == HaloTargetBoth) return @"Home Screen + HCG Nexus panel";
     return @"Home Screen only";
 }
 
@@ -281,6 +307,10 @@ static void HaloStatusUpdated(CFNotificationCenterRef center, void *observer, CF
 
 - (void)openProfiles:(PSSpecifier *)specifier {
     [self push:[[HaloProfileController alloc] init]];
+}
+
+- (void)openNexusBorder:(PSSpecifier *)specifier {
+    [self push:[[HaloNexusBorderController alloc] init]];
 }
 
 #pragma mark Actions

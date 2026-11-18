@@ -23,8 +23,11 @@ HCGHaloPrefs_FILES = \
 	HaloColoursController.m \
 	HaloPresetsController.m \
 	HaloProfileController.m \
+	HaloNexusBorderController.m \
 	../src/HaloPreferences.m \
 	../src/HaloRenderer.m \
+	../src/HaloNexusDefinition.m \
+	../src/HaloPanelBorderView.m \
 	../src/HaloGeometry.c \
 	../src/HaloConfig.c \
 	../src/HaloProfiles.c \

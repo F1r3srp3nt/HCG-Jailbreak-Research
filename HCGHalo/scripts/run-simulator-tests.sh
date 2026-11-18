@@ -28,7 +28,8 @@ stamp "building tests/test_runtime.m for the iOS Simulator ($ARCH, iOS 15.0 mini
 xcrun --sdk iphonesimulator clang -fobjc-arc -fobjc-arc-exceptions -arch "$ARCH" -mios-simulator-version-min=15.0 \
 	-Wall -Wextra -Wno-unused-parameter -Werror \
 	-DHALO_VERSION="\"$VERSION\"" -DHALO_BUILD_ID="\"simulator-test\"" -Isrc \
-	tests/test_runtime.m src/HaloPreferences.m src/HaloRenderer.m src/HaloOverlayView.m \
+	tests/test_runtime.m tests/test_nexus.m src/HaloPreferences.m src/HaloRenderer.m src/HaloOverlayView.m \
+	src/HaloNexusDefinition.m src/HaloNexusLink.m src/HaloPanelBorderView.m src/HaloLog.m \
 	src/HaloGeometry.c src/HaloConfig.c src/HaloProfiles.c src/HaloProfiles.generated.c \
 	-framework UIKit -framework QuartzCore -framework CoreGraphics -o "$OUT/test_runtime"
 

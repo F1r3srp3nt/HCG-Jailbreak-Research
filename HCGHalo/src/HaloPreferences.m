@@ -37,6 +37,13 @@ NSString *const HaloKeyCalNotchHeight = @"calNotchHeight";
 NSString *const HaloKeyCalNotchOffset = @"calNotchOffset";
 NSString *const HaloKeyPresets = @"presets";
 NSString *const HaloKeyDiagnosticLogging = @"diagnosticLogging";
+NSString *const HaloKeyPulse = @"pulse";
+NSString *const HaloKeyTarget = @"target";
+NSString *const HaloKeyNexusMatchScreen = @"nexusMatchScreen";
+NSString *const HaloKeyNexusAppearance = @"nexusAppearance";
+NSString *const HaloKeyNexusOpenTrace = @"nexusOpenTrace";
+NSString *const HaloKeyNexusCloseFade = @"nexusCloseFade";
+NSString *const HaloKeyNexusWorkspacePulse = @"nexusWorkspacePulse";
 
 NSString *const HaloStatusKeyState = @"state";
 NSString *const HaloStatusKeyDetail = @"detail";
@@ -50,6 +57,9 @@ NSString *const HaloStatusKeyBuildID = @"buildID";
 NSString *const HaloStatusKeySystemVersion = @"systemVersion";
 NSString *const HaloStatusKeyTimestamp = @"timestamp";
 NSString *const HaloStatusKeyUnstableLaunches = @"unstableLaunches";
+NSString *const HaloStatusKeyNexusState = @"nexusState";
+NSString *const HaloStatusKeyNexusDetail = @"nexusDetail";
+NSString *const HaloStatusKeyNexusRendering = @"nexusRendering";
 
 NSString *const HaloEngineStateActive = @"active";
 NSString *const HaloEngineStateDisabled = @"disabled";
@@ -105,8 +115,27 @@ static double HaloRound3(double v) {
         _calibration = halo_sanitize_calibration(cal);
         _geometry = halo_profile_geometry(_profile, _calibration);
         _diagnosticLogging = [v[HaloKeyDiagnosticLogging] boolValue];
+        NSString *target = v[HaloKeyTarget];
+        _target = [target isEqualToString:@"nexus"] ? HaloTargetNexus : ([target isEqualToString:@"both"] ? HaloTargetBoth : HaloTargetScreen);
+        _nexusMatchScreen = [v[HaloKeyNexusMatchScreen] boolValue];
+        _nexusAppearance = [HaloPreferences appearanceFromDictionary:v[HaloKeyNexusAppearance]];
+        _nexusOpenTrace = [v[HaloKeyNexusOpenTrace] boolValue];
+        _nexusCloseFade = [v[HaloKeyNexusCloseFade] boolValue];
+        _nexusWorkspacePulse = [v[HaloKeyNexusWorkspacePulse] boolValue];
     }
     return self;
+}
+
+- (BOOL)targetsScreen {
+    return self.target != HaloTargetNexus;
+}
+
+- (BOOL)targetsNexus {
+    return self.target != HaloTargetScreen;
+}
+
+- (HaloAppearance)effectiveNexusAppearance {
+    return self.nexusMatchScreen ? self.appearance : self.nexusAppearance;
 }
 
 - (NSString *)description {
@@ -152,6 +181,12 @@ static double HaloRound3(double v) {
             HaloKeyCalNotchOffset : @0.0,
             HaloKeyPresets : @[],
             HaloKeyDiagnosticLogging : @NO,
+            HaloKeyTarget : @"screen", // existing users keep the screen-edge border
+            HaloKeyNexusMatchScreen : @NO,
+            HaloKeyNexusAppearance : [self dictionaryFromAppearance:[self nexusSignatureAppearance]],
+            HaloKeyNexusOpenTrace : @YES,
+            HaloKeyNexusCloseFade : @YES,
+            HaloKeyNexusWorkspacePulse : @YES,
         }];
         defaults = [m copy];
     });
@@ -165,8 +200,34 @@ static double HaloRound3(double v) {
 + (NSArray<NSString *> *)appearanceKeys {
     return @[
         HaloKeyMode, HaloKeyColourStyle, HaloKeyColours, HaloKeyBrightness, HaloKeyThickness, HaloKeyGlow, HaloKeyInset,
-        HaloKeySpeed, HaloKeyDirection, HaloKeyColourRepeat, HaloKeySegments, HaloKeySegmentLength
+        HaloKeySpeed, HaloKeyDirection, HaloKeyColourRepeat, HaloKeySegments, HaloKeySegmentLength, HaloKeyPulse
     ];
+}
+
++ (NSArray<NSString *> *)nexusLightingKeys {
+    return @[ HaloKeyNexusMatchScreen, HaloKeyNexusAppearance, HaloKeyNexusOpenTrace, HaloKeyNexusCloseFade,
+              HaloKeyNexusWorkspacePulse ];
+}
+
++ (NSArray<NSString *> *)validTargets {
+    return @[ @"screen", @"nexus", @"both" ];
+}
+
+// Built from a struct, never through the validator, so +defaultValues can use
+// it inside its dispatch_once without recursion.
++ (HaloAppearance)nexusSignatureAppearance {
+    HaloAppearance a = halo_default_appearance();
+    a.mode = HaloModeFlow;
+    a.colourStyle = HaloColourGradient;
+    a.colourCount = 2;
+    halo_parse_hex("#00E5FF", &a.colours[0]);
+    halo_parse_hex("#7B61FF", &a.colours[1]);
+    a.brightness = 0.85;
+    a.thickness = 2.0;
+    a.glow = 0.45;
+    a.inset = 0;
+    a.speed = 0.5;
+    return halo_sanitize_appearance(a);
 }
 
 + (NSArray<NSString *> *)calibrationKeys {
@@ -254,7 +315,9 @@ static NSString *HaloNormaliseHex(id value) {
     id fallback = defaults[key];
     if (!fallback) return value; // unknown key: caller's responsibility
 
-    if ([key isEqualToString:HaloKeyEnabled] || [key isEqualToString:HaloKeyDiagnosticLogging]) {
+    if ([key isEqualToString:HaloKeyEnabled] || [key isEqualToString:HaloKeyDiagnosticLogging] ||
+        [key isEqualToString:HaloKeyNexusMatchScreen] || [key isEqualToString:HaloKeyNexusOpenTrace] ||
+        [key isEqualToString:HaloKeyNexusCloseFade] || [key isEqualToString:HaloKeyNexusWorkspacePulse]) {
         return [value isKindOfClass:[NSNumber class]] ? @([value boolValue]) : fallback;
     }
     NSDictionary<NSString *, NSArray *> *enums = @{
@@ -264,6 +327,7 @@ static NSString *HaloNormaliseHex(id value) {
         HaloKeyLowPower : [self validLowPowerPolicies],
         HaloKeyCutoutMode : [self validCutoutModes],
         HaloKeyProfile : [self validProfiles], // "automatic" is never valid until implemented
+        HaloKeyTarget : [self validTargets],
     };
     if (enums[key]) {
         return ([value isKindOfClass:[NSString class]] && [enums[key] containsObject:value]) ? value : fallback;
@@ -281,6 +345,11 @@ static NSString *HaloNormaliseHex(id value) {
         return HaloClampNumber(value, HALO_SEGMENTS_MIN, HALO_SEGMENTS_MAX, fallback, YES);
     if ([key isEqualToString:HaloKeySegmentLength])
         return HaloClampNumber(value, HALO_SEGMENT_LENGTH_MIN, HALO_SEGMENT_LENGTH_MAX, fallback, NO);
+    if ([key isEqualToString:HaloKeyPulse]) return HaloClampNumber(value, HALO_PULSE_MIN, HALO_PULSE_MAX, fallback, NO);
+    if ([key isEqualToString:HaloKeyNexusAppearance]) {
+        if (![value isKindOfClass:[NSDictionary class]]) return fallback;
+        return [self dictionaryFromAppearance:[self appearanceFromDictionary:value]];
+    }
     if ([key isEqualToString:HaloKeyCalCornerRadius])
         return HaloClampNumber(value, HALO_CAL_CORNER_MIN, HALO_CAL_CORNER_MAX, fallback, NO);
     if ([key isEqualToString:HaloKeyCalNotchWidth])
@@ -341,6 +410,7 @@ static NSString *HaloNormaliseHex(id value) {
     a.colourRepeat = (int)[[self sanitizedValue:d[HaloKeyColourRepeat] forKey:HaloKeyColourRepeat] integerValue];
     a.segments = (int)[[self sanitizedValue:d[HaloKeySegments] forKey:HaloKeySegments] integerValue];
     a.segmentLength = [[self sanitizedValue:d[HaloKeySegmentLength] forKey:HaloKeySegmentLength] doubleValue];
+    a.pulseDepth = [[self sanitizedValue:d[HaloKeyPulse] forKey:HaloKeyPulse] doubleValue];
     return halo_sanitize_appearance(a);
 }
 
@@ -365,6 +435,7 @@ static NSString *HaloNormaliseHex(id value) {
         HaloKeyColourRepeat : @(a.colourRepeat),
         HaloKeySegments : @(a.segments),
         HaloKeySegmentLength : @(HaloRound3(a.segmentLength)),
+        HaloKeyPulse : @(HaloRound3(a.pulseDepth)),
     };
 }
 
@@ -423,6 +494,12 @@ static NSString *HaloNormaliseHex(id value) {
     [self writeValues:removals];
 }
 
++ (void)resetNexusLighting {
+    NSMutableDictionary *removals = [NSMutableDictionary dictionary];
+    for (NSString *key in [self nexusLightingKeys]) removals[key] = [NSNull null];
+    [self writeValues:removals];
+}
+
 + (void)resetCalibration {
     NSMutableDictionary *removals = [NSMutableDictionary dictionary];
     for (NSString *key in [self calibrationKeys]) removals[key] = [NSNull null];
@@ -466,6 +543,21 @@ static NSString *HaloNormaliseHex(id value) {
                    values:@{HaloKeyMode : @"flow", HaloKeyColourStyle : @"gradient",
                             HaloKeyColours : @[ @"#00FFA3", @"#00E5FF", @"#7B61FF", @"#FF3CAC" ],
                             HaloKeyColourRepeat : @2, HaloKeySpeed : @0.6}],
+            // Visual presets made for the HCG Nexus panel (usable anywhere). They do not
+            // represent any system activity.
+            @{
+                HaloPresetKeyID : @"builtin.nexus-signature",
+                HaloPresetKeyName : @"Nexus Signature",
+                HaloPresetKeyAppearance : [self dictionaryFromAppearance:[self nexusSignatureAppearance]],
+            },
+            [self builtIn:@"reactor" name:@"Reactor"
+                   values:@{HaloKeyMode : @"orbit", HaloKeyColourStyle : @"gradient",
+                            HaloKeyColours : @[ @"#00E5FF", @"#7B61FF", @"#C026FF" ], HaloKeySegments : @2,
+                            HaloKeySegmentLength : @0.22, HaloKeyThickness : @2.5, HaloKeyGlow : @0.6,
+                            HaloKeySpeed : @0.8, HaloKeyPulse : @0.25, HaloKeyInset : @0}],
+            [self builtIn:@"hologram" name:@"Hologram"
+                   values:@{HaloKeyMode : @"static", HaloKeyColourStyle : @"single", HaloKeyColours : @[ @"#7FE9FF" ],
+                            HaloKeyThickness : @1.0, HaloKeyGlow : @0.15, HaloKeyBrightness : @0.6, HaloKeyInset : @0}],
         ];
     });
     return presets;
@@ -562,6 +654,30 @@ static NSString *HaloNormaliseHex(id value) {
     for (NSString *key in [self appearanceKeys]) values[key] = appearance[key] ?: [NSNull null];
     [self writeValues:values];
     return YES;
+}
+
++ (BOOL)applyPresetToNexus:(NSString *)identifier {
+    NSDictionary *preset = [self presetWithIdentifier:identifier];
+    if (!preset) return NO;
+    NSDictionary *appearance = [self dictionaryFromAppearance:[self appearanceFromDictionary:preset[HaloPresetKeyAppearance]]];
+    [self writeValues:@{HaloKeyNexusAppearance : appearance, HaloKeyNexusMatchScreen : @NO}];
+    return YES;
+}
+
++ (NSString *)matchingNexusPresetIdentifier {
+    NSDictionary *current = [self dictionaryFromAppearance:[self loadSettings].nexusAppearance];
+    for (NSDictionary *p in [[self builtInPresets] arrayByAddingObjectsFromArray:[self userPresets]]) {
+        NSDictionary *candidate = [self dictionaryFromAppearance:[self appearanceFromDictionary:p[HaloPresetKeyAppearance]]];
+        if ([candidate isEqualToDictionary:current]) return p[HaloPresetKeyID];
+    }
+    return nil;
+}
+
++ (void)writeNexusAppearanceValue:(id)value forKey:(NSString *)key {
+    if (![[self appearanceKeys] containsObject:key]) return;
+    NSMutableDictionary *appearance = [[self dictionaryFromAppearance:[self loadSettings].nexusAppearance] mutableCopy];
+    appearance[key] = [self sanitizedValue:value forKey:key];
+    [self writeValue:appearance forKey:HaloKeyNexusAppearance];
 }
 
 + (NSString *)matchingPresetIdentifier {

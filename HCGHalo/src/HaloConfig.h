@@ -74,6 +74,8 @@ typedef struct {
 #define HALO_SEGMENTS_MAX 4
 #define HALO_SEGMENT_LENGTH_MIN 0.05
 #define HALO_SEGMENT_LENGTH_MAX 0.45
+#define HALO_PULSE_MIN 0.0
+#define HALO_PULSE_MAX 0.6
 
 /// Everything a preset captures. Device profile, calibration, the master
 /// switch and the Low Power policy are deliberately NOT part of a preset.
@@ -91,6 +93,7 @@ typedef struct {
     int colourRepeat;     // colour spacing: how many times the palette repeats around the perimeter
     int segments;         // Orbit: travelling segments; Circuit: pulse groups
     double segmentLength; // Orbit: lit fraction of each segment's period
+    double pulseDepth;    // soft brightness pulse on top of an animated mode (0 = none)
 } HaloAppearance;
 
 /// Identifiers stored in the preference plist.

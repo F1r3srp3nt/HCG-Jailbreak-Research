@@ -1,0 +1,15 @@
+#!/bin/sh
+# HCG Portal — dpkg post-removal script.
+# HCG Portal changes no system file and no other product's settings, so
+# nothing needs restoring: once the package is removed and SpringBoard
+# restarts, the Lock Screen is exactly as before.
+# Only on "purge" (an explicit request to delete configuration) does it remove
+# HCG Portal's OWN preferences, status and kill-switch files. Plain "remove"
+# (the Sileo/Zebra default) keeps them, so a reinstall restores your settings.
+set -e
+if [ "$1" = "purge" ]; then
+	rm -f /var/mobile/Library/Preferences/com.hakmicapitalgroup.portal.plist \
+	      /var/mobile/Library/Preferences/com.hakmicapitalgroup.portal.status.plist \
+	      /var/mobile/Library/Preferences/com.hakmicapitalgroup.portal.disabled
+fi
+exit 0

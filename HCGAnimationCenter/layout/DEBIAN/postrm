@@ -1,0 +1,15 @@
+#!/bin/sh
+# HCG Animation Center — dpkg post-removal script.
+# The system wallpaper is never modified, so nothing needs restoring: once the
+# package is removed and SpringBoard restarts, the normal wallpaper shows.
+# Only on "purge" (an explicit request to delete configuration) does it remove
+# HCG Animation Center's OWN preferences and its media library. Plain "remove"
+# (the Sileo/Zebra default) keeps them, so a reinstall restores your library.
+set -e
+if [ "$1" = "purge" ]; then
+	rm -f /var/mobile/Library/Preferences/com.hakmicapitalgroup.animationcenter.plist \
+	      /var/mobile/Library/Preferences/com.hakmicapitalgroup.animationcenter.status.plist \
+	      /var/mobile/Library/Preferences/com.hakmicapitalgroup.animationcenter.disabled
+	rm -rf /var/mobile/Library/HCGAnimationCenter
+fi
+exit 0

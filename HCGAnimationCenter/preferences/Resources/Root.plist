@@ -1,0 +1,435 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>items</key>
+	<array>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Off after installation. Your system wallpaper is never changed: when HCG Animation Center is off, or a screen has no background, your normal wallpaper shows. Changes apply without a respring.</string>
+			<key>id</key>
+			<string>general</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.animationcenter/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.animationcenter</string>
+			<key>id</key>
+			<string>enabled</string>
+			<key>key</key>
+			<string>enabled</string>
+			<key>label</key>
+			<string>Enable HCG Animation Center</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSTitleValueCell</string>
+			<key>get</key>
+			<string>engineStatus:</string>
+			<key>id</key>
+			<string>engineStatus</string>
+			<key>label</key>
+			<string>Status</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>id</key>
+			<string>statusDetail</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Plays behind your icons, dock and widgets. Pauses when an app is open, the phone is locked or the screen is off.</string>
+			<key>id</key>
+			<string>homeGroup</string>
+			<key>label</key>
+			<string>Home Screen</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.animationcenter/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.animationcenter</string>
+			<key>id</key>
+			<string>homeEnabled</string>
+			<key>key</key>
+			<string>homeEnabled</string>
+			<key>label</key>
+			<string>Home Screen Background</string>
+		</dict>
+		<dict>
+			<key>action</key>
+			<string>chooseHome:</string>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>id</key>
+			<string>chooseHome</string>
+			<key>label</key>
+			<string>Choose Background…</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSTitleValueCell</string>
+			<key>get</key>
+			<string>homeBackground:</string>
+			<key>id</key>
+			<string>homeBackground</string>
+			<key>label</key>
+			<string>Background</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSTitleValueCell</string>
+			<key>get</key>
+			<string>homeRendering:</string>
+			<key>id</key>
+			<string>homeRendering</string>
+			<key>label</key>
+			<string>Now</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Plays while the phone is locked and the screen is on, and stops when you unlock. Where iOS gives it no safe place, nothing is drawn and your normal Lock Screen shows; Status says why.</string>
+			<key>id</key>
+			<string>lockGroup</string>
+			<key>label</key>
+			<string>Lock Screen (Experimental)</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.animationcenter/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.animationcenter</string>
+			<key>id</key>
+			<string>lockEnabled</string>
+			<key>key</key>
+			<string>lockEnabled</string>
+			<key>label</key>
+			<string>Lock Screen Background</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.animationcenter/preferences-changed</string>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>default</key>
+			<string>own</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.animationcenter</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>id</key>
+			<string>lockSource</string>
+			<key>key</key>
+			<string>lockSource</string>
+			<key>label</key>
+			<string>Use</string>
+			<key>validTitles</key>
+			<array>
+				<string>Same as Home Screen</string>
+				<string>Its Own Background</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>same</string>
+				<string>own</string>
+			</array>
+		</dict>
+		<dict>
+			<key>action</key>
+			<string>chooseLock:</string>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>id</key>
+			<string>chooseLock</string>
+			<key>label</key>
+			<string>Choose Background…</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSTitleValueCell</string>
+			<key>get</key>
+			<string>lockBackground:</string>
+			<key>id</key>
+			<string>lockBackground</string>
+			<key>label</key>
+			<string>Background</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSTitleValueCell</string>
+			<key>get</key>
+			<string>lockRendering:</string>
+			<key>id</key>
+			<string>lockRendering</string>
+			<key>label</key>
+			<string>Now</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Import videos and GIFs from Photos or Files, then trim, scale, loop and preview them before applying.</string>
+			<key>id</key>
+			<string>libraryGroup</string>
+			<key>label</key>
+			<string>Library</string>
+		</dict>
+		<dict>
+			<key>action</key>
+			<string>openLibrary:</string>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>id</key>
+			<string>openLibrary</string>
+			<key>label</key>
+			<string>Media Library</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Backgrounds always play muted. Video stops while the device is hot. Unsupported or damaged media shows its still image, or your normal wallpaper.</string>
+			<key>id</key>
+			<string>playbackGroup</string>
+			<key>label</key>
+			<string>Playback</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.animationcenter/preferences-changed</string>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>default</key>
+			<string>still</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.animationcenter</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>id</key>
+			<string>reduceMotion</string>
+			<key>key</key>
+			<string>reduceMotion</string>
+			<key>label</key>
+			<string>With Reduce Motion</string>
+			<key>validTitles</key>
+			<array>
+				<string>Show Still Image</string>
+				<string>Keep Playing</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>still</string>
+				<string>play</string>
+			</array>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.animationcenter/preferences-changed</string>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>default</key>
+			<string>still</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.animationcenter</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>id</key>
+			<string>lowPower</string>
+			<key>key</key>
+			<string>lowPower</string>
+			<key>label</key>
+			<string>In Low Power Mode</string>
+			<key>validTitles</key>
+			<array>
+				<string>Show Still Image</string>
+				<string>Keep Playing</string>
+				<string>Use System Wallpaper</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>still</string>
+				<string>play</string>
+				<string>system</string>
+			</array>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>A later phase: HCG AI will generate a preview that you choose to apply. Not connected in this beta.</string>
+			<key>id</key>
+			<string>aiGroup</string>
+			<key>label</key>
+			<string>AI Backgrounds</string>
+		</dict>
+		<dict>
+			<key>action</key>
+			<string>openAI:</string>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>id</key>
+			<string>openAI</string>
+			<key>label</key>
+			<string>AI Backgrounds</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Restore System Wallpaper turns HCG Animation Center off at once. If Settings can't be opened: over SSH, touch /var/mobile/Library/Preferences/com.hakmicapitalgroup.animationcenter.disabled and respring. After three quick SpringBoard crashes in a row it turns itself off. Uninstalling and respringing always restores normal wallpaper behaviour.</string>
+			<key>id</key>
+			<string>recoveryGroup</string>
+			<key>label</key>
+			<string>Recovery</string>
+		</dict>
+		<dict>
+			<key>action</key>
+			<string>restoreSystemWallpaper:</string>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>id</key>
+			<string>restoreSystemWallpaper</string>
+			<key>label</key>
+			<string>Restore System Wallpaper</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Placement decides where the background view goes. Automatic tries the Home Screen window first, and the Lock Screen wallpaper view then the Cover Sheet window. Write Hierarchy Probe saves a read-only description of SpringBoard's windows for device testing.</string>
+			<key>id</key>
+			<string>advancedGroup</string>
+			<key>label</key>
+			<string>Advanced</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.animationcenter/preferences-changed</string>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>default</key>
+			<string>automatic</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.animationcenter</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>id</key>
+			<string>homePlacement</string>
+			<key>key</key>
+			<string>homePlacement</string>
+			<key>label</key>
+			<string>Home Screen Placement</string>
+			<key>validTitles</key>
+			<array>
+				<string>Automatic</string>
+				<string>Home Screen Window</string>
+				<string>Wallpaper View</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>automatic</string>
+				<string>homeWindow</string>
+				<string>wallpaper</string>
+			</array>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.animationcenter/preferences-changed</string>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>default</key>
+			<string>automatic</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.animationcenter</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>id</key>
+			<string>lockPlacement</string>
+			<key>key</key>
+			<string>lockPlacement</string>
+			<key>label</key>
+			<string>Lock Screen Placement</string>
+			<key>validTitles</key>
+			<array>
+				<string>Automatic</string>
+				<string>Wallpaper View</string>
+				<string>Cover Sheet Window</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>automatic</string>
+				<string>wallpaper</string>
+				<string>coverSheet</string>
+			</array>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.animationcenter/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.animationcenter</string>
+			<key>id</key>
+			<string>diagnosticLogging</string>
+			<key>key</key>
+			<string>diagnosticLogging</string>
+			<key>label</key>
+			<string>Diagnostic Logging</string>
+		</dict>
+		<dict>
+			<key>action</key>
+			<string>writeProbe:</string>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>id</key>
+			<string>writeProbe</string>
+			<key>label</key>
+			<string>Write Hierarchy Probe</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSTitleValueCell</string>
+			<key>get</key>
+			<string>environmentStatus:</string>
+			<key>id</key>
+			<string>environment</string>
+			<key>label</key>
+			<string>Environment</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSTitleValueCell</string>
+			<key>get</key>
+			<string>versionString:</string>
+			<key>id</key>
+			<string>version</string>
+			<key>label</key>
+			<string>Version</string>
+		</dict>
+	</array>
+	<key>title</key>
+	<string>HCG Animation Center</string>
+</dict>
+</plist>

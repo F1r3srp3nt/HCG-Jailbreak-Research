@@ -49,10 +49,10 @@ static int make_grid(VortexIconSlot *slots, int count) {
 static VortexTornadoParameters tornado_variant(int i) {
     VortexTornadoParameters t = vortex_tornado_defaults();
     switch (i % 6) {
-        case 1: t.intensity = 0.1; t.radius = 0.15; t.rotations = 1.0; break;
-        case 2: t.intensity = 1.0; t.radius = 0.6; t.rotations = 4.0; break;
-        case 3: t.direction = VortexSpinClockwise; t.depth = 0; break;
-        case 4: t.direction = VortexSpinCounterclockwise; t.iconSpin = 1; break;
+        case 1: t = vortex_tornado_preset(VortexTornadoPresetSubtle); t.radius = 0.15; t.rotations = 1.0; t.travel = VortexTravelCentred; break;
+        case 2: t = vortex_tornado_preset(VortexTornadoPresetSciFi); t.radius = 0.6; t.rotations = 4.0; t.height = 0.85; break;
+        case 3: t.direction = VortexSpinClockwise; t.depth = 0; t.travel = VortexTravelAgainstSwipe; break;
+        case 4: t.direction = VortexSpinCounterclockwise; t.iconSpin = 1; t.tipRadius = 0.25; t.height = 0.35; break;
         case 5: t.iconSpin = 1; t.depth = 1; t.intensity = 0.5; break;
         default: break;
     }
@@ -73,12 +73,28 @@ static VortexEffectParameters params_variant(int i) {
 
 static void test_defaults_and_sanitize(void) {
     VortexTornadoParameters d = vortex_tornado_defaults();
-    CHECK(d.depth == 1 && d.iconSpin == 0 && d.direction == VortexSpinFollowSwipe, "defaults: readable icons, depth on");
-    VortexTornadoParameters bad = { NAN, 99.0, -5.0, (VortexSpinDirection)17, 9, -2 };
+    VortexTornadoParameters classic = vortex_tornado_preset(VortexTornadoPresetClassic);
+    CHECK(memcmp(&d, &classic, sizeof d) == 0, "defaults are the Classic Tornado preset");
+    CHECK(d.depth > 0 && d.iconSpin == 0 && d.direction == VortexSpinFollowSwipe && d.travel == VortexTravelFollowSwipe,
+          "defaults: readable icons, depth on, follows the swipe");
+    VortexTornadoParameters bad = { .intensity = NAN, .radius = 99.0, .tipRadius = 5.0, .height = -1.0, .rotations = -5.0,
+                                    .direction = (VortexSpinDirection)17, .travel = (VortexTravelMode)9, .depth = 7.0,
+                                    .iconSpin = -2 };
     VortexTornadoParameters s = vortex_tornado_sanitize(bad);
     CHECK(s.intensity == d.intensity && s.radius == 0.6 && s.rotations == 1.0 && s.direction == VortexSpinFollowSwipe &&
-              s.depth == 1 && s.iconSpin == 1,
+              s.travel == VortexTravelFollowSwipe && s.depth == 1.0 && s.iconSpin == 1 && s.height == 0.35,
           "sanitize clamps (%.2f %.2f %.2f %d)", s.intensity, s.radius, s.rotations, (int)s.direction);
+    CHECK(s.tipRadius < s.radius, "tip always narrower than the opening (%.2f < %.2f)", s.tipRadius, s.radius);
+    /* Presets: in range and ordered Subtle < Classic < Sci-Fi in size, turns and depth. */
+    VortexTornadoParameters sub = vortex_tornado_preset(VortexTornadoPresetSubtle);
+    VortexTornadoParameters sci = vortex_tornado_preset(VortexTornadoPresetSciFi);
+    CHECK(memcmp(&sub, (VortexTornadoParameters[]){ vortex_tornado_sanitize(sub) }, sizeof sub) == 0 &&
+              memcmp(&sci, (VortexTornadoParameters[]){ vortex_tornado_sanitize(sci) }, sizeof sci) == 0,
+          "presets are within the valid ranges");
+    CHECK(sub.radius < classic.radius && classic.radius < sci.radius && sub.rotations < classic.rotations &&
+              classic.rotations < sci.rotations && sub.depth < classic.depth && classic.depth < sci.depth &&
+              sub.height < classic.height && classic.height < sci.height,
+          "presets escalate Subtle < Classic < Sci-Fi");
 }
 
 static void test_rank(void) {
@@ -88,7 +104,7 @@ static void test_rank(void) {
     CHECK(slots[0].index == 0 && NEAR(slots[0].rank, 0.0, 1e-12), "top-left first");
     CHECK(slots[3].index == 3, "jittered row stays one row (index %d)", slots[3].index);
     CHECK(slots[23].index == 23 && NEAR(slots[23].rank, 1.0, 1e-12), "bottom-right last");
-    VortexIconSlot one[1] = { { 0, 0, 0, 0, 0 } };
+    VortexIconSlot one[1] = { { 0 } };
     vortex_tornado_rank(one, 1, 8.0);
     CHECK(NEAR(one[0].rank, 0.5, 1e-12) && one[0].index == 0, "single icon ranks mid-funnel");
     vortex_tornado_rank(NULL, 3, 8.0); /* must not crash */
@@ -256,7 +272,7 @@ static void test_funnel_shape(void) {
     tp.intensity = 1.0;
     VortexEffectParameters ep = vortex_default_parameters();
     double p = 0.6; /* every outgoing icon has fully joined the funnel here */
-    double cx = vortex_tornado_centre_x(p, 1, W, &ep);
+    double cx = vortex_tornado_centre_x(p, 1, W, VortexTravelFollowSwipe, &ep);
     double topMax = 0, tipMax = 0, yMin = 1e9, yMax = -1e9, zMin = 1e9, zMax = -1e9;
     double frontScale = 0, backScale = 10, frontOpacity = 0, backOpacity = 1;
     for (int i = 0; i < n; i++) {
@@ -306,12 +322,17 @@ static void test_direction_and_travel(void) {
     CHECK(vortex_tornado_spin_sign(VortexSpinClockwise, VortexNavigationBackward) == -1.0, "clockwise is fixed");
 
     VortexEffectParameters ep = vortex_default_parameters();
-    CHECK(vortex_tornado_centre_x(0, 1, W, &ep) > 0 && vortex_tornado_centre_x(1, 1, W, &ep) < 0,
+    const VortexTravelMode F = VortexTravelFollowSwipe;
+    CHECK(vortex_tornado_centre_x(0, 1, W, F, &ep) > 0 && vortex_tornado_centre_x(1, 1, W, F, &ep) < 0,
           "finger left: funnel travels right to left");
-    CHECK(vortex_tornado_centre_x(0, -1, W, &ep) < 0 && vortex_tornado_centre_x(1, -1, W, &ep) > 0,
+    CHECK(vortex_tornado_centre_x(0, -1, W, F, &ep) < 0 && vortex_tornado_centre_x(1, -1, W, F, &ep) > 0,
           "finger right: funnel travels left to right");
+    CHECK(vortex_tornado_centre_x(0, 1, W, VortexTravelAgainstSwipe, &ep) < 0, "travel against the swipe");
+    CHECK(vortex_tornado_centre_x(0, 1, W, VortexTravelCentred, &ep) == 0.0 &&
+              vortex_tornado_centre_x(0.7, -1, W, VortexTravelCentred, &ep) == 0.0,
+          "centred travel stays put");
     ep.reverse = 1;
-    CHECK(vortex_tornado_centre_x(0, 1, W, &ep) < 0, "reverse animation flips the travel");
+    CHECK(vortex_tornado_centre_x(0, 1, W, F, &ep) < 0, "reverse animation flips the travel");
 
     /* Clockwise and counterclockwise produce different (mirrored-motion) frames. */
     VortexIconSlot slots[24];
@@ -337,10 +358,10 @@ static void test_direction_and_travel(void) {
 
 static void test_degenerate(void) {
     VortexEffectParameters ep = vortex_default_parameters();
-    VortexIconSlot s = { 10, 10, 0.5, 3, 24 };
+    VortexIconSlot s = { .homeX = 10, .homeY = 10, .rank = 0.5, .index = 3, .count = 24 };
     CHECK(vortex_icon_is_identity(vortex_tornado_icon(VortexPageRoleOutgoing, 0.5, 1, s, 0, 0, NULL, &ep)),
           "zero-size page: identity");
-    VortexIconSlot nanSlot = { NAN, 0, 0.5, 0, 24 };
+    VortexIconSlot nanSlot = { .homeX = NAN, .homeY = 0, .rank = 0.5, .index = 0, .count = 24 };
     CHECK(vortex_icon_is_identity(vortex_tornado_icon(VortexPageRoleOutgoing, 0.5, 1, nanSlot, W, H, NULL, &ep)),
           "NaN home: identity");
     VortexIconVisual v = vortex_tornado_icon(VortexPageRoleOutgoing, NAN, 1, s, W, H, NULL, &ep);

@@ -4,10 +4,11 @@ CFLAGS ?= -std=c11 -O1 -Wall -Wextra -Werror
 SANITIZE ?= -fsanitize=address,undefined
 BUILD := build
 
-.PHONY: test compat compat-gnustep compat-lint deb-format tornado-frames clean
-test: $(BUILD)/test_math $(BUILD)/test_tornado
+.PHONY: test compat compat-gnustep compat-lint deb-format effect-frames clean
+test: $(BUILD)/test_math $(BUILD)/test_tornado $(BUILD)/test_icon_effects
 	$(abspath $(BUILD))/test_math
 	$(abspath $(BUILD))/test_tornado
+	$(abspath $(BUILD))/test_icon_effects
 
 # Packaging regression check (gzip-only .deb members). Python standard library.
 deb-format:
@@ -39,11 +40,17 @@ compat-lint: test_compat.m ../src/VortexCompatibility.m ../src/VortexCompatibili
 		-Wall -Wextra -Werror -Wno-unused-parameter -Wno-expansion-to-defined -Wno-cast-function-type \
 		-Wno-unused-command-line-argument test_compat.m ../src/VortexCompatibility.m
 
-# Real Tornado geometry as JSON (for scripts/render_tornado_preview.py).
-tornado-frames: $(BUILD)/tornado_frames
-$(BUILD)/tornado_frames: tornado_frames.c ../src/VortexTornado.c ../src/VortexTornado.h ../src/VortexMath.c
+ICON_SRC = ../src/VortexIconEffects.c ../src/VortexTornado.c ../src/VortexMath.c
+ICON_HDR = ../src/VortexIconEffects.h ../src/VortexTornado.h ../src/VortexMath.h ../src/VortexTypes.h
+# Real effect geometry as JSON (for scripts/render_effect_preview.py).
+effect-frames: $(BUILD)/effect_frames
+$(BUILD)/effect_frames: effect_frames.c $(ICON_SRC) $(ICON_HDR)
 	@mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -o $@ tornado_frames.c ../src/VortexTornado.c ../src/VortexMath.c -lm
+	$(CC) $(CFLAGS) -o $@ effect_frames.c $(ICON_SRC) -lm
+
+$(BUILD)/test_icon_effects: test_icon_effects.c $(ICON_SRC) $(ICON_HDR)
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) $(SANITIZE) -o $@ test_icon_effects.c $(ICON_SRC) -lm
 
 $(BUILD)/test_tornado: test_tornado.c ../src/VortexTornado.c ../src/VortexTornado.h ../src/VortexMath.c ../src/VortexMath.h ../src/VortexTypes.h
 	@mkdir -p $(BUILD)

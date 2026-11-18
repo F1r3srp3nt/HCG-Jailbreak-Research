@@ -16,9 +16,7 @@
 #define TORNADO_GATHER       0.30   /* travel an icon takes to join the funnel */
 #define TORNADO_FADE_START   0.72   /* travel at which a swept icon starts to vanish */
 #define TORNADO_FADE_END     0.97
-#define TORNADO_HEIGHT       0.60   /* funnel height, fraction of page height */
 #define TORNADO_RISE         0.12   /* swept icons climb this fraction of the funnel height */
-#define TORNADO_TIP          0.14   /* tip radius / opening radius */
 #define TORNADO_TAPER        1.5    /* > 1: concave funnel wall */
 #define TORNADO_TRAVEL       0.20   /* axis travel either side of centre, fraction of width */
 #define TORNADO_LEAN         0.08   /* tip trails the opening by this fraction of width */
@@ -36,24 +34,41 @@ static double smoothstep(double e0, double e1, double x) {
     return t * t * (3.0 - 2.0 * t);
 }
 
-VortexTornadoParameters vortex_tornado_defaults(void) {
+VortexTornadoParameters vortex_tornado_preset(VortexTornadoPreset preset) {
     VortexTornadoParameters p;
-    p.intensity = 0.7;
-    p.radius = 0.36;
-    p.rotations = 2.5;
     p.direction = VortexSpinFollowSwipe;
-    p.depth = 1;
+    p.travel = VortexTravelFollowSwipe;
     p.iconSpin = 0;
+    switch (preset) {
+        case VortexTornadoPresetSubtle:
+            p.intensity = 0.4; p.radius = 0.26; p.tipRadius = 0.06; p.height = 0.45; p.rotations = 1.5; p.depth = 0.4;
+            break;
+        case VortexTornadoPresetSciFi:
+            p.intensity = 1.0; p.radius = 0.48; p.tipRadius = 0.03; p.height = 0.75; p.rotations = 3.5; p.depth = 1.0;
+            break;
+        case VortexTornadoPresetClassic:
+        default:
+            p.intensity = 0.7; p.radius = 0.32; p.tipRadius = 0.05; p.height = 0.60; p.rotations = 2.5; p.depth = 0.7;
+            break;
+    }
     return p;
+}
+
+VortexTornadoParameters vortex_tornado_defaults(void) {
+    return vortex_tornado_preset(VortexTornadoPresetClassic);
 }
 
 VortexTornadoParameters vortex_tornado_sanitize(VortexTornadoParameters p) {
     VortexTornadoParameters d = vortex_tornado_defaults();
     p.intensity = isfinite(p.intensity) ? clampd(p.intensity, 0.1, 1.0) : d.intensity;
     p.radius = isfinite(p.radius) ? clampd(p.radius, 0.15, 0.60) : d.radius;
+    p.tipRadius = isfinite(p.tipRadius) ? clampd(p.tipRadius, 0.02, 0.25) : d.tipRadius;
+    if (p.tipRadius > 0.9 * p.radius) p.tipRadius = 0.9 * p.radius;   /* always a taper */
+    p.height = isfinite(p.height) ? clampd(p.height, 0.35, 0.85) : d.height;
     p.rotations = isfinite(p.rotations) ? clampd(p.rotations, 1.0, 4.0) : d.rotations;
     if ((int)p.direction < 0 || p.direction >= VortexSpinCount) p.direction = d.direction;
-    p.depth = p.depth ? 1 : 0;
+    if ((int)p.travel < 0 || p.travel >= VortexTravelCount) p.travel = d.travel;
+    p.depth = isfinite(p.depth) ? clampd(p.depth, 0.0, 1.0) : d.depth;
     p.iconSpin = p.iconSpin ? 1 : 0;
     return p;
 }
@@ -64,6 +79,8 @@ VortexIconVisual vortex_icon_identity(void) {
     v.ty = 0.0;
     v.scale = 1.0;
     v.rotation = 0.0;
+    v.tiltX = 0.0;
+    v.tiltY = 0.0;
     v.z = 0.0;
     v.opacity = 1.0;
     return v;
@@ -72,6 +89,7 @@ VortexIconVisual vortex_icon_identity(void) {
 int vortex_icon_is_identity(VortexIconVisual v) {
     const double e = 1e-6;
     return fabs(v.tx) < e && fabs(v.ty) < e && fabs(v.scale - 1.0) < e && fabs(v.rotation) < e &&
+           fabs(v.tiltX) < e && fabs(v.tiltY) < e &&
            fabs(v.z) < e && fabs(v.opacity - 1.0) < e;
 }
 
@@ -112,8 +130,11 @@ void vortex_tornado_rank(VortexIconSlot *slots, int n, double rowTolerance) {
     }
 }
 
-static double travel_sign(VortexNavigationDirection navigation, const VortexEffectParameters *params) {
-    double s = navigation == VortexNavigationBackward ? -1.0 : 1.0;   /* forward: right -> left */
+static double travel_sign(VortexNavigationDirection navigation, VortexTravelMode travel,
+                          const VortexEffectParameters *params) {
+    if (travel == VortexTravelCentred) return 0.0;
+    double s = navigation == VortexNavigationBackward ? -1.0 : 1.0;   /* follow: forward goes right -> left */
+    if (travel == VortexTravelAgainstSwipe) s = -s;
     if (params && params->reverse) s = -s;
     return s;
 }
@@ -123,9 +144,9 @@ static double presented(double progress, const VortexEffectParameters *params) {
 }
 
 double vortex_tornado_centre_x(double progress, VortexNavigationDirection navigation, double pageWidth,
-                               const VortexEffectParameters *params) {
+                               VortexTravelMode travel, const VortexEffectParameters *params) {
     double pp = presented(progress, params);
-    return travel_sign(navigation, params) * TORNADO_TRAVEL * pageWidth * (1.0 - 2.0 * pp);
+    return travel_sign(navigation, travel, params) * TORNADO_TRAVEL * pageWidth * (1.0 - 2.0 * pp);
 }
 
 VortexPageVisual vortex_tornado_page(VortexPageRole role, double progress, const VortexEffectParameters *params) {
@@ -183,15 +204,15 @@ VortexIconVisual vortex_tornado_icon(VortexPageRole role,
     double h = clampd(rank * (1.0 - step) + (role == VortexPageRoleIncoming ? 0.75 : 0.25) * step, 0.0, 1.0);
 
     double spin = vortex_tornado_spin_sign(tp.direction, navigation);
-    double travel = travel_sign(navigation, params);
-    double rTop = tp.radius * pageWidth * (0.6 + 0.4 * tp.intensity);
-    double rTip = TORNADO_TIP * rTop;
-    double height = TORNADO_HEIGHT * pageHeight * (0.8 + 0.2 * tp.intensity);
+    double travel = travel_sign(navigation, tp.travel, params);
+    double rTop = tp.radius * pageWidth;
+    double rTip = tp.tipRadius * pageWidth;
+    double height = tp.height * pageHeight;
     double top = -0.5 * height;
     double level = clampd(h - TORNADO_RISE * a, 0.0, 1.0);         /* swept icons climb towards the opening */
     double y = top + level * height;
     double r = rTip + (rTop - rTip) * pow(1.0 - level, TORNADO_TAPER);
-    double axis = vortex_tornado_centre_x(progress, navigation, pageWidth, params) +
+    double axis = vortex_tornado_centre_x(progress, navigation, pageWidth, tp.travel, params) +
                   travel * TORNADO_LEAN * pageWidth * (level - 0.5);
 
     /* Helix angle + the whole funnel turning with the gesture. */
@@ -201,9 +222,9 @@ VortexIconVisual vortex_tornado_icon(VortexPageRole role,
     double Z = r * cos(theta);                                      /* + towards the viewer */
 
     double persp = 1.0;
-    if (tp.depth) {
+    if (tp.depth > 0.0) {
         double camera = 2.4 * rTop + 0.6 * pageWidth;
-        persp = clampd(camera / (camera - Z), 0.7, 1.35);
+        persp = clampd(camera / (camera - Z * tp.depth), 0.7, 1.35);
     }
     double fx = axis + X * persp;
     double fy = y;
@@ -212,14 +233,14 @@ VortexIconVisual vortex_tornado_icon(VortexPageRole role,
     v.tx = (fx - slot.homeX) * gather;
     v.ty = (fy - slot.homeY) * gather;
     v.scale = 1.0 + (funnelScale - 1.0) * gather;
-    v.z = tp.depth ? Z * gather : 0.0;
+    v.z = tp.depth > 0.0 ? Z * gather : 0.0;
     v.rotation = tp.iconSpin ? spin * 2.0 * VORTEX_PI * (0.5 + tp.intensity) * a * gather : 0.0;
 
     double fade = 1.0 - smoothstep(TORNADO_FADE_START, TORNADO_FADE_END, u);
     double dim = 1.0;
-    if (tp.depth && r > 1e-9) {
+    if (tp.depth > 0.0 && r > 1e-9) {
         double front = 0.5 * (Z / r + 1.0);                         /* 0 back .. 1 front */
-        dim = 1.0 - TORNADO_BACK_DIM * gather * (1.0 - front);
+        dim = 1.0 - TORNADO_BACK_DIM * tp.depth * gather * (1.0 - front);
     }
     v.opacity = clampd(fade * dim, 0.0, 1.0);
     return v;

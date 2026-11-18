@@ -6,6 +6,7 @@
 | Access | Free public beta demo: no sign-in, no payment, candidate channel only — authorised by the owner on 18 Nov 2026 ("The beta is authorised as a free public candidate demo at …/repo/candidate/") |
 | Package | `com.hakmicapitalgroup.portal` `0.1.0~beta1` `iphoneos-arm64` (first version) |
 | Stable source | **untouched**: no stable entry, no promotion |
+| **Published** | 18 Nov 2026: HCG-repo [PR #11](https://github.com/F1r3srp3nt/HCG-repo/pull/11) merged (`ba1026c`), Publish run [44402572548](https://github.com/F1r3srp3nt/HCG-repo/actions/runs/44402572548): build, deploy, online verification (12 candidate packages, 0 errors) |
 
 ## Files: one copy of each
 
@@ -31,7 +32,8 @@
 | Artifact | `hcg-portal-rootless-deb`, ID 14470690859 (expires 2027-02-16) |
 | Format | `debian-binary`, `control.tar.gz`, `data.tar.gz` — all gzip, fully decompressed; `dpkg-deb --fsys-tarfile` exit 0 |
 | Re-validation | downloaded artifact re-hashed and re-validated from the source commit outside CI (Linux): same SHA-256, 0 failures / 0 warnings |
-| Preview | workflow **HCG Portal preview** on the same commit (see `../docs/TESTING.md`) |
+| Preview | **HCG Portal preview** run [44395826055](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44395826055) on the same commit: 81/81 (Simulator only) |
+| Handoff archive | run [44398734537](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44398734537), artifact `hcg-portal-0.1.0-beta1-handoff` |
 | Device testing | **None.** Installation not yet attempted; runtime untested (`../docs/DEVICE_TEST_CHECKLIST.md`) |
 
 **Only these bytes are the 0.1.0~beta1 candidate.** Earlier and later commits on the branch also ran the build

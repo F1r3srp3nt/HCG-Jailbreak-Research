@@ -31,4 +31,17 @@ Lock Screen, no Portal view left → Enable on → fault fallback and recovery �
 
 ## Results
 
-See [`../README.md#status`](../README.md#status) for the run numbers of the candidate build.
+Candidate commit `4bfed33` (build run 44395826216, preview run 44395826055):
+
+| Check | Result |
+|---|---|
+| Host unit tests | 2,623,892 checks pass (macOS); Linux GCC + Clang pass |
+| `validate.sh --require-new-abi` | 0 failures, 0 warnings (CI; again outside CI and in handoff run 44398734537 on the downloaded bytes) |
+| Simulator runtime tests | 66/66 |
+| Simulator preview | 81/81, 23 screenshots, 173 s video (artifact `hcg-portal-preview`) |
+| Device | not tested |
+
+Found and fixed by these runs before the candidate: the rings were drawn off the core's centre (`.frame` set on
+rotated layers); a stand-in lock-state publisher dropped its notify state (the portal correctly hid); headless
+`UIControl` actions need an application (tests now deliver target/action directly); a first-UIKit-call stall on a
+freshly booted simulator (settle delay + one retry on a time-limit kill, never on a failure).

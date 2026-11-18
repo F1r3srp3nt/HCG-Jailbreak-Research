@@ -1,8 +1,8 @@
 # HCG-repo changes for HCG Portal 0.1.0~beta1
 
 Apply on a review branch, `candidate/hcg-portal-0.1.0-beta1`, then let **Prepare packages** import the pinned build.
-(This session pushed exactly these changes to that branch in F1r3srp3nt/HCG-repo; merging and **Publish** remain the
-owner's steps.)
+(Done 18 Nov 2026: branch pushed, Prepare packages IMPORTED, PR #11 merged as `ba1026c`, Publish run 44402572548
+succeeded with online verification.)
 
 ## 1. New package: `packages/com.hakmicapitalgroup.portal/`
 

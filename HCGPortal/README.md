@@ -2,7 +2,7 @@
 
 **A luminous, interactive portal on the iPhone Lock Screen.** A rootless jailbreak tweak by Hakmi Capital Group.
 
-> **0.1.0~beta1 — free public candidate demo (HCG Repo Candidate only). Built and validated with Xcode, tested in the
+> **0.1.0~beta1 — free public candidate demo, published in HCG Repo Candidate (`https://repo.hakmicapitalgroup.com/repo/candidate/`). Built and validated with Xcode, tested in the
 > iOS Simulator; NOT yet tested on a device.** See [Status](#status) for exactly what was verified and how.
 
 HCG Portal places a portal below the clock and widgets and above notifications: a dark translucent centre, cyan-and-
@@ -33,13 +33,21 @@ first** — the normal iOS request — and only the action you chose runs after 
 
 ## Status
 
-| Check | Result |
-|---|---|
-| Host unit tests (layout over 200 k random screens, menu geometry, render plan, all 2,048 visibility inputs, 200 k pending-action sequences; ASan/UBSan, GCC + Clang) | see `docs/TESTING.md` |
-| macOS/Xcode build + `validate.sh --require-new-abi` | see `docs/TESTING.md` |
-| iOS Simulator runtime tests | see `docs/TESTING.md` |
-| Simulator preview (real tweak + Settings code in a stand-in Lock Screen; video + screenshots) | see `docs/TESTING.md` |
-| **Device** | **not tested** — `docs/DEVICE_TEST_CHECKLIST.md` |
+**Candidate build:** `com.hakmicapitalgroup.portal_0.1.0~beta1_iphoneos-arm64.deb`, 273,714 bytes, SHA-256
+`9ccfeb9b6b832edb3e8745c8e1774d93cc5623ebde1023102cf95bb139220dae` — commit `4bfed33`, *HCG Portal build* run
+[44395826216](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44395826216), artifact
+`hcg-portal-rootless-deb` 14470690859. Other builds of this branch carry the same version but other bytes and are not
+candidates.
+
+| Check | Where | Result |
+|---|---|---|
+| Host unit tests: layout over 200 k random screens, menu geometry, render plan, all 2,048 visibility inputs, 200 k pending-action sequences (ASan/UBSan) | Linux GCC + Clang (*HCG Portal Linux check*), macOS (build run) | **pass**, 2.6 M checks |
+| macOS/Xcode build + `validate.sh --require-new-abi` | run 44395826216 | **pass**, 0 failures, 0 warnings, native arm64e ABI (`0x80000002`) |
+| Same bytes re-hashed and re-validated from the source commit | outside CI (Linux), and the *HCG Portal handoff archive* run [44398734537](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44398734537) | **pass**, same SHA-256 |
+| iOS Simulator runtime tests (headless) | run 44395826216, `simulator-tests` | **66/66** |
+| Simulator preview: real tweak + Settings code in a stand-in Lock Screen; video + 23 screenshots | *HCG Portal preview* run [44395826055](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44395826055) | **81/81** (Simulator only) |
+| HCG Repo Candidate | F1r3srp3nt/HCG-repo [PR #11](https://github.com/F1r3srp3nt/HCG-repo/pull/11) (Prepare packages **IMPORTED**, Validate passed), Publish run [44402572548](https://github.com/F1r3srp3nt/HCG-repo/actions/runs/44402572548) | **published** to `https://repo.hakmicapitalgroup.com/repo/candidate/`; online verification 0 errors; stable source unchanged |
+| **Device** | — | **not tested** — `docs/DEVICE_TEST_CHECKLIST.md` |
 
 The test phone on record is an iPhone 11 Pro Max on iOS 17.4 with Dopamine (rootless); **not confirmed for Portal**.
 See `docs/COMPATIBILITY.md`.

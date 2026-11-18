@@ -355,6 +355,7 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         WAIT_UNTIL(2, gLaunches.count > 0);
         Check(gLaunches.count == 1 && [gLaunches[0] isEqualToString:@"com.apple.Preferences"],
               @"after success: exactly the selected action ran (Settings opened for Animation Center)");
+        WAIT_UNTIL(2, [Status(PortalStatusKeyLastAction) containsString:@"Settings opened"]);
         Check([Status(PortalStatusKeyLastAction) containsString:@"Settings opened"], @"last action recorded");
         [self state:@"07-opened-settings" caption:@"Authenticated: Settings opened for HCG Animation Center"];
     });
@@ -547,8 +548,12 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         [self state:@"17-unlock" caption:@"Unlock: brief opening flourish (slowed for the screenshot)"];
         [self shot:@"17-unlock"];
         self.window.layer.speed = 1;
+        // As SpringBoard dismisses the Cover Sheet, then calls the viewDidDisappear: hook:
+        // time only Portal's handler.
+        [SBCoverSheetPresentationManager sharedInstance].visible = NO;
+        self.window.hidden = YES;
         CFTimeInterval t1 = CACurrentMediaTime();
-        [self showCoverSheet:NO];
+        PortalControllerCoverSheetDidDisappear(self.coverSheet);
         CFTimeInterval dismissal = CACurrentMediaTime() - t1;
         Check(dismissal < 0.05, [NSString stringWithFormat:@"dismissal is never delayed (Portal returned in %.1f ms)", dismissal * 1000]);
         Check([self overlay].hidden && [self overlay].portalView.isPaused, @"after unlock: hidden and paused");

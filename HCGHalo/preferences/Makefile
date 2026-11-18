@@ -29,6 +29,7 @@ HCGHaloPrefs_FILES = \
 	../src/HaloScreen.m \
 	../src/HaloRenderer.m \
 	../src/HaloNexusDefinition.m \
+	../src/HaloNexusControl.m \
 	../src/HaloPanelBorderView.m \
 	../src/HaloGeometry.c \
 	../src/HaloConfig.c \

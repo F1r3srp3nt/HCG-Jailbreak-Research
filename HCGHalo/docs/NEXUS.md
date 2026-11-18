@@ -137,6 +137,40 @@ Everything else is ignored.
 
 Changes appear in the preview at once. SpringBoard applies them immediately; slider changes are sent on release.
 
+## Switching from HCG Nexus (HCG Halo 0.3.1~beta1, contract `HCGHaloNexusControl` 1)
+
+HCG Nexus 0.3.2~beta1 shows **Use HCG Halo border** in its Appearance settings (Settings › HCG Nexus and the
+panel's own Settings), with the states *Not installed*, *Incompatible*, *Disabled*, *Ready* and *Active*.
+HCG Nexus never writes HCG Halo's settings. It calls HCG Halo's own class:
+
+```objc
+@interface HaloNexusControl : NSObject                    // src/HaloNexusControl.h
++ (NSInteger)controlVersion;                               // 1
++ (NSDictionary *)nexusBorderStatus;                       // enabled, target, panelBorderOn, state, nexusState, nexusDetail, haloVersion
++ (BOOL)setNexusBorderEnabled:(BOOL)enabled error:(NSString **)error;
+@end
+```
+
+- It is compiled into **both** binaries: HCG Nexus finds it with `NSClassFromString` in SpringBoard
+  (`HCGHalo.dylib`) and in Settings (`HCGHaloPrefs.bundle`, whose Info.plist declares `HCGHaloNexusControl` = 1).
+- **The rules never turn the screen edge on:**
+
+  | Before | Turn on | Turn off |
+  |---|---|---|
+  | HCG Halo off | enabled = on, target = *HCG Nexus Panel* | no change |
+  | on, *Screen Edge* | target = *Both* | no change |
+  | on, *HCG Nexus Panel* | no change | enabled = off |
+  | on, *Both* | no change | target = *Screen Edge* |
+
+- **Refused, nothing written:** while the kill switch file exists or the launch guard has turned HCG Halo off.
+  Only the user lifts those, in HCG Halo.
+- After writing, it posts `com.hakmicapitalgroup.halo/preferences-changed`. SpringBoard applies the change at
+  once and rewrites its status, which HCG Nexus reads for *Ready*.
+- *Active* is HCG Nexus's own observation: HCG Halo's view is attached to the open panel's border host.
+- **Tests:** `tests/test_nexus.m` covers every combination of before-state and switch, and checks that the screen
+  edge is never turned on or off by the switch. It also covers both safety stops and a live round trip through
+  HCG Halo's preferences.
+
 ## Status
 
 | Check | How | Result |

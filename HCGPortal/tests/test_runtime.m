@@ -14,6 +14,7 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <objc/message.h>
 
 #import "PortalAuth.h"
 #import "PortalCompanions.h"
@@ -58,6 +59,17 @@ static BOOL Spin(NSTimeInterval timeout, BOOL (^done)(void)) {
     _collapsed++;
 }
 @end
+
+/// What UIApplication does for a touch-up-inside: deliver each target/action.
+/// (Headless `simctl spawn` processes have no UIApplication, so
+/// -sendActionsForControlEvents: would deliver nothing.)
+static void Fire(UIControl *control) {
+    for (id target in control.allTargets) {
+        for (NSString *name in [control actionsForTarget:target forControlEvent:UIControlEventTouchUpInside]) {
+            ((void (*)(id, SEL, id))objc_msgSend)(target, NSSelectorFromString(name), control);
+        }
+    }
+}
 
 static PortalRenderPlan Plan(int reduceMotion, int lowPower, int policy) {
     PortalAppearance a;
@@ -141,7 +153,7 @@ static void TestOverlay(void) {
     Check(o.gestureRecognizers.count == 0, @"the overlay adds no gesture recognisers (unlock and paging gestures untouched)");
     Check(o.accessibilityElements.count == 1, @"collapsed: one accessibility element (the orb)");
 
-    [(UIControl *)hit sendActionsForControlEvents:UIControlEventTouchUpInside];
+    Fire((UIControl *)hit);
     Check(o.expanded && r.expanded == 1, @"tap: the radial menu expands");
     Check(o.itemControls.count == 4, @"four destinations");
     Check(o.accessibilityElements.count == 5, @"expanded: orb + four items are accessible");
@@ -154,7 +166,7 @@ static void TestOverlay(void) {
     }
     Check(allHit, @"each item takes the touch at its own centre");
     Check(allBig, @"item touch targets are at least 44 pt (64 pt discs)");
-    [o.itemControls[1] sendActionsForControlEvents:UIControlEventTouchUpInside];
+    Fire(o.itemControls[1]);
     Check(r.selected.count == 1 && r.selected[0].destination == PORTAL_DEST_BACKGROUNDS, @"selecting an item reports exactly that destination");
 
     Check([o portalHitTest:CGPointMake(30, 120) touch:NO timestamp:0] == nil && o.expanded,
@@ -168,7 +180,7 @@ static void TestOverlay(void) {
     [o expand];
     [o showAppItems:@[ [PortalMenuItem itemWithTitle:@"App" symbol:@"app.fill" destination:PORTAL_DEST_APP_ITEM item:0] ]];
     Check([o.ringName isEqualToString:@"apps"] && o.itemControls.count == 1, @"HCG Apps ring replaces the main ring");
-    [(UIControl *)[o portalHitTest:CGPointMake(207, 390) touch:YES timestamp:60] sendActionsForControlEvents:UIControlEventTouchUpInside];
+    Fire((UIControl *)[o portalHitTest:CGPointMake(207, 390) touch:YES timestamp:60]);
     Check([o.ringName isEqualToString:@"main"] && o.expanded && o.itemControls.count == 4, @"tapping the orb in the app ring goes back");
     [o collapseAnimated:NO];
 

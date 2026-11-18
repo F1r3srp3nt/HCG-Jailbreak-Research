@@ -635,7 +635,7 @@ static void test_screen_fit(void) {
     CHECK(halo_profile_fit(max, noPixels, &k) == HaloScreenFitMismatch, "unknown pixels cannot prove zoom");
     HaloScreenMeasure odd = {375, 700, 1242, 2688};
     CHECK(halo_profile_fit(max, odd, &k) == HaloScreenFitMismatch, "non-uniform shrink is not zoom");
-    HaloScreenMeasure bad = {NAN, 812, 1242, 2688};
+    HaloScreenMeasure bad = {(double)NAN, 812, 1242, 2688};
     CHECK(halo_profile_fit(max, bad, &k) == HaloScreenFitUnknown, "NaN screen -> unknown");
     CHECK(halo_profile_fit(NULL, zoomed, &k) == HaloScreenFitUnknown, "no profile -> unknown");
     CHECK(halo_profile_fit(halo_profile_find("iphone-11-pro"), zoomed, &k) == HaloScreenFitUnknown, "planned -> unknown");

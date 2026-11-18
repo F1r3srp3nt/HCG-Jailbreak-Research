@@ -17,6 +17,14 @@
 **Baseline preserved:** HCG Halo 0.1.0~beta1 (SHA-256 `c0a3301c9b38cdac812d439fb919c3a77bfcb7999c52ea174d799e88ba24c9af`)
 and its import, pool file and handoff are unchanged.
 
+**Handoff archive:** run [44218558190](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44218558190),
+artifact `hcg-halo-0.2.0-beta1-handoff` (ID 14389860802, kept until 2027-02-16). The run:
+
+- checked the build run and artifact through the GitHub API;
+- recomputed the SHA-256 from a fresh download;
+- re-ran `validate.sh --require-new-abi` from `778c21a`;
+- re-extracted the archive and verified `SHA256SUMS`.
+
 ## Compatibility and install order
 
 - **Order:** install Halo 0.2.0~beta1 and Nexus 0.2.2~beta1 in either order, then respring once.
@@ -29,7 +37,8 @@ and its import, pool file and handoff are unchanged.
 
 ## HCG-repo
 
-The review branch is
+Review PR [F1r3srp3nt/HCG-repo#8](https://github.com/F1r3srp3nt/HCG-repo/pull/8). Prepare packages run 44218298900
+imported both artifacts (commit `cb82167`), and the pooled files match the pins. The review branch is
 [`candidate/hcg-halo-0.2.0-beta1-nexus-0.2.2-beta1`](https://github.com/F1r3srp3nt/HCG-repo/tree/candidate/hcg-halo-0.2.0-beta1-nexus-0.2.2-beta1).
 It holds both import manifests (`channel = "candidate"`), the `exception_versions` additions for exactly these two
 versions, the listings and the changelogs.

@@ -565,7 +565,10 @@ static UIImage *WallpaperImage(NSString *title, double hue) {
 }
 
 - (void)shot:(NSString *)name {
+    [CATransaction flush];
     Say(@"HAC-PREVIEW-SHOT %@", name);
+    // Hold this state while scripts/preview.sh takes the Simulator screenshot.
+    [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:2.5]];
 }
 
 - (void)next {

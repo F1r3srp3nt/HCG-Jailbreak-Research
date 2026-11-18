@@ -102,12 +102,27 @@ BOOL HACWriteTestVideo(NSURL *url, CGSize size, double seconds, double hue, BOOL
         return NO;
     }
     [writer startSessionAtSourceTime:kCMTimeZero];
+    // Video and audio are appended INTERLEAVED (audio up to each frame's end):
+    // AVAssetWriter stops accepting one input that runs too far ahead of the
+    // other, so writing all video first can wait forever. Every wait has a deadline.
     int fps = 30, frames = (int)lround(seconds * fps);
+    int64_t totalSamples = (int64_t)lround(seconds * 44100), samples = 0;
+    BOOL (^waitReady)(AVAssetWriterInput *) = ^BOOL(AVAssetWriterInput *input) {
+        NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:10];
+        while (!input.readyForMoreMediaData) {
+            if (writer.status != AVAssetWriterStatusWriting || [deadline timeIntervalSinceNow] < 0) return NO;
+            [NSThread sleepForTimeInterval:0.002];
+        }
+        return YES;
+    };
     CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
     BOOL ok = YES;
     for (int i = 0; i < frames && ok; i++) {
         @autoreleasepool {
-            while (!video.readyForMoreMediaData) [NSThread sleepForTimeInterval:0.002];
+            if (!waitReady(video)) {
+                ok = NO;
+                break;
+            }
             CVPixelBufferRef buffer = NULL;
             CVPixelBufferPoolCreatePixelBuffer(NULL, adaptor.pixelBufferPool, &buffer);
             if (!buffer) {
@@ -123,22 +138,23 @@ BOOL HACWriteTestVideo(NSURL *url, CGSize size, double seconds, double hue, BOOL
             CVPixelBufferUnlockBaseAddress(buffer, 0);
             ok = [adaptor appendPixelBuffer:buffer withPresentationTime:CMTimeMake(i, fps)];
             CVPixelBufferRelease(buffer);
+            int64_t until = MIN(totalSamples, (int64_t)lround((i + 1) * 44100.0 / fps));
+            while (audio && ok && samples < until) {
+                if (!waitReady(audio)) {
+                    ok = NO;
+                    break;
+                }
+                int n = (int)MIN((int64_t)1470, until - samples);
+                CMSampleBufferRef sample = SilenceBuffer(format, samples, n);
+                ok = sample && [audio appendSampleBuffer:sample];
+                if (sample) CFRelease(sample);
+                samples += n;
+            }
         }
     }
     CGColorSpaceRelease(space);
     [video markAsFinished];
-    if (audio && ok) {
-        int64_t total = (int64_t)lround(seconds * 44100), done = 0;
-        while (done < total && ok) {
-            while (!audio.readyForMoreMediaData) [NSThread sleepForTimeInterval:0.002];
-            int n = (int)MIN((int64_t)4410, total - done);
-            CMSampleBufferRef sample = SilenceBuffer(format, done, n);
-            ok = sample && [audio appendSampleBuffer:sample];
-            if (sample) CFRelease(sample);
-            done += n;
-        }
-        [audio markAsFinished];
-    }
+    if (audio) [audio markAsFinished];
     if (format) CFRelease(format);
     dispatch_semaphore_t sem = dispatch_semaphore_create(0);
     [writer finishWritingWithCompletionHandler:^{

@@ -33,6 +33,13 @@ static int g_checks = 0;
 /* iPhone-like page: 390 x 844 pt, 4 x 6 grid. */
 static const double W = 390.0, H = 844.0;
 
+/* Field-wise: struct padding bytes are unspecified, so never memcmp parameter structs. */
+static int tornado_equal(VortexTornadoParameters a, VortexTornadoParameters b) {
+    return a.intensity == b.intensity && a.radius == b.radius && a.tipRadius == b.tipRadius && a.height == b.height &&
+           a.rotations == b.rotations && a.direction == b.direction && a.travel == b.travel && a.depth == b.depth &&
+           a.iconSpin == b.iconSpin;
+}
+
 static int make_grid(VortexIconSlot *slots, int count) {
     int n = 0;
     for (int row = 0; row < 6 && n < count; row++) {
@@ -74,7 +81,7 @@ static VortexEffectParameters params_variant(int i) {
 static void test_defaults_and_sanitize(void) {
     VortexTornadoParameters d = vortex_tornado_defaults();
     VortexTornadoParameters classic = vortex_tornado_preset(VortexTornadoPresetClassic);
-    CHECK(memcmp(&d, &classic, sizeof d) == 0, "defaults are the Classic Tornado preset");
+    CHECK(tornado_equal(d, classic), "defaults are the Classic Tornado preset");
     CHECK(d.depth > 0 && d.iconSpin == 0 && d.direction == VortexSpinFollowSwipe && d.travel == VortexTravelFollowSwipe,
           "defaults: readable icons, depth on, follows the swipe");
     VortexTornadoParameters bad = { .intensity = NAN, .radius = 99.0, .tipRadius = 5.0, .height = -1.0, .rotations = -5.0,
@@ -88,8 +95,8 @@ static void test_defaults_and_sanitize(void) {
     /* Presets: in range and ordered Subtle < Classic < Sci-Fi in size, turns and depth. */
     VortexTornadoParameters sub = vortex_tornado_preset(VortexTornadoPresetSubtle);
     VortexTornadoParameters sci = vortex_tornado_preset(VortexTornadoPresetSciFi);
-    CHECK(memcmp(&sub, (VortexTornadoParameters[]){ vortex_tornado_sanitize(sub) }, sizeof sub) == 0 &&
-              memcmp(&sci, (VortexTornadoParameters[]){ vortex_tornado_sanitize(sci) }, sizeof sci) == 0,
+    CHECK(tornado_equal(sub, vortex_tornado_sanitize(sub)) && tornado_equal(sci, vortex_tornado_sanitize(sci)) &&
+              tornado_equal(classic, vortex_tornado_sanitize(classic)),
           "presets are within the valid ranges");
     CHECK(sub.radius < classic.radius && classic.radius < sci.radius && sub.rotations < classic.rotations &&
               classic.rotations < sci.rotations && sub.depth < classic.depth && classic.depth < sci.depth &&

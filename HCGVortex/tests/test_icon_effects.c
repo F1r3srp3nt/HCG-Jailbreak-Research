@@ -366,7 +366,16 @@ static void test_settings(void) {
               s.circuit.trail == 0.6 && s.magnetic.snap == d.magnetic.snap && s.orbital.direction == VortexSpinFollowSwipe,
           "settings sanitize");
     VortexIconEffectSettings dd = vortex_icon_settings_sanitize(d);
-    CHECK(memcmp(&d, &dd, sizeof d) == 0, "defaults are valid");
+    /* Field-wise: struct padding bytes are unspecified, so never memcmp settings structs. */
+    CHECK(d.orbital.radius == dd.orbital.radius && d.orbital.rings == dd.orbital.rings && d.orbital.tilt == dd.orbital.tilt &&
+              d.orbital.speed == dd.orbital.speed && d.orbital.direction == dd.orbital.direction &&
+              d.warp.intensity == dd.warp.intensity && d.warp.perspective == dd.warp.perspective &&
+              d.holo.depth == dd.holo.depth && d.holo.tilt == dd.holo.tilt && d.holo.layers == dd.holo.layers &&
+              d.circuit.trail == dd.circuit.trail && d.circuit.glow == dd.circuit.glow &&
+              d.circuit.intensity == dd.circuit.intensity && d.magnetic.strength == dd.magnetic.strength &&
+              d.magnetic.snap == dd.magnetic.snap && d.tornado.radius == dd.tornado.radius &&
+              d.tornado.depth == dd.tornado.depth && d.tornado.travel == dd.tornado.travel,
+          "defaults are valid");
     VortexIconSlot s1 = { .homeX = NAN, .rank = 0.5, .count = 3 };
     for (int kind = 0; kind < VortexIconEffectCount; kind++) {
         CHECK(vortex_icon_is_identity(visual(kind, 1, 0.5, 1, s1, NULL, NULL)), "%s: NaN home is ignored", NAMES[kind]);

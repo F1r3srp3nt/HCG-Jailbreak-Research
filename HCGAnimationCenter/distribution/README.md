@@ -37,5 +37,10 @@ packages**.
 | Handoff archive | workflow **HCG Animation Center handoff archive** (`.github/workflows/hcg-animationcenter-handoff.yml`): see `handoff/0.1.0-beta1/README.md` |
 | Device testing | **None.** Installation not yet attempted; runtime untested (`../docs/DEVICE_TEST_CHECKLIST.md`) |
 
+**Only these bytes are the 0.1.0~beta1 candidate.** Later commits on the branch (documentation, the preview harness)
+also ran the build workflow and produced packages with the same version number but a different build ID and
+SHA-256 (runs 44243655145 and 44245294301). Those are CI by-products, not candidates; do not import them. A changed
+package will get a new version.
+
 The real import must use the CI artifact named in the manifest; **Prepare packages** fetches it on HCG-repo's side and
 refuses any other bytes.

@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.1.0~beta1 — first beta (free public candidate demo)
+## 0.1.0~beta1
+
+First beta, free public candidate demo.
 
 First version of `com.hakmicapitalgroup.portal`.
 

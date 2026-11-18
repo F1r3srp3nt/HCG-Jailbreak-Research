@@ -30,6 +30,10 @@ on:
       nexus_ref:
         description: "HCG-Nexus branch, tag or commit to preview against"
         default: "claude/nexus-combined-0.3.1"
+      only_settings:
+        description: "Run only the Settings entry-point step"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -73,6 +77,7 @@ jobs:
           xcrun simctl list runtimes
 
       - name: Build and run the panel preview, recording video
+        if: ${{ !inputs.only_settings }}
         timeout-minutes: 20
         run: |
           {
@@ -88,13 +93,20 @@ jobs:
           echo "PANEL_PREVIEW_STATUS=$status" >> "$GITHUB_ENV"
 
       - name: Settings entry points (both real Settings bundles), recording video
+        if: ${{ always() }}
         timeout-minutes: 20
         run: |
+          [ -f "$RUNNER_TEMP/PROVENANCE.txt" ] || {
+            echo "PREVIEW EVIDENCE — iOS Simulator, not a device result."
+            echo "HCG Halo commit:  $(git rev-parse HEAD)"
+            echo "HCG Nexus commit: $(git -C "$NEXUS_DIR" rev-parse HEAD)"
+            echo "Workflow run:     $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/PROVENANCE.txt"
           status=0
           scripts/settings-preview.sh "$RUNNER_TEMP/halo-settings-preview" || status=$?
           cp "$RUNNER_TEMP/PROVENANCE.txt" "$RUNNER_TEMP/halo-settings-preview/" || true
           echo "panel preview: ${PANEL_PREVIEW_STATUS:-?}, settings preview: $status"
-          [ "${PANEL_PREVIEW_STATUS:-1}" = 0 ] && [ "$status" = 0 ]
+          [ "${PANEL_PREVIEW_STATUS:-0}" = 0 ] && [ "$status" = 0 ]
 
       - name: Upload preview evidence
         if: always()
@@ -110,5 +122,8 @@ jobs:
             ${{ runner.temp }}/halo-settings-preview/*.mp4
             ${{ runner.temp }}/halo-settings-preview/console.log
             ${{ runner.temp }}/halo-settings-preview/inputs.sha256
+            ${{ runner.temp }}/halo-settings-preview/*.txt
+            ${{ runner.temp }}/halo-settings-preview/*.log
+            ${{ runner.temp }}/halo-settings-preview/*.ips
           retention-days: 30
           if-no-files-found: warn

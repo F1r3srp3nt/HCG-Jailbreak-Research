@@ -89,21 +89,33 @@ xcrun simctl boot "$UDID" 2>/dev/null || true
 limit 600 xcrun simctl bootstatus "$UDID" -b >/dev/null
 xcrun simctl ui "$UDID" appearance dark 2>/dev/null || true
 xcrun simctl status_bar "$UDID" override --time 9:41 2>/dev/null || true
+codesign --verify --deep --strict "$APP" 2>&1 | tee "$OUT/codesign.txt" || echo "codesign verify reported problems (see above)"
 xcrun simctl install "$UDID" "$APP"
+stamp "installed; app container: $(xcrun simctl get_app_container "$UDID" com.hakmicapitalgroup.halo.settings-preview 2>&1)"
 
 stamp "recording"
 xcrun simctl io "$UDID" recordVideo --codec h264 --force "$OUT/halo-settings-preview.mp4" > "$OUT/record.log" 2>&1 &
 REC=$!
 sleep 4
-LOG="$OUT/console.log"; : > "$LOG"
-limit 180 xcrun simctl launch --console-pty --terminate-running-process "$UDID" com.hakmicapitalgroup.halo.settings-preview 2>&1 |
-while IFS= read -r line; do
-	printf '%s\n' "$line" | tee -a "$LOG"
-	case "$line" in *HALO-SETTINGS-DONE*) break;; esac
-done || true
+LOG="$OUT/console.log"; : > "$LOG"; : > "$OUT/stderr.log"
+# Launch detached with stdout/stderr redirected to files (more robust than a pty on CI), then poll.
+launch_status=0
+limit 60 xcrun simctl launch --terminate-running-process --stdout="$PWD/$LOG" --stderr="$PWD/$OUT/stderr.log" \
+	"$UDID" com.hakmicapitalgroup.halo.settings-preview 2>&1 | tee "$OUT/launch.txt" || launch_status=$?
+stamp "launch exit status $launch_status: $(cat "$OUT/launch.txt")"
+for _ in $(seq 1 90); do
+	grep -q 'HALO-SETTINGS-DONE' "$LOG" 2>/dev/null && break
+	sleep 2
+done
+cat "$LOG"
+echo "--- stderr (last 60 lines)"; tail -60 "$OUT/stderr.log" || true
 sleep 2
 kill -INT "$REC" 2>/dev/null || true
 wait "$REC" 2>/dev/null || true
+xcrun simctl spawn "$UDID" log show --last 10m --style compact \
+	--predicate 'process == "HaloSettingsPreview" OR eventMessage CONTAINS "settings-preview"' > "$OUT/system.log" 2>&1 || true
+echo "--- system log (last 80 lines)"; tail -80 "$OUT/system.log" || true
+for f in ~/Library/Logs/DiagnosticReports/HaloSettingsPreview*; do [ -f "$f" ] && { echo "--- crash report $f"; head -120 "$f"; cp "$f" "$OUT/"; }; done
 xcrun simctl terminate "$UDID" com.hakmicapitalgroup.halo.settings-preview 2>/dev/null || true
 xcrun simctl shutdown "$UDID" 2>/dev/null || true
 

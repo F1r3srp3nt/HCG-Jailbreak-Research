@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""Render the REAL Tornado geometry (tests/build/tornado_frames JSON) to images.
+"""Render the REAL per-icon effect geometry (tests/build/effect_frames JSON) to images.
 
-    make -C tests tornado-frames
-    tests/build/tornado_frames 61 > /tmp/frames.json
-    python3 -I scripts/render_tornado_preview.py /tmp/frames.json OUTDIR
+    make -C tests effect-frames
+    tests/build/effect_frames tornado 61 > /tmp/frames.json
+    python3 -I scripts/render_effect_preview.py /tmp/frames.json OUTDIR
 
-Writes OUTDIR/tornado-sheet.png (frames at several progress values) and
-OUTDIR/tornado-swipe.gif (a swipe forwards, a pause, then a reversal back).
+Writes OUTDIR/<effect>-sheet.png (frames at several progress values) and
+OUTDIR/<effect>-swipe.gif (a swipe forwards, a pause, a reversal back, then a
+completed swipe).
 
-Each square is an icon at the position, scale, rotation, depth order and
-opacity that vortex_tornado_icon() returned. Pages are drawn in page order
+Each square is an icon at the position, scale, rotation, 3-D tilt (drawn as a
+foreshortening), depth order and opacity that vortex_icon_effect_visual()
+returned; Circuit Flow traces are vortex_icon_effect_trace(). Pages are drawn in page order
 (outgoing below incoming) and icons are depth-sorted within each page, which
 is how SpringBoard composites sibling icon list views. This shows the
 geometry only; it is NOT a capture of SpringBoard on a device.
@@ -38,7 +40,7 @@ def background(w, h):
     return img
 
 
-def icon_tile(color, label, size, rotation, alpha):
+def icon_tile(color, label, size, rotation, alpha, sx=1.0, sy=1.0):
     s = max(int(size), 4)
     tile = Image.new("RGBA", (s, s), (0, 0, 0, 0))
     d = ImageDraw.Draw(tile)
@@ -49,6 +51,8 @@ def icon_tile(color, label, size, rotation, alpha):
     except TypeError:
         font = ImageFont.load_default()
     d.text((s / 2, s / 2 + s * 0.05), label, fill=(255, 255, 255, 235), font=font, anchor="mm")
+    if sx < 0.999 or sy < 0.999:
+        tile = tile.resize((max(int(s * sx), 2), max(int(s * sy), 2)), resample=Image.BICUBIC)
     if rotation:
         tile = tile.rotate(-math.degrees(rotation), resample=Image.BICUBIC, expand=True)
     if alpha < 1.0:
@@ -57,21 +61,39 @@ def icon_tile(color, label, size, rotation, alpha):
     return tile
 
 
+TRACE = (0, 229, 255)
+
+
 def render(frame, page, scale=SCALE):
     w, h = int(page[0] * scale), int(page[1] * scale)
     img = background(w, h).convert("RGBA")
     for pg in (0, 1):
-        page_alpha = frame["pageOpacity"][pg]
-        icons = sorted((ic for ic in frame["icons"] if ic["page"] == pg), key=lambda ic: ic["z"])
+        pv = frame["pages"][pg]
+        page_alpha = pv["o"]
+        ox, oy = pv["dx"] * page[0], pv["dy"] * page[1]
+        icons = [ic for ic in frame["icons"] if ic["page"] == pg]
+        # Circuit Flow traces: behind the icons of their page.
+        glow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        gd = ImageDraw.Draw(glow)
         for ic in icons:
+            pts = ic["trace"]["pts"]
+            if len(pts) < 2:
+                continue
+            a = ic["trace"]["a"] * page_alpha
+            xy = [((page[0] / 2 + ox + x) * scale, (page[1] / 2 + oy + y) * scale) for x, y in pts]
+            gd.line(xy, fill=TRACE + (int(90 * a),), width=max(int(7 * scale), 2), joint="curve")
+            gd.line(xy, fill=(200, 250, 255, int(235 * a)), width=max(int(2 * scale), 1))
+        img.alpha_composite(glow)
+        for ic in sorted(icons, key=lambda ic: ic["z"]):
             alpha = max(0.0, min(1.0, ic["o"] * page_alpha))
             if alpha <= 0.003:
                 continue
             palette = OUT_PALETTE if pg == 0 else IN_PALETTE
             label = ("ABCDEFGHIJKLMNOPQRSTUVWX" if pg == 0 else "abcdefghijklmnopqrstuvwx")[ic["i"]]
-            tile = icon_tile(palette[ic["i"] % len(palette)], label, ICON * ic["s"] * scale, ic["r"], alpha)
-            cx = (page[0] / 2 + ic["x"]) * scale
-            cy = (page[1] / 2 + ic["y"]) * scale
+            tile = icon_tile(palette[ic["i"] % len(palette)], label, ICON * ic["s"] * scale, ic["r"], alpha,
+                             abs(math.cos(ic["ty"])), abs(math.cos(ic["tx"])))
+            cx = (page[0] / 2 + ox + ic["x"]) * scale
+            cy = (page[1] / 2 + oy + ic["y"]) * scale
             img.alpha_composite(tile, (int(round(cx - tile.width / 2)), int(round(cy - tile.height / 2))))
     return img
 
@@ -94,25 +116,22 @@ def main():
         small = ImageFont.load_default(size=13)
     except TypeError:
         font = small = ImageFont.load_default()
-    pr = data["params"]
-    d.text((pad, 10), "HCG Vortex Tornado: real vortex_tornado_icon() geometry, finger swipes left "
-           f"(intensity {pr['intensity']}, radius {pr['radius']}, turns {pr['rotations']}, "
-           f"depth {'on' if pr['depth'] else 'off'}, icon spin {'on' if pr['iconSpin'] else 'off'}). "
-           "Geometry preview, not a device capture.", fill=(20, 20, 20), font=small)
+    name = data["effect"]
+    d.text((pad, 10), f"HCG Vortex {name}: real vortex_icon_effect_visual() geometry, default settings, finger "
+           "swipes left. Mock icons. Geometry preview, not a device capture.", fill=(20, 20, 20), font=small)
     for k, (f, t) in enumerate(zip(picks, tiles)):
         x = pad + k * (tw + pad)
         sheet.paste(t.convert("RGB"), (x, top))
         d.text((x + tw / 2, top + th + 16), f"progress {f['p']:.2f}", fill=(20, 20, 20), font=font, anchor="mm")
-    sheet.save(os.path.join(out, "tornado-sheet.png"))
+    sheet.save(os.path.join(out, f"{name}-sheet.png"))
 
     # Swipe forward, hold mid-swipe, then reverse (cancel) back to the start.
-    seq = frames + [frames[len(frames) // 2]] * 0
     mid = len(frames) // 2
     order = list(range(0, mid + 1)) + [mid] * 10 + list(range(mid, -1, -1)) + [0] * 6 + list(range(0, len(frames))) + [len(frames) - 1] * 8
     gif_frames = [render(frames[i], page, 0.45).convert("P", palette=Image.ADAPTIVE) for i in order]
-    gif_frames[0].save(os.path.join(out, "tornado-swipe.gif"), save_all=True, append_images=gif_frames[1:],
+    gif_frames[0].save(os.path.join(out, f"{name}-swipe.gif"), save_all=True, append_images=gif_frames[1:],
                        duration=40, loop=0, optimize=True)
-    print("wrote", os.path.join(out, "tornado-sheet.png"), "and", os.path.join(out, "tornado-swipe.gif"))
+    print("wrote", os.path.join(out, f"{name}-sheet.png"), "and", os.path.join(out, f"{name}-swipe.gif"))
 
 
 if __name__ == "__main__":

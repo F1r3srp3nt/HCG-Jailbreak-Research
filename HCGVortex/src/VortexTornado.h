@@ -40,12 +40,22 @@ typedef enum {
     VortexSpinCount
 } VortexSpinDirection;
 
+typedef enum {
+    VortexTravelFollowSwipe = 0, ///< The funnel crosses the screen in the finger's direction.
+    VortexTravelAgainstSwipe,    ///< ... in the opposite direction.
+    VortexTravelCentred,         ///< The funnel stays centred.
+    VortexTravelCount
+} VortexTravelMode;
+
 typedef struct {
-    double intensity;            ///< 0.1 .. 1.0: how far icons leave the grid; funnel size.
+    double intensity;            ///< 0.1 .. 1.0: how fast the funnel turns and how far icons climb.
     double radius;               ///< 0.15 .. 0.60: upper opening radius, fraction of page width.
+    double tipRadius;            ///< 0.02 .. 0.25: lower tip radius, fraction of page width (< radius).
+    double height;               ///< 0.35 .. 0.85: funnel height, fraction of page height.
     double rotations;            ///< 1.0 .. 4.0: spiral turns of the funnel from opening to tip.
     VortexSpinDirection direction;
-    int depth;                   ///< Bool: perspective scale, depth ordering and back-side dimming.
+    VortexTravelMode travel;
+    double depth;                ///< 0 .. 1: perspective scale, depth ordering and back-side dimming.
     int iconSpin;                ///< Bool: icons also rotate about their own centres (off = readable).
 } VortexTornadoParameters;
 
@@ -53,7 +63,8 @@ typedef struct {
 typedef struct {
     double tx, ty;               ///< Offset from the grid position, points.
     double scale;                ///< 1 = neutral.
-    double rotation;             ///< Radians about the icon's own centre. 0 = neutral.
+    double rotation;             ///< Radians about the icon's own centre (screen plane). 0 = neutral.
+    double tiltX, tiltY;         ///< Radians: 3-D tilt about the icon's horizontal / vertical axis. 0 = neutral.
     double z;                    ///< Depth (points, + towards the viewer), for ordering only. 0 = neutral.
     double opacity;              ///< 0..1 multiplier.
 } VortexIconVisual;
@@ -67,7 +78,16 @@ typedef struct {
 
 #define VORTEX_TORNADO_MAX_ICONS 64
 
+/// Classic Tornado (the default preset).
 VortexTornadoParameters vortex_tornado_defaults(void);
+
+typedef enum {
+    VortexTornadoPresetSubtle = 0,
+    VortexTornadoPresetClassic,
+    VortexTornadoPresetSciFi,
+    VortexTornadoPresetCount
+} VortexTornadoPreset;
+VortexTornadoParameters vortex_tornado_preset(VortexTornadoPreset preset);
 VortexTornadoParameters vortex_tornado_sanitize(VortexTornadoParameters p);
 
 VortexIconVisual vortex_icon_identity(void);
@@ -109,7 +129,7 @@ VortexIconVisual vortex_tornado_fallback_icon(VortexPageRole role,
 /// Funnel axis centre x (points from the page centre) at a raw progress.
 /// Exposed for tests and the preview.
 double vortex_tornado_centre_x(double progress, VortexNavigationDirection navigation, double pageWidth,
-                               const VortexEffectParameters *params);
+                               VortexTravelMode travel, const VortexEffectParameters *params);
 
 #ifdef __cplusplus
 }

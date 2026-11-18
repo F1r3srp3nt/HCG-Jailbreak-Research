@@ -62,7 +62,7 @@ fi
 
 # ---------------------------------------------------------------------------
 section "2. Source consistency"
-python3 - "$ROOT" <<'PY' && pass "Root.plist values match VortexPreferences / VortexMath" || fail "Root.plist / code identifier mismatch"
+python3 - "$ROOT" <<'PY' && pass "Settings panes match VortexPreferences / VortexMath (keys, values, generator)" || fail "Settings plist / code mismatch"
 import plistlib, re, sys, os, importlib.util
 root = sys.argv[1]
 src = open(os.path.join(root, "src/VortexPreferences.m")).read()
@@ -70,27 +70,40 @@ math_c = open(os.path.join(root, "src/VortexMath.c")).read()
 ids = dict(re.findall(r'NSString \*const (VortexEffectIdentifier\w+|VortexPresetPerDirection) = @"([^"]+)"', src))
 effects = {ids[k] for k in ids if k.startswith("VortexEffectIdentifier")}
 presets = effects | {ids["VortexPresetPerDirection"]}
-easings = set(re.search(r'validEasings \{\s*return @\[([^\]]+)\]', src).group(1).replace('@"', '"').replace('"', '').replace(' ', '').split(','))
+def code_list(name):
+    m = re.search(name + r' \{[^@]*return @\[([^\]]+)\]', src)
+    return set(m.group(1).replace('@"', '"').replace('"', '').replace(' ', '').replace('\n', '').split(','))
 directions = set(re.findall(r'\{ VortexDirection\w+,\s+"([a-z-]+)"', math_c))
-spins = set(re.search(r'validTornadoDirections \{[^@]*return @\[([^\]]+)\]', src).group(1).replace('@"', '"').replace('"', '').replace(' ', '').split(','))
-plist = plistlib.load(open(os.path.join(root, "preferences/Resources/Root.plist"), "rb"))
+spins = code_list("validTornadoDirections")
 expect = {"preset": presets, "swipeLeftEffect": effects, "swipeRightEffect": effects,
-          "incomingDirection": directions, "outgoingDirection": directions, "easing": easings,
-          "tornadoDirection": spins}
+          "incomingDirection": directions, "outgoingDirection": directions, "easing": code_list("validEasings"),
+          "tornadoDirection": spins, "orbitalDirection": spins, "tornadoTravel": code_list("validTravelModes"),
+          "tornadoPreset": code_list("validTornadoPresets"), "accentColor": code_list("validAccentColors")}
 keys_in_code = set(re.findall(r'NSString \*const VortexKey\w+ = @"([^"]+)"', src))
-ok = True
-for item in plist["items"]:
-    key = item.get("key")
-    if not key:
-        continue
-    if key not in keys_in_code:
-        print(f"    unknown key in Root.plist: {key}"); ok = False
-    if key in expect and set(item.get("validValues", [])) != expect[key]:
-        print(f"    {key}: plist {sorted(item.get('validValues', []))} != code {sorted(expect[key])}"); ok = False
 spec = importlib.util.spec_from_file_location("gen", os.path.join(root, "scripts/generate_root_plist.py"))
 gen = importlib.util.module_from_spec(spec); spec.loader.exec_module(gen)
-if gen.ITEMS != plist["items"]:
-    print("    Root.plist is stale: run scripts/generate_root_plist.py"); ok = False
+res = os.path.join(root, "preferences/Resources")
+ok = True
+panes = {"Root": gen.ITEMS, **gen.PANES}
+seen = set()
+for name, items in panes.items():
+    plist = plistlib.load(open(os.path.join(res, f"{name}.plist"), "rb"))
+    if items != plist["items"]:
+        print(f"    {name}.plist is stale: run scripts/generate_root_plist.py"); ok = False
+    for item in plist["items"]:
+        if item.get("pane") and item["pane"] not in gen.PANES:
+            print(f"    {name}: link to missing pane {item['pane']}"); ok = False
+        key = item.get("key")
+        if not key:
+            continue
+        seen.add(key)
+        if key not in keys_in_code:
+            print(f"    unknown key in {name}.plist: {key}"); ok = False
+        if key in expect and set(item.get("validValues", [])) != expect[key]:
+            print(f"    {name}/{key}: plist {sorted(item.get('validValues', []))} != code {sorted(expect[key])}"); ok = False
+missing = keys_in_code - seen
+if missing:
+    print(f"    keys with no Settings control: {sorted(missing)}"); ok = False
 sys.exit(0 if ok else 1)
 PY
 
@@ -163,6 +176,7 @@ for f in Library/MobileSubstrate/DynamicLibraries/HCGVortex.dylib \
          Library/PreferenceBundles/HCGVortexPrefs.bundle/HCGVortexPrefs \
          Library/PreferenceBundles/HCGVortexPrefs.bundle/Info.plist \
          Library/PreferenceBundles/HCGVortexPrefs.bundle/Root.plist \
+         Library/PreferenceBundles/HCGVortexPrefs.bundle/Tornado.plist \
          Library/PreferenceBundles/HCGVortexPrefs.bundle/icon.png \
          Library/PreferenceLoader/Preferences/HCGVortexPrefs.plist; do
 	[ -s "$JB/$f" ] && pass "/var/jb/$f" || fail "missing /var/jb/$f"

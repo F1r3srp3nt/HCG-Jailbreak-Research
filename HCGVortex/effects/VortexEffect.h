@@ -4,7 +4,10 @@
 //
 //  Effect interface + built-in effect classes + registry.
 //
-//  Adding an effect (v0.2.0+): create a class conforming to <VortexEffect>,
+//  Per-icon effects (v0.2.0+) are VortexGeometricEffect instances over the C
+//  dispatcher; add a kind to src/VortexIconEffects.h instead of a class.
+//
+//  Adding a page effect: create a class conforming to <VortexEffect>,
 //  return a VortexPageVisual for (role, progress, navigation), and register
 //  it in VortexEffectRegistry -registerBuiltins. The engine, navigation and
 //  preferences need no changes beyond adding the identifier to
@@ -13,7 +16,7 @@
 
 #import <Foundation/Foundation.h>
 #import "../src/VortexTypes.h"
-#import "../src/VortexTornado.h"
+#import "../src/VortexIconEffects.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -61,15 +64,28 @@ NS_ASSUME_NONNULL_BEGIN
 - (VortexIconVisual)fallbackVisualForRole:(VortexPageRole)role
                                  progress:(double)progress
                                parameters:(const VortexEffectParameters *)parameters;
+@optional
+/// Illuminated trace behind an icon (Circuit Flow). count == 0: nothing to draw.
+- (VortexTrace)traceForRole:(VortexPageRole)role
+                   progress:(double)progress
+                 navigation:(VortexNavigationDirection)navigation
+                       slot:(VortexIconSlot)slot
+                  pageWidth:(double)pageWidth
+                 pageHeight:(double)pageHeight
+                 parameters:(const VortexEffectParameters *)parameters;
 @end
 
-/// Tornado: the icons lift out of the grid into a tapered helical funnel that
-/// travels with the swipe; the incoming icons unwind out of it into place.
-/// Built per configuration (it carries the user's Tornado settings).
-@interface VortexTornadoEffect : NSObject <VortexIconEffect>
-- (instancetype)initWithParameters:(VortexTornadoParameters)parameters NS_DESIGNATED_INITIALIZER;
+/// Every per-icon effect (Tornado, Orbital, Warp, Holographic Layers, Circuit
+/// Flow, Magnetic Grid): binds the tested C geometry in src/VortexIconEffects.c
+/// to the effect interface. Built per configuration (it carries the settings).
+@interface VortexGeometricEffect : NSObject <VortexIconEffect>
+- (instancetype)initWithKind:(VortexIconEffectKind)kind
+                  identifier:(NSString *)identifier
+                 displayName:(NSString *)displayName
+                    settings:(VortexIconEffectSettings)settings NS_DESIGNATED_INITIALIZER;
 - (instancetype)init NS_UNAVAILABLE;
-@property (nonatomic, readonly) VortexTornadoParameters tornadoParameters;
+@property (nonatomic, readonly) VortexIconEffectKind kind;
+@property (nonatomic, readonly) VortexIconEffectSettings settings;
 @end
 
 /// Base for every effect that is a pair of directions (incoming-from /

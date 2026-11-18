@@ -1,90 +1,162 @@
 # Effects
 
-| Effect | Identifier | Moves | Since |
-|---|---|---|---|
-| Reverse Slide | `reverse-slide` | whole pages | 0.1.0 |
-| Vertical Rise | `vertical-rise` | whole pages | 0.1.0 |
-| Vertical Fall | `vertical-fall` | whole pages | 0.1.0 |
-| Custom Directions | `custom` | whole pages | 0.1.0 |
-| **Tornado** | `tornado` | **individual icons** | 0.2.0 |
-| iOS Default | `stock` | nothing | 0.1.0 |
+| Effect | Identifier | Moves | Since | Status |
+|---|---|---|---|---|
+| Reverse Slide | `reverse-slide` | pages | 0.1.0 | build-validated |
+| Vertical Rise | `vertical-rise` | pages | 0.1.0 | build-validated |
+| Vertical Fall | `vertical-fall` | pages | 0.1.0 | build-validated |
+| Custom Directions | `custom` | pages | 0.1.0 | build-validated |
+| **Tornado** | `tornado` | icons | 0.2.0 (controls 0.3.0) | build-validated, geometry preview |
+| **Orbital** | `orbital` | icons | 0.3.0 | build-validated, geometry preview |
+| **Warp** | `warp` | icons | 0.3.0 | build-validated, geometry preview |
+| **Holographic Layers** | `holographic` | icons | 0.3.0 | build-validated, geometry preview |
+| **Circuit Flow** | `circuit-flow` | icons + traces | 0.3.0 | build-validated, geometry preview |
+| **Magnetic Grid** | `magnetic` | icons (pages move as iOS) | 0.3.0 | build-validated, geometry preview |
+| iOS Default | `stock` | nothing | 0.1.0 | — |
 
-Every effect is optional and selectable as the preset or per swipe direction.
+**No effect has been run on a device yet.** "Geometry preview" means images drawn from the real geometry functions
+with mock icons (`tests/build/effect_frames` → `scripts/render_effect_preview.py`). They are **not** captures of
+SpringBoard. Every effect is optional and selectable as the preset or per swipe direction.
+
+## Shared engine
+
+- **One progress model.** Every per-icon effect is a pure C function of the raw gesture progress
+  (`src/VortexIconEffects.c`, Tornado in `src/VortexTornado.c`). Each page has its own travel *u*: outgoing
+  *u* = progress, incoming *u* = 1 − progress. *u* = 0 is the icon in its grid. There is no animation state, so for
+  every effect pausing holds, reversing unwinds and cancelling restores.
+- **What the engine touches.** It sets, on each `SBIconView` of the two pages in the transition:
+  - `layer.sublayerTransform`: offset, scale, rotation, 3-D tilt;
+  - `layer.zPosition`: depth order within the page;
+  - `layer.opacity`.
+
+  Circuit Flow also adds one container layer of six `CAShapeLayer`s to each of those pages. Nothing changes frames,
+  icon order, the saved layout or hit-testing.
+- **Restoration.** Originals are recorded, and every icon is restored (and every trace layer removed) when:
+  - the swipe settles or is cancelled;
+  - an effect or the tweak is disabled, or the configuration changes;
+  - edit mode starts, or the Home Screen leaves the window;
+  - Reduce Motion changes;
+  - a fault trips the engine.
+
+  Anything not updated in a frame is restored at the end of that frame.
+- **Widgets and oversized icon views** (over 30 % of the page width) never join a formation. They fade in place;
+  with Magnetic Grid they move with their page.
+- **Exclusions are unchanged:** folders, Today View, App Library and edit mode stay stock.
+- **Reduce Motion:** all six icon effects use the stock animation while it is on.
+- **Kill switch, master switch, launch guard:** unchanged.
 
 ## Tornado
 
-During a Home Screen page swipe, the icons of the outgoing page lift out of the grid and form a three-dimensional
-tornado: a tapered helical funnel (wide opening at the top, narrow tip at the bottom, several spiral turns around a
-vertical axis). The funnel travels across the screen with the swipe and turns as you drag. The incoming page's icons
-are interleaved on the same helix and unwind out of it into their exact grid positions.
+The icons lift out of the grid into a 3-D tornado and the funnel travels with the swipe. It has:
+- a narrow lower tip and a wider upper opening;
+- spiral turns around a vertical axis;
+- icons spread along it with depth.
 
-![Tornado geometry at several points of a swipe](media/tornado-sheet.png)
+The incoming page's icons are interleaved on the same helix and unwind into their exact grid positions. Both pages
+are in the funnel at mid-swipe.
 
-`media/tornado-swipe.gif` shows a swipe, a pause, a reversal back to the start and a completed swipe. Both images are
-drawn from the **real** geometry functions (`tests/build/tornado_frames` → `scripts/render_tornado_preview.py`) with
-mock icons. **They are not captures of SpringBoard on a device.**
+| Classic Tornado (default) | Subtle | Sci-Fi Vortex |
+|---|---|---|
+| ![](media/tornado-sheet.png) | ![](media/tornado-subtle-sheet.png) | ![](media/tornado-scifi-sheet.png) |
 
-### How it is built
+**Controls:**
+- **Preset:** Subtle / Classic Tornado / Sci-Fi Vortex / Custom.
+- **Funnel Height:** 0.35–0.85 of the screen height.
+- **Upper Radius:** 0.15–0.6 of the screen width.
+- **Lower Radius:** 0.02–0.25, always smaller than the upper radius.
+- **Spiral Turns:** 1–4.
+- **Intensity:** 0.1–1.
+- **Depth & Perspective:** 0–1.
+- **Rotation Direction:** Follow Swipe / Clockwise / Counterclockwise.
+- **Travel:** Follow Swipe / Against Swipe / Stay Centred.
+- **Spin Icons:** off by default, so icon faces stay readable.
+- **Reset to Defaults.**
 
-- **Geometry:** `src/VortexTornado.c`, pure C with no state. Every icon's offset, scale, depth, rotation and opacity is
-  a function of the swipe progress. So pausing holds the formation, reversing unwinds it, and cancelling returns
-  every icon to its grid position, with no animation state to get out of sync.
-- **Choreography:** each page has its own travel u (outgoing: progress; incoming: 1 − progress).
-  - u 0 → ~0.45: icons lift and gather into the funnel, top rows first.
-  - Then they climb and swirl along it.
-  - u 0.72 → 0.97: they fade.
-  - At mid-swipe both pages are fully in the funnel together.
-- **Engine:** `VortexIconEffect` (`effects/VortexEffect.h`) is an optional extension of the effect interface.
-  - The page visual pins both pages to the screen centre.
-  - The engine then sets, on each `SBIconView` of the outgoing and incoming pages, `layer.sublayerTransform`
-    (offset, scale, optional spin), `layer.zPosition` (depth order within the page) and `layer.opacity`.
-  - None of these change frames, centres, subview order, icon order or the saved layout, and none affect
-    hit-testing.
-- **Restoration:** each touched icon layer's original zPosition and opacity are recorded.
-  - Every icon is restored when the swipe settles or is cancelled, the effect or tweak is disabled, the configuration
-    changes, edit mode starts, the Home Screen leaves the window, Reduce Motion changes, or a fault trips the engine.
-  - Any icon not updated in a frame is restored at the end of that frame: its page left the transition, or the icon
-    was removed.
-- **Not ordinary icons:** icon views wider or taller than 30 % of the page (widgets) do not join the funnel. They
-  fade in place (`vortex_tornado_fallback_icon`).
-- **Exclusions:** unchanged. Folders, Today View, App Library and edit mode stay stock.
-- **Reduce Motion:** Tornado resolves to the stock animation while it is on. Page effects are unchanged.
-- **Kill switch / master switch / launch guard:** unchanged. They act before any effect runs.
+## Orbital
 
-### Controls (Settings › HCG Vortex › Tornado)
+Icons move onto 2–5 concentric rings around a shared centre. Inner rings travel faster. The icons orbit, then resolve
+into the next page's grid. The rings are tilted slightly for subtle depth: rings, not a funnel.
+![](media/orbital-sheet.png)
 
-| Control | Key | Range | Default |
-|---|---|---|---|
-| Tornado Intensity | `tornadoIntensity` | 0.1 – 1.0 | 0.7 |
-| Spiral Radius (upper opening, × screen width) | `tornadoRadius` | 0.15 – 0.60 | 0.36 |
-| Spiral Turns | `tornadoRotations` | 1 – 4 | 2.5 |
-| Spin Direction | `tornadoDirection` | Follow Swipe / Clockwise / Counterclockwise | Follow Swipe |
-| Depth & Scale (perspective, depth order, dimmer back side) | `tornadoDepth` | on / off | on |
-| Spin Icons (rotate each icon about its own centre) | `tornadoIconSpin` | on / off | **off** (icons stay readable) |
+**Controls:** Outer Radius, Rings, Ring Tilt, Orbit Speed, Direction, Reset.
 
-The shared Speed, Easing and Reverse Animation settings also apply. Reverse flips the funnel's travel direction.
+## Warp
 
-The section has a **live preview**: `VortexTornadoPreviewCell` runs the same C geometry on mock tiles with your current
-settings. It shows a still frame when Reduce Motion is on.
+Icons recede towards a vanishing point onto a tunnel ring (perspective), then expand into the destination grid.
+Opacity and scale change monotonically, so nothing flashes, and there is no blur.
+![](media/warp-sheet.png)
 
-### Verified so far
+**Controls:** Intensity, Perspective, Reset.
 
-- **Host tests** (`tests/test_tornado.c`, in `make -C tests test` and `validate.sh`):
-  - endpoints for both roles, 1–24 icons, every parameter set and both swipe directions;
-  - continuity (frame-step halving) for every parameter set;
-  - pause gives the identical formation; reversal unwinds;
-  - cancel and rapid flicks driven through the real navigation state machine;
-  - funnel shape at mid-swipe: taper, height, front and back depth, perspective, back-side dimming;
-  - spin direction, travel direction, readable-by-default;
+## Holographic Layers
+
+Icons separate into 2–4 depth layers that slide at different speeds (parallax). The layers float, tilt in 3-D and
+turn slightly translucent at the back. At both ends every icon and label is back to its original appearance (tested:
+identity).
+![](media/holographic-sheet.png)
+
+**Controls:** Depth, Tilt, Layers, Reset.
+
+## Circuit Flow
+
+Icons run along right-angle traces on bus lanes between the rows. Each leaves a brief illuminated trail of
+configurable length, which fades in and out with that icon's run, so nothing is drawn at rest.
+- **Rendering:** per page, three brightness buckets × (glow, core) shape-layer paths, rebuilt each frame. There are
+  no shadows, blur or images.
+- **Colour and glow:** the Accent Colour and Glow Intensity in Appearance.
+- **Combinations:** standalone only. It is not combined with other effects; that would need measured performance
+  first.
+![](media/circuit-flow-sheet.png)
+
+**Controls:** Trail Length, Trace Intensity, Reset. Appearance has Accent Colour and Glow Intensity.
+
+## Magnetic Grid
+
+The subtle everyday option. Pages move exactly as in iOS. Icons loosen gently from the grid (at most about 14 pt),
+then lock into their exact positions with a single bounded overshoot (at most about 3 pt) during the last 12 % of the
+arrival.
+- The motion is driven by progress, so nothing moves after the page has arrived.
+- It has no prolonged bouncing: at most one sign change, which is tested.
+![](media/magnetic-sheet.png)
+
+**Controls:** Separation, Snap, Reset.
+
+## Settings layout
+
+- **Root pane:** Enable, Animation Preset and Restore Default Behavior.
+- **Effects:** one page per effect, each with a description, a **live preview** (`VortexEffectPreviewCell`, running
+  the same C geometry with your settings), its controls and Reset to Defaults.
+- **Directional Controls:** the page effects.
+- **Appearance:** accent colour and glow.
+- **Accessibility & Performance:** Reduce Motion status and behaviour, the performance caveat, and the safety switches.
+- **Timing:** duration, speed, intensity and easing.
+- **Reset & Diagnostics.**
+
+## Verified so far
+
+- **Host tests:**
+  - `tests/test_math.c` (2,227,615 checks);
+  - `tests/test_tornado.c` (13,080,798);
+  - `tests/test_icon_effects.c` (15,720,198).
+
+  They cover:
+  - the start and end contract of every effect, for both roles, 1–24 icons, minimum, default and maximum settings
+    and both swipe directions;
+  - continuity, by halving the frame step;
+  - pause, reverse and cancel through the real navigation state machine;
+  - each effect's shape: ring count, tunnel compression, layer bands with parallax, axis-aligned traces attached to
+    their icons, and a bounded snap;
+  - Tornado presets and travel modes;
   - degenerate input.
-- **Build:** compiles with `-Werror`; the package passes `validate.sh`.
+- **Validation:**
+  - `validate.sh` checks every Settings pane against the code and runs all three test binaries;
+  - the package is checked for gzip format, Mach-O and arm64e ABI, injection filter and forbidden APIs.
 
-### Not yet verified (needs a device)
+## Not yet verified (needs a device)
 
-- That `SBIconView`s are direct subviews of `SBIconListView` on the tested iOS version. If they are not, Tornado
-  degrades to a centred cross-fade.
-- Frame rate, smoothness and battery impact on real hardware.
-- Icon taps opening the right app after a completed and after a cancelled swipe. Hit-testing is never modified,
-  but this is not yet observed.
-- Widgets, App Library and Today View behaviour on a device.
+- That `SBIconView`s are direct subviews of `SBIconListView` on the tested iOS. If they are not, icon effects degrade
+  to the page visual only.
+- Frame rate, smoothness and battery impact on real hardware, including Circuit Flow's per-frame paths.
+- Icon taps opening the intended app after a completed and after a cancelled swipe.
+- Widgets, partially filled pages, Today View, App Library and folders on a device.
 - Coexistence with HCG Halo or HCG Nexus. **Not tested; no compatibility is claimed.**

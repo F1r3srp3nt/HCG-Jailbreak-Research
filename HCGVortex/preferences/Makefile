@@ -16,10 +16,12 @@ VORTEX_VERSION := $(subst ~,-,$(shell sed -n 's/^Version: *//p' $(CURDIR)/../con
 HCGVortexPrefs_FILES = \
 	VortexRootListController.m \
 	VortexHeaderView.m \
-	VortexTornadoPreviewCell.m \
+	VortexEffectPreviewCell.m \
+	VortexEffectPaneController.m \
 	../src/VortexPreferences.m \
 	../src/VortexMath.c \
-	../src/VortexTornado.c
+	../src/VortexTornado.c \
+	../src/VortexIconEffects.c
 HCGVortexPrefs_FRAMEWORKS = UIKit QuartzCore
 HCGVortexPrefs_PRIVATE_FRAMEWORKS = Preferences
 HCGVortexPrefs_INSTALL_PATH = /Library/PreferenceBundles

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>items</key>
+	<array>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Icons run along right-angle circuit traces and leave a brief illuminated trail. Trails are drawn as a few shape layers per page (no blur or shadows). Colour and glow are set in Appearance. Standalone effect: it is not combined with other effects. Implemented and build-validated; not yet tested on a device.</string>
+			<key>label</key>
+			<string>Circuit Flow</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSDefaultCell</string>
+			<key>cellClass</key>
+			<string>VortexEffectPreviewCell</string>
+			<key>effect</key>
+			<string>circuit-flow</string>
+			<key>height</key>
+			<integer>300</integer>
+			<key>id</key>
+			<string>circuit-flowPreview</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Fraction of the screen width.</string>
+			<key>label</key>
+			<string>Trail Length</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>id</key>
+			<string>circuitTrail</string>
+			<key>key</key>
+			<string>circuitTrail</string>
+			<key>label</key>
+			<string></string>
+			<key>max</key>
+			<real>0.6</real>
+			<key>min</key>
+			<real>0.1</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Brightness of the traces.</string>
+			<key>label</key>
+			<string>Trace Intensity</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>id</key>
+			<string>circuitIntensity</string>
+			<key>key</key>
+			<string>circuitIntensity</string>
+			<key>label</key>
+			<string></string>
+			<key>max</key>
+			<real>1.0</real>
+			<key>min</key>
+			<real>0.1</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Returns only this page's settings to their defaults.</string>
+		</dict>
+		<dict>
+			<key>action</key>
+			<string>resetPane:</string>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>id</key>
+			<string>resetPane</string>
+			<key>label</key>
+			<string>Reset to Defaults</string>
+		</dict>
+	</array>
+	<key>title</key>
+	<string>CircuitFlow</string>
+</dict>
+</plist>

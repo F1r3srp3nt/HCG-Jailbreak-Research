@@ -1,5 +1,27 @@
 # Changelog — HCG Vortex
 
+## 0.3.0-beta1 (Debian version `0.3.0~beta1`)
+
+Free experimental beta. **Not yet installed or tested on a device.**
+
+### Added
+- **Orbital**, **Warp**, **Holographic Layers**, **Circuit Flow** and **Magnetic Grid** icon effects, each optional and
+  selectable as the preset or per swipe direction (see `docs/EFFECTS.md`).
+- **Tornado controls:** funnel height, upper and lower radius, depth & perspective (0–1), travel (follow / against /
+  centred), and presets Subtle, Classic Tornado (default) and Sci-Fi Vortex.
+- **Settings:** a page per effect with a description, live preview, controls and Reset to Defaults; Appearance (accent
+  colour, glow); Accessibility & Performance; "Reset & Diagnostics".
+- **Engine:** generic per-icon effect class over one C dispatcher; 3-D tilt; Circuit Flow trace layers, removed on
+  every restore path; Reduce Motion covers all icon effects.
+- **Tests:** `tests/test_icon_effects.c` (shared contract and shape tests for all six effects). `validate.sh` checks
+  every Settings pane.
+
+### Changed
+- Tornado's `tornadoDepth` is now 0–1 (was on/off), and Spiral Radius is now the exact upper radius.
+
+### Unchanged
+- Page effects, exclusions, kill switch, launch guard, and gzip packaging with Theos pinned to `8167f59`.
+
 ## 0.2.0-beta1 (Debian version `0.2.0~beta1`)
 
 Free experimental beta. **Not yet installed or tested on a device.**

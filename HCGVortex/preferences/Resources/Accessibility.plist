@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>items</key>
+	<array>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>While Settings › Accessibility › Motion › Reduce Motion is on, every icon effect (Tornado, Orbital, Warp, Holographic Layers, Circuit Flow, Magnetic Grid) uses the stock iOS animation. Page effects are unchanged.</string>
+			<key>label</key>
+			<string>Reduce Motion</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSTitleValueCell</string>
+			<key>get</key>
+			<string>reduceMotionStatus:</string>
+			<key>id</key>
+			<string>reduceMotionStatus</string>
+			<key>label</key>
+			<string>Reduce Motion</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Icon effects update a few layer properties per icon per frame and allocate no images. Frame rate and battery impact have NOT been measured on a device yet. If a page stutters, choose Magnetic Grid or a page effect.</string>
+			<key>label</key>
+			<string>Performance</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Enable Vortex (main page) turns everything off immediately. If SpringBoard keeps crashing, Vortex disables itself after 3 quick crashes, or create the kill-switch file described in the package's Removal notes and respring.</string>
+			<key>label</key>
+			<string>Safety</string>
+		</dict>
+	</array>
+	<key>title</key>
+	<string>Accessibility</string>
+</dict>
+</plist>

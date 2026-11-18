@@ -36,6 +36,19 @@
 @implementation VortexIconRecord
 @end
 
+/// Circuit Flow traces drawn on one page: added by Vortex, removed by Vortex.
+/// Three brightness buckets x (glow, core) shape layers; no shadows (cheap).
+#define VORTEX_TRACE_BUCKETS 3
+@interface VortexTraceOverlay : NSObject
+@property (nonatomic, strong) CALayer *container;
+@property (nonatomic, strong) NSArray<CAShapeLayer *> *glow;
+@property (nonatomic, strong) NSArray<CAShapeLayer *> *core;
+@property (nonatomic) NSUInteger frame;
+@end
+
+@implementation VortexTraceOverlay
+@end
+
 #pragma mark - Engine
 
 @interface VortexAnimationEngine ()
@@ -48,6 +61,7 @@
     VortexNavigation *_navigation;
     NSMapTable<CALayer *, VortexLayerRecord *> *_records; // weak layer -> record
     NSMapTable<CALayer *, VortexIconRecord *> *_iconRecords; // weak icon layer -> record
+    NSMapTable<CALayer *, VortexTraceOverlay *> *_overlays;  // weak page layer -> Circuit Flow traces
     NSUInteger _frame;                                    // update counter (icon bookkeeping)
     id<VortexEffect> _forwardEffect;                      // finger swipes left
     id<VortexEffect> _backwardEffect;                     // finger swipes right
@@ -69,6 +83,7 @@
         _navigation = [[VortexNavigation alloc] init];
         _records = [NSMapTable weakToStrongObjectsMapTable];
         _iconRecords = [NSMapTable weakToStrongObjectsMapTable];
+        _overlays = [NSMapTable weakToStrongObjectsMapTable];
         _presented = NAN;
         _configuration = [VortexPreferences configurationFromDictionary:nil];
         [self resolveEffects];
@@ -106,11 +121,15 @@
         return [[VortexCustomDirectionalEffect alloc] initWithIncomingFrom:self.configuration.incomingDirection
                                                                 outgoingTo:self.configuration.outgoingDirection];
     }
-    if ([identifier isEqualToString:VortexEffectIdentifierTornado]) {
+    VortexIconEffectKind kind;
+    if ([VortexPreferences iconEffectKind:&kind forIdentifier:identifier]) {
         // Reduce Motion: icons flying around is exactly what it asks to avoid.
         if (UIAccessibilityIsReduceMotionEnabled())
             return [[VortexEffectRegistry sharedRegistry] effectForIdentifier:VortexEffectIdentifierStock];
-        return [[VortexTornadoEffect alloc] initWithParameters:self.configuration.tornadoParameters];
+        return [[VortexGeometricEffect alloc] initWithKind:kind
+                                                identifier:identifier
+                                               displayName:identifier
+                                                  settings:self.configuration.iconEffectSettings];
     }
     id<VortexEffect> effect = [[VortexEffectRegistry sharedRegistry] effectForIdentifier:identifier];
     return effect ?: [[VortexEffectRegistry sharedRegistry] effectForIdentifier:VortexEffectIdentifierStock];
@@ -139,7 +158,7 @@
 
 - (void)folderView:(UIView *)folderView didScroll:(UIScrollView *)scrollView {
     if (![self isActive]) {
-        if (_records.count || _iconRecords.count) [self restoreAll];
+        if (_records.count || _iconRecords.count || _overlays.count) [self restoreAll];
         return;
     }
     UIView *current = _folderView;
@@ -154,7 +173,7 @@
 - (void)folderViewDidLayout:(UIView *)folderView {
     if (folderView != _folderView) return;
     if (![self isActive]) {
-        if (_records.count || _iconRecords.count) [self restoreAll];
+        if (_records.count || _iconRecords.count || _overlays.count) [self restoreAll];
         return;
     }
     if (_records.count || _iconRecords.count || _displayLink) [self updateAdvancingPresentation:NO deltaTime:0.0];
@@ -352,7 +371,25 @@ static VortexPageVisual VortexEffectTrampoline(void *context, VortexPageRole rol
     vortex_tornado_rank(ranked, m, 0.08 * width);
     for (int k = 0; k < m; k++) slots[rankedIndex[k]] = ranked[k];
 
+    BOOL traces = [effect respondsToSelector:@selector(traceForRole:progress:navigation:slot:pageWidth:pageHeight:parameters:)];
+    CGMutablePathRef paths[VORTEX_TRACE_BUCKETS] = { NULL, NULL, NULL };
     for (int i = 0; i < n; i++) {
+        if (traces && !fallback[i]) {
+            VortexTrace t = [effect traceForRole:role
+                                        progress:snapshot->progress
+                                      navigation:snapshot->direction
+                                            slot:slots[i]
+                                       pageWidth:width
+                                      pageHeight:height
+                                      parameters:params];
+            if (t.count >= 2) {
+                int bucket = t.alpha > 0.66 ? 2 : (t.alpha > 0.33 ? 1 : 0);
+                if (!paths[bucket]) paths[bucket] = CGPathCreateMutable();
+                CGPathMoveToPoint(paths[bucket], NULL, midX + t.points[0].x, midY + t.points[0].y);
+                for (int q = 1; q < t.count; q++)
+                    CGPathAddLineToPoint(paths[bucket], NULL, midX + t.points[q].x, midY + t.points[q].y);
+            }
+        }
         VortexIconVisual v = fallback[i]
             ? [effect fallbackVisualForRole:role progress:snapshot->progress parameters:params]
             : [effect iconVisualForRole:role
@@ -364,6 +401,60 @@ static VortexPageVisual VortexEffectTrampoline(void *context, VortexPageRole rol
                              parameters:params];
         [self applyIconVisual:v toLayer:views[i].layer];
     }
+    if (traces) {
+        [self drawTraces:paths onPage:page]; // keeps the overlay for the whole transition (no churn)
+        for (int b = 0; b < VORTEX_TRACE_BUCKETS; b++)
+            if (paths[b]) CGPathRelease(paths[b]);
+    }
+}
+
+- (void)drawTraces:(CGMutablePathRef *)paths onPage:(UIView *)page {
+    CALayer *pageLayer = page.layer;
+    VortexTraceOverlay *overlay = [_overlays objectForKey:pageLayer];
+    if (!overlay) {
+        overlay = [[VortexTraceOverlay alloc] init];
+        CALayer *container = [CALayer layer];
+        container.zPosition = -1.0; // behind the icons
+        NSMutableArray *glow = [NSMutableArray array], *core = [NSMutableArray array];
+        for (int b = 0; b < VORTEX_TRACE_BUCKETS; b++) {
+            for (int g = 0; g < 2; g++) {
+                CAShapeLayer *line = [CAShapeLayer layer];
+                line.fillColor = nil;
+                line.lineCap = kCALineCapRound;
+                line.lineJoin = kCALineJoinMiter;
+                [container addSublayer:line];
+                [(g ? core : glow) addObject:line];
+            }
+        }
+        overlay.container = container;
+        overlay.glow = glow;
+        overlay.core = core;
+        [pageLayer insertSublayer:container atIndex:0];
+        [_overlays setObject:overlay forKey:pageLayer];
+    }
+    overlay.frame = _frame;
+    overlay.container.frame = pageLayer.bounds;
+    NSArray<NSNumber *> *rgb = self.configuration.accentRGB;
+    double glow = self.configuration.iconEffectSettings.circuit.glow;
+    UIColor *colour = [UIColor colorWithRed:rgb[0].doubleValue green:rgb[1].doubleValue blue:rgb[2].doubleValue alpha:1.0];
+    for (int b = 0; b < VORTEX_TRACE_BUCKETS; b++) {
+        float level = (float)(b + 1) / VORTEX_TRACE_BUCKETS;
+        CAShapeLayer *g = overlay.glow[b], *c = overlay.core[b];
+        g.path = paths[b];
+        c.path = paths[b];
+        g.strokeColor = colour.CGColor;
+        c.strokeColor = [colour colorWithAlphaComponent:0.9].CGColor;
+        g.lineWidth = (CGFloat)(2.0 + 8.0 * glow);
+        c.lineWidth = 1.5;
+        g.opacity = (float)(0.35 * glow) * level;
+        c.opacity = level;
+    }
+}
+
+- (void)removeTraceOverlayForLayer:(CALayer *)pageLayer {
+    VortexTraceOverlay *overlay = [_overlays objectForKey:pageLayer];
+    [overlay.container removeFromSuperlayer];
+    [_overlays removeObjectForKey:pageLayer];
 }
 
 - (void)applyIconVisual:(VortexIconVisual)visual toLayer:(CALayer *)layer {
@@ -385,7 +476,11 @@ static VortexPageVisual VortexEffectTrampoline(void *context, VortexPageRole rol
     }
     record.frame = _frame;
 
-    CATransform3D t = CATransform3DMakeTranslation((CGFloat)visual.tx, (CGFloat)visual.ty, 0);
+    CATransform3D t = CATransform3DIdentity;
+    if (visual.tiltX != 0.0 || visual.tiltY != 0.0) t.m34 = -1.0 / 600.0; // perspective for the 3-D tilt
+    t = CATransform3DTranslate(t, (CGFloat)visual.tx, (CGFloat)visual.ty, 0);
+    if (visual.tiltY != 0.0) t = CATransform3DRotate(t, (CGFloat)visual.tiltY, 0, 1, 0);
+    if (visual.tiltX != 0.0) t = CATransform3DRotate(t, (CGFloat)visual.tiltX, 1, 0, 0);
     if (visual.rotation != 0.0) t = CATransform3DRotate(t, (CGFloat)visual.rotation, 0, 0, 1);
     if (visual.scale != 1.0 && visual.scale > 0.0) t = CATransform3DScale(t, (CGFloat)visual.scale, (CGFloat)visual.scale, 1);
     layer.sublayerTransform = t;
@@ -405,6 +500,9 @@ static VortexPageVisual VortexEffectTrampoline(void *context, VortexPageRole rol
 }
 
 - (void)restoreIconsNotUpdatedThisFrame {
+    for (CALayer *layer in [[_overlays keyEnumerator] allObjects]) {
+        if ([_overlays objectForKey:layer].frame != _frame) [self removeTraceOverlayForLayer:layer];
+    }
     if (!_iconRecords.count) return;
     for (CALayer *layer in [[_iconRecords keyEnumerator] allObjects]) {
         if ([_iconRecords objectForKey:layer].frame != _frame) [self restoreIconLayer:layer];
@@ -421,10 +519,13 @@ static VortexPageVisual VortexEffectTrampoline(void *context, VortexPageRole rol
 }
 
 - (void)restoreAll {
-    if (!_records.count && !_iconRecords.count) return;
+    if (!_records.count && !_iconRecords.count && !_overlays.count) return;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     @try {
+        for (CALayer *layer in [[_overlays keyEnumerator] allObjects]) {
+            [self removeTraceOverlayForLayer:layer];
+        }
         for (CALayer *layer in [[_iconRecords keyEnumerator] allObjects]) {
             [self restoreIconLayer:layer];
         }
@@ -434,13 +535,14 @@ static VortexPageVisual VortexEffectTrampoline(void *context, VortexPageRole rol
     } @finally {
         [CATransaction commit];
     }
+    [_overlays removeAllObjects];
     [_iconRecords removeAllObjects];
     [_records removeAllObjects];
     VortexLogDebug("restored all page and icon layers");
 }
 
 - (NSUInteger)modifiedLayerCount {
-    return _records.count + _iconRecords.count;
+    return _records.count + _iconRecords.count + _overlays.count;
 }
 
 #pragma mark Display link (presentation smoothing only)

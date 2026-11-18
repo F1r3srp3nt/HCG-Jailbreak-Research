@@ -104,7 +104,7 @@
     NSString *identifier = specifier.identifier;
     if ([identifier isEqualToString:@"resetPreferences"]) {
         cell.textLabel.textColor = [UIColor systemRedColor];
-    } else if ([identifier isEqualToString:@"restoreDefault"]) {
+    } else if ([identifier isEqualToString:@"restoreDefault"] || [identifier isEqualToString:@"resetPane"]) {
         cell.textLabel.textColor = VortexTheme.cyan;
     } else if ([identifier isEqualToString:@"engineStatus"]) {
         cell.detailTextLabel.textColor = [self colorForEngineState];

@@ -76,7 +76,7 @@ static UIView *ViewOf(id object) {
     in.safe = (PortalRect){safe.origin.x, safe.origin.y, safe.size.width, safe.size.height};
 
     NSString *anchorSource = @"estimated";
-    double anchor = -1;
+    __block double anchor = -1;
     void (^considerAnchor)(UIView *, NSString *) = ^(UIView *v, NSString *label) {
         if (!v || !PortalViewIsShown(v)) return;
         CGRect r = [host convertRect:v.bounds fromView:v];

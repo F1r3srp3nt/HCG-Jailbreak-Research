@@ -293,20 +293,23 @@ static void PSIPlatter(UIView *v, CGFloat radius) {
     switch (_authMode) {
         case PSIAuthRefuse:
             return NO;
-        case PSIAuthSucceed:
+        case PSIAuthSucceed: {
             dispatch_async(dispatch_get_main_queue(), ^{
                 completion(YES);
             });
             return YES;
-        case PSIAuthCancel:
+        }
+        case PSIAuthCancel: {
             dispatch_async(dispatch_get_main_queue(), ^{
                 completion(NO);
             });
             return YES;
-        case PSIAuthHold:
+        }
+        case PSIAuthHold: {
             _pending = [completion copy];
             [self showSheet];
             return YES;
+        }
     }
     return NO;
 }

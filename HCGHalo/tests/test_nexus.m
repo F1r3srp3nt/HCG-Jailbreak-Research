@@ -24,6 +24,7 @@
 #import "HaloConfig.h"
 #import "HaloNexusDefinition.h"
 #import "HaloNexusLink.h"
+#import "HaloNexusControl.h"
 #import "HaloPanelBorderView.h"
 #import "HaloPreferences.h"
 
@@ -507,6 +508,69 @@ static void TestNexusPreferences(void) {
     NCHECK(reactor.mode == HaloModeOrbit && reactor.pulseDepth > 0, @"Reactor: travelling segments + soft pulse");
 }
 
+// HCGHaloNexusControl 1: the switch HCG Nexus calls. The rules never turn the screen edge on, refuse while
+// a safety stop is active, and round-trip through HCG Halo's real preferences.
+static void TestNexusControl(void) {
+    NCHECK([HaloNexusControl controlVersion] == 1, @"control version 1");
+    NSString *reason = nil;
+    HaloTarget targets[3] = { HaloTargetScreen, HaloTargetNexus, HaloTargetBoth };
+    for (int m = 0; m < 2; m++) {
+        for (int t = 0; t < 3; t++) {
+            for (int on = 0; on < 2; on++) {
+                BOOL master = m == 1;
+                NSDictionary *c = [HaloNexusControl changesForNexusBorderEnabled:on masterEnabled:master target:targets[t]
+                                                                       killSwitch:NO autoDisabled:NO reason:&reason];
+                NCHECK(c != nil, @"never refused without a safety stop (master %d target %d on %d)", m, t, on);
+                // Result after applying the changes.
+                BOOL newMaster = c[HaloKeyEnabled] ? [c[HaloKeyEnabled] boolValue] : master;
+                NSString *newTarget = c[HaloKeyTarget] ?: (targets[t] == HaloTargetNexus ? @"nexus" : targets[t] == HaloTargetBoth ? @"both" : @"screen");
+                BOOL panel = newMaster && ([newTarget isEqualToString:@"nexus"] || [newTarget isEqualToString:@"both"]);
+                BOOL screenBefore = master && (targets[t] == HaloTargetScreen || targets[t] == HaloTargetBoth);
+                BOOL screenAfter = newMaster && ([newTarget isEqualToString:@"screen"] || [newTarget isEqualToString:@"both"]);
+                NCHECK(panel == (BOOL)on, @"panel border %d after switching to %d (master %d target %d)", panel, on, m, t);
+                NCHECK(!screenAfter || screenBefore, @"screen edge turned on by the Nexus switch (master %d target %d on %d)", m, t, on);
+                NCHECK(!screenBefore || screenAfter, @"screen edge turned off by the Nexus switch (master %d target %d on %d)", m, t, on);
+            }
+        }
+    }
+    // Specific cases from the contract.
+    NSDictionary *c = [HaloNexusControl changesForNexusBorderEnabled:YES masterEnabled:NO target:HaloTargetBoth killSwitch:NO autoDisabled:NO reason:NULL];
+    NCHECK([c[HaloKeyEnabled] isEqual:@YES] && [c[HaloKeyTarget] isEqual:@"nexus"], @"master off + both -> nexus only: %@", c);
+    c = [HaloNexusControl changesForNexusBorderEnabled:YES masterEnabled:YES target:HaloTargetNexus killSwitch:NO autoDisabled:NO reason:NULL];
+    NCHECK(c.count == 0, @"already on: nothing written");
+    // Safety stops.
+    reason = nil;
+    NCHECK(![HaloNexusControl changesForNexusBorderEnabled:YES masterEnabled:NO target:HaloTargetScreen killSwitch:YES autoDisabled:NO reason:&reason]
+           && [reason containsString:@"kill switch"], @"kill switch refuses");
+    reason = nil;
+    NCHECK(![HaloNexusControl changesForNexusBorderEnabled:YES masterEnabled:NO target:HaloTargetScreen killSwitch:NO autoDisabled:YES reason:&reason]
+           && reason.length, @"launch guard refuses");
+    NCHECK(![HaloNexusControl changesForNexusBorderEnabled:NO masterEnabled:YES target:HaloTargetNexus killSwitch:YES autoDisabled:NO reason:NULL],
+           @"refuses in both directions");
+
+    // Live, through HCG Halo's preferences (values restored afterwards).
+    id savedEnabled = [HaloPreferences readValueForKey:HaloKeyEnabled];
+    id savedTarget = [HaloPreferences readValueForKey:HaloKeyTarget];
+    [HaloPreferences writeValues:@{ HaloKeyEnabled : @NO, HaloKeyTarget : @"screen" }];
+    NSString *error = nil;
+    NCHECK([HaloNexusControl setNexusBorderEnabled:YES error:&error], @"switch on: %@", error);
+    HaloSettings *s = [HaloPreferences loadSettings];
+    NCHECK(s.enabled && s.target == HaloTargetNexus && !s.targetsScreen, @"on: panel only (enabled %d target %ld)", s.enabled, (long)s.target);
+    NSDictionary *status = [HaloNexusControl nexusBorderStatus];
+    NCHECK([status[@"panelBorderOn"] isEqual:@YES] && [status[@"target"] isEqual:@"nexus"] && [status[@"haloVersion"] length], @"status: %@", status);
+    NCHECK([HaloNexusControl setNexusBorderEnabled:NO error:&error], @"switch off: %@", error);
+    s = [HaloPreferences loadSettings];
+    NCHECK(!s.enabled, @"off: HCG Halo off again, screen edge never turned on");
+    [HaloPreferences writeValues:@{ HaloKeyEnabled : @YES, HaloKeyTarget : @"screen" }];
+    NCHECK([HaloNexusControl setNexusBorderEnabled:YES error:&error], @"switch on with the screen edge on");
+    s = [HaloPreferences loadSettings];
+    NCHECK(s.enabled && s.target == HaloTargetBoth, @"screen edge kept, panel added");
+    NCHECK([HaloNexusControl setNexusBorderEnabled:NO error:&error], @"switch off");
+    s = [HaloPreferences loadSettings];
+    NCHECK(s.enabled && s.target == HaloTargetScreen, @"back to the screen edge only");
+    [HaloPreferences writeValues:@{ HaloKeyEnabled : savedEnabled ?: [NSNull null], HaloKeyTarget : savedTarget ?: [NSNull null] }];
+}
+
 int HaloRunNexusTests(long *checks, long *failures) {
     gFixtureDir = [NSTemporaryDirectory() stringByAppendingPathComponent:@"halo-nexus-tests"];
     [[NSFileManager defaultManager] createDirectoryAtPath:gFixtureDir withIntermediateDirectories:YES attributes:nil error:nil];
@@ -514,6 +578,7 @@ int HaloRunNexusTests(long *checks, long *failures) {
     TestPanelBorderView();
     TestLink();
     TestNexusPreferences();
+    TestNexusControl();
     [[NSFileManager defaultManager] removeItemAtPath:gFixtureDir error:nil];
     *checks += gNexusChecks;
     *failures += gNexusFailures;

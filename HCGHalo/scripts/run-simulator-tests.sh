@@ -29,7 +29,7 @@ xcrun --sdk iphonesimulator clang -fobjc-arc -fobjc-arc-exceptions -arch "$ARCH"
 	-Wall -Wextra -Wno-unused-parameter -Werror \
 	-DHALO_VERSION="\"$VERSION\"" -DHALO_BUILD_ID="\"simulator-test\"" -Isrc \
 	tests/test_runtime.m tests/test_nexus.m src/HaloPreferences.m src/HaloRenderer.m src/HaloOverlayView.m \
-	src/HaloNexusDefinition.m src/HaloNexusLink.m src/HaloPanelBorderView.m src/HaloLog.m \
+	src/HaloNexusDefinition.m src/HaloNexusLink.m src/HaloNexusControl.m src/HaloPanelBorderView.m src/HaloLog.m \
 	src/HaloGeometry.c src/HaloConfig.c src/HaloProfiles.c src/HaloProfiles.generated.c \
 	-framework UIKit -framework QuartzCore -framework CoreGraphics -o "$OUT/test_runtime"
 

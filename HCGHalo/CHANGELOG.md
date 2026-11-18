@@ -1,6 +1,20 @@
 # Changelog
 
-## 0.2.0~beta1 (unreleased candidate)
+## 0.2.1~beta1 (candidate)
+
+**Free public beta demo — not yet device-tested.** Pairs with HCG Nexus 0.3.2~beta1.
+
+- **Switch from HCG Nexus** (contract `HCGHaloNexusControl` 1): HCG Nexus › Appearance › *Use HCG Halo border* now
+  turns HCG Halo's panel border on or off through HCG Halo's own `HaloNexusControl`. HCG Halo decides how its
+  settings change, and **never turns the screen-edge light on** for this:
+  - turning it on with HCG Halo off lights the panel only (target *HCG Nexus Panel*);
+  - turning it on with the screen edge already on adds the panel (target *Both*);
+  - turning it off removes the panel only; the screen edge stays exactly as it was.
+  It is refused while the kill switch or the launch guard has stopped HCG Halo.
+- Settings bundle Info.plist declares `HCGHaloNexusControl` = 1 next to `HCGHaloNexusIntegration` = 1.
+- No change to rendering, the definition, the interface or the screen edge.
+
+## 0.2.0~beta1
 
 **Free public beta demo — not yet device-tested.** Builds on 0.1.0~beta1, which the owner reports running on
 their phone; that package is unchanged.

@@ -157,6 +157,8 @@ assert info["CFBundleExecutable"] == entry["bundle"] == "HCGHaloPrefs"
 assert info["NSPrincipalClass"] == entry["detail"] == "HaloRootListController"
 # HCG Nexus finds the "Halo border" page through this key (contract version 1).
 assert info.get("HCGHaloNexusIntegration") == 1, info.get("HCGHaloNexusIntegration")
+# HCG Nexus's "Use HCG Halo border" switch finds HaloNexusControl through this key (contract version 1).
+assert info.get("HCGHaloNexusControl") == 1, info.get("HCGHaloNexusControl")
 PY
 python3 -I - "$ROOT" <<'PY' && pass "HCG Nexus integration constants agree (interface 1, schema 1, minimum Nexus, notification, Settings contract)" || fail "HCG Nexus integration constants disagree"
 import os, re, sys
@@ -173,6 +175,12 @@ assert '@"HCGNexusBorderInterface"' in definition_m and '@"HCGNexusPrefs.bundle"
 assert 'HaloNexusBorderEventNotification = @"com.hakmicapitalgroup.hcgnexus.border-event"' in link_m
 # The panel border is UIViewController-pushable by class name from HCG Nexus.
 assert re.search(r"@interface HaloNexusBorderController : UITableViewController", src("preferences/HaloNexusBorderController.h"))
+# The switch HCG Nexus calls (HCGHaloNexusControl 1): never turns the screen edge on.
+control_h, control_m = src("src/HaloNexusControl.h"), src("src/HaloNexusControl.m")
+assert re.search(r"#define HALO_NEXUS_CONTROL_VERSION 1\b", control_h)
+assert "@interface HaloNexusControl : NSObject" in control_h
+assert 'if (!masterEnabled) return @{ HaloKeyEnabled : @YES, HaloKeyTarget : @"nexus" };' in control_m
+assert "src/HaloNexusControl.m" in src("Makefile") and "../src/HaloNexusControl.m" in src("preferences/Makefile")
 # No copy of the Nexus definition in this project: Halo reads the installed one.
 for dirpath, _, files in os.walk(root):
     if "/.theos" in dirpath or "/packages" in dirpath or "/tests/build" in dirpath:
@@ -447,6 +455,9 @@ done
 for s in HCGNexusBorderInterface com.hakmicapitalgroup.hcgnexus.border-event com.hakmicapitalgroup.hcgnexus.halo-border \
          HCGNexusPrefs.bundle HaloBorder.plist; do
 	grep -qxF -- "$s" "$WORK/dylib.strings" && pass "tweak references $s (HCG Nexus border interface 1)" || fail "tweak lacks $s"
+done
+for f in dylib prefs; do
+	grep -qxF HaloNexusControl "$WORK/$f.strings" && pass "$f carries HaloNexusControl (HCGHaloNexusControl 1)" || fail "$f lacks HaloNexusControl"
 done
 grep -qF "HCGNexusBorderInterface" "$WORK/prefs.strings" && grep -qxF HaloNexusBorderController "$WORK/prefs.strings" \
 	&& pass "Settings bundle carries HaloNexusBorderController and the definition reader" || fail "Settings bundle lacks the Nexus panel page"

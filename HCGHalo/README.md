@@ -47,10 +47,29 @@ re-arming after the crash-loop guard has stopped Halo.
 
 ## Status
 
-**0.3.0~beta1** (this branch): Show Halo on and Display Zoom geometry. Build, validation and Simulator results
-(host tests, runtime tests, the Settings preview and the new surfaces preview) are recorded in the pull request.
-Device rows S0–S16 in [`docs/DEVICE_TEST_CHECKLIST.md`](docs/DEVICE_TEST_CHECKLIST.md) are pending. The
-375 × 812 pt investigation is in [`docs/PROFILES.md`](docs/PROFILES.md).
+**0.3.0~beta1** (this branch): Show Halo on and Display Zoom geometry. Simulator-tested; device rows S0–S16 in
+[`docs/DEVICE_TEST_CHECKLIST.md`](docs/DEVICE_TEST_CHECKLIST.md) are pending. The 375 × 812 pt investigation is in
+[`docs/PROFILES.md`](docs/PROFILES.md).
+
+**Candidate build (commit `e22527d`, macOS CI):**
+`com.hakmicapitalgroup.halo_0.3.0~beta1_iphoneos-arm64.deb`, 431,720 bytes, SHA-256
+`bd8a926667b8ebec5b2a200fc8d8a14bcd21a9a2919e0475ec97a479381defc5` (build run 44246501375, artifact
+`hcg-halo-rootless-deb` 14402121490). Earlier 0.3.0~beta1 builds from this branch (`53f55bab…`, `5522441f…`) had
+the two bugs below and must not be used.
+
+| Check | Result |
+|---|---|
+| Host unit tests (Linux and macOS, ASan/UBSan) | pass, 9.4 M checks, including every Show Halo on choice × every input combination and the screen-fit cases |
+| Build + `validate.sh --require-new-abi` | pass (run 44246501375) |
+| iOS Simulator runtime tests | 446/446 (run 44246501375) |
+| Nexus panel preview (with HCG Nexus 0.3.1~beta1) | 17/17 (preview run 44246501303) |
+| Settings preview (both real Settings bundles; Show Halo on row, footer, app picker with 24 installed apps, choosing an app) | all checks passed, `failures=0` (run 44246501303) |
+| Show Halo on surfaces preview (real controller in a stand-in SpringBoard, iPhone 11 Pro Max Simulator) | 51/51 (run 44246501303): app switching, lock, wake and screen-off under all five choices; live re-hosting; 60 rapid transitions; Always ≡ Always Except When Screen Is Off |
+| Device | **not tested** — rows S0–S16 |
+
+Found and fixed by the previews before this build: the overlay window never showed the border (its content
+view was installed only once the window was shown), and Settings crashed once an app was chosen (a BOOL private
+method read as an object).
 
 **0.2.0~beta1**: build, validation, simulator and preview results are recorded in the pull request
 and in [`docs/NEXUS.md`](docs/NEXUS.md#status). Device testing is pending.

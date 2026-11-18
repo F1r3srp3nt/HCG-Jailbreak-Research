@@ -194,8 +194,8 @@ static void HaloNexusStatusUpdated(CFNotificationCenterRef center, void *observe
     HaloNexusDefinition *definition = path ? [HaloNexusDefinition definitionAtPath:path error:&error] : nil;
     _definition = definition;
     _definitionError = definition ? nil
-                                  : (error ?: @"HCG Nexus is not installed, or is older than " HALO_NEXUS_MIN_VERSION
-                                              @" (no border definition)");
+                                  : (error ?: @"HCG Nexus with the HCG Halo border interface is not installed (" HALO_NEXUS_MIN_VERSION
+                                              @" or a later build that includes it)");
 }
 
 #pragma mark Preview
@@ -420,7 +420,7 @@ static void HaloNexusStatusUpdated(CFNotificationCenterRef center, void *observe
                                  ? @"Screen Edge is the default and is unchanged by these settings. With Nexus Panel or Both, the "
                                    @"border appears only while the HCG Nexus panel is shown."
                                  : @"Nexus Panel and Both: requires compatible HCG Nexus (" HALO_NEXUS_MIN_VERSION
-                                   @" or later). The screen-edge border keeps working.";
+                                   @" with the border interface). The screen-edge border keeps working.";
 
     // Look
     NSMutableArray *lookRows = [NSMutableArray array];

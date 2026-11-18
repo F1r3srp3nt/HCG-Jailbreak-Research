@@ -147,8 +147,8 @@ static BOOL HaloInterfaceUsable(id interface) {
         if (!cls) {
             [self detach];
             [self setState:HaloNexusLinkStateUnavailable
-                    detail:[NSString stringWithFormat:@"%@: HCG Nexus " HALO_NEXUS_MIN_VERSION
-                                                      @" or later is not installed or not enabled in SpringBoard. The "
+                    detail:[NSString stringWithFormat:@"%@: no HCG Nexus with the HCG Halo border interface (" HALO_NEXUS_MIN_VERSION
+                                                      @") is loaded in SpringBoard. The "
                                                       @"screen-edge border is unaffected.",
                                                       kRequires]];
             return;

@@ -19,9 +19,14 @@ The same contract is documented from Nexus's side in HCG-Nexus `docs/HALO-BORDER
 
 ## Compatibility and install order
 
+> The Nexus build with this interface is **0.2.2~beta1**: the 0.2.1~beta1 candidate code plus the interface.
+> 0.3.0~beta1 is already used by a separate Nexus line without it. Halo checks for the interface and the
+> definition, not for a version number, so any later Nexus build that includes them works.
+
 | HCG Halo | HCG Nexus | Panel border |
 |---|---|---|
-| 0.2.0~beta1 | 0.3.0~beta1 or later (border interface 1, definition schema 1) | Available |
+| 0.2.0~beta1 | 0.2.2~beta1, or a later build that includes border interface 1 and the definition | Available |
+| 0.2.0~beta1 | 0.3.0~beta1 from the separate `claude/hcg-nexus-tweak-yb1ii2` line (no border interface) | Off: *Requires compatible HCG Nexus* |
 | 0.2.0~beta1 | absent, disabled, or 0.2.1~beta1 and earlier | Off: *Requires compatible HCG Nexus* + reason. Screen edge unaffected |
 | 0.1.0~beta1 | any | No panel border (screen edge only) |
 
@@ -58,7 +63,7 @@ in this project or in the package.
   - ranges (corner radius 0…64, outset 0…12, glow margin 8…64);
   - known capabilities;
   - schema and interface versions;
-  - Nexus version ≥ 0.3.0~beta1.
+  - Nexus version ≥ 0.2.2~beta1.
 
 These are the same rules as Nexus's `scripts/check_halo_border.py`. Any problem leaves the panel border off,
 with *Requires compatible HCG Nexus: <reason>* shown in both Settings pages.
@@ -139,7 +144,7 @@ Changes appear in the preview at once. SpringBoard applies them immediately; sli
 | Builds, both binaries, `validate.sh` (Nexus contract constants, no bundled definition, interface strings) | Linux toolchain locally; macOS/Xcode CI for the candidate | see the pull request |
 | Simulator runtime tests: definition fixtures, panel view (geometry, mask, touches, effects, cleanup), link (absent, incompatible, missing / malformed / outdated definition, waiting, version mismatch, attached, forged / malformed events, reversal, close fade off, Reduce Motion, screen off, disable, repeated cycles, Nexus update, removal) | `scripts/run-simulator-tests.sh`, CI. The link is driven by a test double registered under the interface's class name | see the pull request |
 | **Preview evidence**: HCG Nexus's real panel code and real `HaloBorder.plist` plus Halo's real link and renderer, scripted open / trace / workspace / presets / all modes / close / reversed open / Halo disabled / Nexus disabled / 30 cycles, with video and screenshots | `scripts/nexus-preview.sh`, workflow *HCG Halo × Nexus preview* | see the pull request. **Simulator only** |
-| On the phone, with HCG Nexus 0.3.0~beta1 | manual: [DEVICE_TEST_CHECKLIST.md](DEVICE_TEST_CHECKLIST.md#hcg-nexus-panel-border-020beta1) | **pending** |
+| On the phone, with HCG Nexus 0.2.2~beta1 | manual: [DEVICE_TEST_CHECKLIST.md](DEVICE_TEST_CHECKLIST.md#hcg-nexus-panel-border-020beta1) | **pending** |
 
 The preview runs as an ordinary app in the simulator. It shows the panel border's look and its lifecycle against
 Nexus's real code, but **not** SpringBoard, the overlay window, real gestures or device performance.

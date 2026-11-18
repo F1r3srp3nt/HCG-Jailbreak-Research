@@ -6,7 +6,7 @@
 their phone; that package is unchanged.
 
 - **Border Target:** Screen Edge (the default, so existing users see no change), HCG Nexus Panel, or Both.
-- **HCG Nexus panel border** (needs HCG Nexus 0.3.0~beta1 or later; no install order, respring once):
+- **HCG Nexus panel border** (needs HCG Nexus 0.2.2~beta1 or a later build with its border interface; no install order, respring once):
   - Halo reads and strictly validates the border definition that Nexus installs on the phone
     (`HCGNexusPrefs.bundle/HaloBorder.plist`).
   - It draws around the live panel through Nexus's versioned interface, so the border follows the panel's real

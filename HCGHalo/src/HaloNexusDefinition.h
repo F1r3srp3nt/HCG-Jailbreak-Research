@@ -21,7 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 #define HALO_NEXUS_SCHEMA_VERSION 1
 #define HALO_NEXUS_INTERFACE_VERSION 1
-#define HALO_NEXUS_MIN_VERSION "0.3.0~beta1"
+#define HALO_NEXUS_MIN_VERSION "0.2.2~beta1"
 
 extern NSString *const HaloNexusSchemaIdentifier;     // com.hakmicapitalgroup.hcgnexus.halo-border
 extern NSString *const HaloNexusInterfaceClassName;   // HCGNexusBorderInterface

@@ -167,7 +167,7 @@ nexus_ctl = src("preferences/HaloNexusBorderController.m")
 assert re.search(r"#define HALO_NEXUS_SCHEMA_VERSION 1\b", definition_h)
 assert re.search(r"#define HALO_NEXUS_INTERFACE_VERSION 1\b", definition_h)
 minimum = re.search(r'#define HALO_NEXUS_MIN_VERSION "([^"]+)"', definition_h).group(1)
-assert minimum == "0.3.0~beta1", minimum
+assert minimum == "0.2.2~beta1", minimum
 assert '@"com.hakmicapitalgroup.hcgnexus.halo-border"' in definition_m
 assert '@"HCGNexusBorderInterface"' in definition_m and '@"HCGNexusPrefs.bundle"' in definition_m and '@"HaloBorder.plist"' in definition_m
 assert 'HaloNexusBorderEventNotification = @"com.hakmicapitalgroup.hcgnexus.border-event"' in link_m

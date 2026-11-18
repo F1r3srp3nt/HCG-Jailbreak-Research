@@ -75,14 +75,14 @@ static NSString *WriteFixture(NSString *name, NSData *data) {
 static void TestDefinition(void) {
     NSString *error = nil;
     for (NSNumber *format in @[ @(NSPropertyListXMLFormat_v1_0), @(NSPropertyListBinaryFormat_v1_0) ]) {
-        NSString *path = WriteFixture(@"valid.plist", Encode(ValidDefinition(@"0.3.0~beta1"), format.unsignedIntegerValue));
+        NSString *path = WriteFixture(@"valid.plist", Encode(ValidDefinition(@"0.2.2~beta1"), format.unsignedIntegerValue));
         error = nil;
         HaloNexusDefinition *d = [HaloNexusDefinition definitionAtPath:path error:&error];
         NCHECK(d && !error, @"valid definition (%@) rejected: %@", format, error);
         NCHECK(d.cornerRadius == 22 && d.continuousCorners && d.outset == 2 && d.glowMargin == 36 && d.clipInterior,
                @"parsed shape/anchors");
         NCHECK([d hasCapability:@"live-geometry"] && ![d hasCapability:@"teleport"], @"capabilities");
-        NCHECK([d.nexusVersion isEqualToString:@"0.3.0~beta1"] && [d.defaultPreset isEqualToString:@"builtin.nexus-signature"],
+        NCHECK([d.nexusVersion isEqualToString:@"0.2.2~beta1"] && [d.defaultPreset isEqualToString:@"builtin.nexus-signature"],
                @"version / preset");
     }
 
@@ -116,7 +116,7 @@ static void TestDefinition(void) {
         @"wrong class" : ^(NSMutableDictionary *d) { d[@"interfaceClass"] = @"NSFileManager"; },
     };
     for (NSString *name in broken) {
-        NSMutableDictionary *d = ValidDefinition(@"0.3.0~beta1");
+        NSMutableDictionary *d = ValidDefinition(@"0.2.2~beta1");
         broken[name](d);
         NSString *path = WriteFixture(@"broken.plist", Encode(d, NSPropertyListXMLFormat_v1_0));
         error = nil;
@@ -131,10 +131,10 @@ static void TestDefinition(void) {
     NCHECK(![HaloNexusDefinition definitionAtPath:path error:&error], @"oversized file accepted");
     NCHECK(![HaloNexusDefinition definitionAtPath:gFixtureDir error:&error], @"directory accepted");
 
-    NCHECK([HaloNexusDefinition compareVersion:@"0.3.0~beta1" to:@"0.3.0"] < 0, @"~ sorts before release");
-    NCHECK([HaloNexusDefinition compareVersion:@"0.3.0~beta2" to:@"0.3.0~beta1"] > 0, @"beta2 > beta1");
+    NCHECK([HaloNexusDefinition compareVersion:@"0.2.2~beta1" to:@"0.3.0"] < 0, @"~ sorts before release");
+    NCHECK([HaloNexusDefinition compareVersion:@"0.2.2~beta2" to:@"0.2.2~beta1"] > 0, @"beta2 > beta1");
     NCHECK([HaloNexusDefinition compareVersion:@"0.10.0" to:@"0.9.9"] > 0, @"numeric compare");
-    NCHECK([HaloNexusDefinition compareVersion:@"0.3.0~beta1" to:@"0.3.0~beta1"] == 0, @"equal");
+    NCHECK([HaloNexusDefinition compareVersion:@"0.2.2~beta1" to:@"0.2.2~beta1"] == 0, @"equal");
 
     NSString *jb = @"/private/preboot/ABC/jb-XYZ/procursus";
     NCHECK([[HaloNexusLink definitionPathFromImagePath:[jb stringByAppendingString:@"/usr/lib/TweakInject/HCGHalo.dylib"]]
@@ -158,7 +158,7 @@ static BOOL LayerHasAnimation(CALayer *layer, NSString *key) {
 }
 
 static void TestPanelBorderView(void) {
-    HaloNexusDefinition *def = LoadValid(@"0.3.0~beta1");
+    HaloNexusDefinition *def = LoadValid(@"0.2.2~beta1");
     UIWindow *window = [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, 414, 896)];
     window.hidden = NO;
     UIView *panel = [[UIView alloc] initWithFrame:CGRectMake(40, 100, 320, 480)];
@@ -319,7 +319,7 @@ static void TestLink(void) {
     gDoublePath = [gFixtureDir stringByAppendingPathComponent:@"nope.plist"];
     Apply(link, s, YES, YES);
     NCHECK([link.state isEqualToString:HaloNexusLinkStateUnavailable], @"missing definition: %@", link.detail);
-    NSMutableDictionary *bad = ValidDefinition(@"0.3.0~beta1");
+    NSMutableDictionary *bad = ValidDefinition(@"0.2.2~beta1");
     bad[@"schemaVersion"] = @9;
     gDoublePath = WriteFixture(@"link.plist", Encode(bad, NSPropertyListXMLFormat_v1_0));
     Apply(link, s, YES, YES);
@@ -327,7 +327,7 @@ static void TestLink(void) {
            @"malformed definition: %@", link.detail);
 
     // 5. Valid definition, panel not built yet.
-    gDoublePath = WriteFixture(@"link.plist", Encode(ValidDefinition(@"0.3.0~beta1"), NSPropertyListXMLFormat_v1_0));
+    gDoublePath = WriteFixture(@"link.plist", Encode(ValidDefinition(@"0.2.2~beta1"), NSPropertyListXMLFormat_v1_0));
     Apply(link, s, YES, YES);
     NCHECK([link.state isEqualToString:HaloNexusLinkStateWaiting], @"waiting: %@ %@", link.state, link.detail);
 
@@ -336,7 +336,7 @@ static void TestLink(void) {
     UIView *host = [[UIView alloc] initWithFrame:panel.bounds];
     [panel addSubview:host];
     HaloNexusInterfaceDouble *nexus = [[gInterfaceClass alloc] init];
-    nexus.nexusVersion = @"0.3.0~beta0";
+    nexus.nexusVersion = @"0.2.2~beta0";
     nexus.borderHostView = host;
     nexus.panelCornerRadius = 22;
     nexus.panelState = @"closed";
@@ -347,7 +347,7 @@ static void TestLink(void) {
     NCHECK(host.subviews.count == 0, @"nothing attached on mismatch");
 
     // 7. Compatible: attached, hidden while the panel is closed.
-    nexus.nexusVersion = @"0.3.0~beta1";
+    nexus.nexusVersion = @"0.2.2~beta1";
     [nexus post:@"installed" duration:0];
     NCHECK([link.state isEqualToString:HaloNexusLinkStateAttached], @"attached after 'installed': %@", link.detail);
     HaloPanelBorderView *border = link.borderView;

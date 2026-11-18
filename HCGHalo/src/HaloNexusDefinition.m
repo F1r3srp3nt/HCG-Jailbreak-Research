@@ -55,12 +55,12 @@ static BOOL HaloMatches(NSString *value, NSString *pattern) {
 
 + (instancetype)definitionAtPath:(NSString *)path error:(NSString **)error {
     if (!path.length) {
-        if (error) *error = @"HCG Nexus is not installed, or is older than " HALO_NEXUS_MIN_VERSION " (no border definition)";
+        if (error) *error = @"HCG Nexus with the HCG Halo border interface (" HALO_NEXUS_MIN_VERSION " or a later build that includes it) is not installed: no border definition";
         return nil;
     }
     NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
     if (!attributes) {
-        if (error) *error = @"HCG Nexus is not installed, or is older than " HALO_NEXUS_MIN_VERSION " (no border definition)";
+        if (error) *error = @"HCG Nexus with the HCG Halo border interface (" HALO_NEXUS_MIN_VERSION " or a later build that includes it) is not installed: no border definition";
         return nil;
     }
     if (![attributes.fileType isEqualToString:NSFileTypeRegular] || attributes.fileSize > kMaxBytes) {

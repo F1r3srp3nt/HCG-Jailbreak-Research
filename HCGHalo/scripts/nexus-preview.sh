@@ -23,7 +23,7 @@ stamp() { echo "==> [$(date -u +%H:%M:%S)] $*"; }
 
 [ "$(uname -s)" = Darwin ] || { echo "ERROR: needs macOS with Xcode" >&2; exit 1; }
 : "${NEXUS_DIR:?set NEXUS_DIR to an HCG Nexus checkout}"
-[ -f "$NEXUS_DIR/Sources/Panel/HCGNexusBorderInterface.m" ] || { echo "ERROR: $NEXUS_DIR has no border interface (needs HCG Nexus 0.3.0~beta1+)" >&2; exit 1; }
+[ -f "$NEXUS_DIR/Sources/Panel/HCGNexusBorderInterface.m" ] || { echo "ERROR: $NEXUS_DIR has no border interface (needs HCG Nexus 0.2.2~beta1+)" >&2; exit 1; }
 [ -f "$NEXUS_DIR/Prefs/Resources/HaloBorder.plist" ] || { echo "ERROR: $NEXUS_DIR has no Prefs/Resources/HaloBorder.plist" >&2; exit 1; }
 
 OUT=${1:-build-preview}

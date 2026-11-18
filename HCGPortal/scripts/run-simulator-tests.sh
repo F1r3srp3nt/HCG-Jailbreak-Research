@@ -53,10 +53,19 @@ stamp "booting $UDID (a first boot on CI can take several minutes)"
 xcrun simctl boot "$UDID" 2>/dev/null || true
 limit 600 xcrun simctl bootstatus "$UDID" -b || { stamp "simulator did not finish booting within 600 s"; exit 1; }
 
+# A freshly booted simulator can stall the first UIKit call of a headless
+# process (seen on CI: no output at all, then the time limit). Let it settle,
+# and retry once if a run is killed by the time limit. A test FAILURE is never
+# retried.
+sleep 20
 status=0
-stamp "running the tests (limit 300 s)"
-limit 300 xcrun simctl spawn "$UDID" "$PWD/$OUT/test_runtime" || status=$?
-[ "$status" -eq 142 ] && stamp "test_runtime timed out (SIGALRM)"
+for attempt in 1 2; do
+	status=0
+	stamp "running the tests, attempt $attempt (limit 150 s)"
+	limit 150 xcrun simctl spawn "$UDID" "$PWD/$OUT/test_runtime" || status=$?
+	[ "$status" -eq 142 ] || break
+	stamp "test_runtime timed out (SIGALRM) on attempt $attempt"
+done
 stamp "finished with status $status"
 xcrun simctl shutdown "$UDID" 2>/dev/null || true
 exit "$status"

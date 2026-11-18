@@ -78,7 +78,9 @@ static PortalRenderPlan Plan(int reduceMotion, int lowPower, int policy) {
 }
 
 static void TestPortalView(void) {
+    printf("   creating PortalView\n");
     PortalView *v = [[PortalView alloc] initWithFrame:CGRectMake(0, 0, 132, 132)];
+    printf("   created\n");
     PortalAppearance a;
     portal_appearance_defaults(&a);
     [v applyAppearance:a plan:Plan(0, 0, PORTAL_LOWPOWER_STATIC)];

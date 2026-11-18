@@ -350,6 +350,26 @@ static NSString *FooterText(UITableViewController *controller) {
         Check([PrefValue(@"enabled") boolValue] && [PrefValue(@"target") isEqualToString:@"both"], @"screen edge on + switch on: Both (screen edge kept)");
         flip(NO);
         Check([PrefValue(@"enabled") boolValue] && [PrefValue(@"target") isEqualToString:@"screen"], @"switch off: screen edge only, unchanged");
+        Check(PrefValue(@"showOn") == nil, @"Show Halo on never written by the switch");
+        // Safety stop (launch guard, through HCG Halo's real status record): refused with the reason, nothing written.
+        void (^status)(NSDictionary *) = ^(NSDictionary *record) {
+            ((void (*)(id, SEL, id))objc_msgSend)(prefsClass, NSSelectorFromString(@"writeStatus:"), record);
+        };
+        write(@{ @"enabled" : @NO, @"target" : @"screen" });
+        status(@{ @"state" : @"auto-disabled" });
+        flip(YES);
+        UIAlertController *refusal = (UIAlertController *)((UIViewController *)root).presentedViewController;
+        Check([refusal isKindOfClass:[UIAlertController class]] && [refusal.message containsString:@"turned itself off"],
+              [NSString stringWithFormat:@"launch guard: switch refused with the reason (%@)", refusal.message]);
+        Check(![PrefValue(@"enabled") boolValue] && [PrefValue(@"target") isEqualToString:@"screen"], @"launch guard: nothing written");
+        Check([state() isEqualToString:@"Disabled"], [NSString stringWithFormat:@"launch guard: state %@ (Disabled)", state()]);
+        [self state:@"B5-nexus-switch-refused" caption:@"Use HCG Halo border refused: HCG Halo stopped by its launch guard"];
+        [(UIViewController *)root dismissViewControllerAnimated:NO completion:nil];
+        // Fault: HCG Halo stopped after an error; never shown as Ready.
+        write(@{ @"enabled" : @YES, @"target" : @"nexus" });
+        status(@{ @"state" : @"fault" });
+        Check([state() isEqualToString:@"Disabled"], [NSString stringWithFormat:@"fault: state %@ (Disabled, not Ready)", state()]);
+        status(@{});
         write(@{ @"enabled" : [NSNull null], @"target" : [NSNull null] });
     });
     // C. HCG Halo's own entry point, and its controls.

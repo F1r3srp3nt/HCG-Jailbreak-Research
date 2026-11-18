@@ -2,7 +2,13 @@
 
 **Animated neon edge lighting for the iPhone screen.** A rootless jailbreak tweak by Hakmi Capital Group.
 
-> **0.3.0~beta1 (this branch; live in HCG Repo Candidate): free public beta demo.** It adds **Show Halo on** (Home Screen only, one chosen
+> **0.3.1~beta1 (this branch): candidate, not yet published.** Everything in 0.3.0~beta1, plus
+> `HaloNexusControl`, the HCG Halo-owned switch behind HCG Nexus 0.3.2~beta1's *Use HCG Halo border*
+> ([docs/NEXUS.md](docs/NEXUS.md#switching-from-hcg-nexus-hcg-halo-031beta1-contract-hcghalonexuscontrol-1)).
+> The switch never turns on the screen edge. Simulator-tested; **real-device testing pending**; rows N18–N23 in the
+> device checklist.
+>
+> **0.3.0~beta1 (live in HCG Repo Candidate): free public beta demo.** It adds **Show Halo on** (Home Screen only, one chosen
 > app, everywhere, everywhere except the Lock Screen, or everywhere while the display is lit) and corrects the
 > corner and notch size under Display Zoom. Simulator-tested; **real-device testing pending.**
 >
@@ -47,7 +53,11 @@ re-arming after the crash-loop guard has stopped Halo.
 
 ## Status
 
-**0.3.0~beta1** (this branch): Show Halo on and Display Zoom geometry. Simulator-tested; device rows S0–S16 in
+**0.3.1~beta1** (this branch): the switch HCG Nexus 0.3.2~beta1 uses (`HaloNexusControl`, contract
+`HCGHaloNexusControl` 1). It needs the owner's approval before an HCG Repo import. Device rows N18–N23 are pending.
+The CI build, checksum and preview results are recorded in the handoff once the final runs pass.
+
+**0.3.0~beta1**: Show Halo on and Display Zoom geometry. Simulator-tested; device rows S0–S16 in
 [`docs/DEVICE_TEST_CHECKLIST.md`](docs/DEVICE_TEST_CHECKLIST.md) are pending. The 375 × 812 pt investigation is in
 [`docs/PROFILES.md`](docs/PROFILES.md).
 

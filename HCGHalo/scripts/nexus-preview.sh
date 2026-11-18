@@ -47,7 +47,7 @@ for f in "$NEXUS_DIR"/Sources/Core/*.m "$NEXUS_DIR"/Sources/Panel/*.m "$NEXUS_DI
 		-c "$f" -o "$OBJ/nexus-$(basename "$f" .m).o"
 done
 # HCG Halo: the tweak's flags.
-for f in src/HaloNexusLink.m src/HaloNexusDefinition.m src/HaloPanelBorderView.m src/HaloRenderer.m src/HaloPreferences.m \
+for f in src/HaloNexusLink.m src/HaloNexusDefinition.m src/HaloNexusControl.m src/HaloPanelBorderView.m src/HaloRenderer.m src/HaloPreferences.m \
          src/HaloLog.m src/HaloGeometry.c src/HaloConfig.c src/HaloProfiles.c src/HaloProfiles.generated.c preview/HaloNexusPreview.m; do
 	xcrun --sdk iphonesimulator clang "${COMMON[@]}" -Wall -Wextra -Wno-unused-parameter -Werror -Isrc "${NEXUS_INC[@]}" \
 		-DHALO_VERSION="\"$VERSION\"" -DHALO_BUILD_ID="\"preview\"" -c "$f" -o "$OBJ/halo-$(basename "$f").o"

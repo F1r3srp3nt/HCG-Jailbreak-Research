@@ -126,6 +126,21 @@ known-good baseline: reinstall it to go back.
 | N16 | Turn Enable HCG Nexus off | Panel and border gone; screen edge (if targeted) unaffected | |
 | N17 | Halo's kill switch (G2) with target Both | No border anywhere | |
 
+## Use HCG Halo border from HCG Nexus (0.3.1~beta1 with HCG Nexus 0.3.2~beta1)
+
+HCG Halo 0.3.1~beta1 and HCG Nexus 0.3.2~beta1, either install order, respring once. The switch is in Settings ›
+HCG Nexus › Appearance and in the panel's Settings › *HCG Halo border*. It must **never** turn the screen edge on or
+off.
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| N18 | HCG Halo **off** (Enable off). Nexus › Appearance | *Use HCG Halo border* off, Status **Disabled**. Turn it on: Status **Ready**; HCG Halo shows Enable on with Border Target *HCG Nexus Panel*; **no screen-edge border** on the Home Screen | |
+| N19 | Open the panel; its Settings › HCG Halo border | Border drawn around the panel; Status **Active**. Close the panel: border gone; Settings › HCG Nexus shows **Ready** | |
+| N20 | Turn *Use HCG Halo border* off | Panel border gone; HCG Halo Enable off again; screen edge still dark | |
+| N21 | HCG Halo screen edge on (Target *Screen Edge*, any *Show Halo on*): turn the switch on, then off | On: Target *Both*, the screen edge unchanged (same Show Halo on). Off: Target *Screen Edge* again, unchanged | |
+| N22 | Kill switch (G2) present, respring: try the switch | Refused with *stopped by its kill switch*; nothing changes. Remove the kill switch, respring: the switch works again | |
+| N23 | Remove HCG Halo, respring | Nexus › Appearance: Status **Not installed**, switch disabled; the panel keeps Nexus's own outline | |
+
 ## Show Halo on and screen geometry (0.3.0~beta1)
 
 Halo 0.3.0~beta1 from HCG Repo Candidate, alone or with HCG Nexus 0.3.1~beta1. Respring once after installing.

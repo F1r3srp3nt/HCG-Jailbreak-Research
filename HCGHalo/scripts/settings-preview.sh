@@ -41,7 +41,7 @@ stamp "HCG Halo $VERSION ($(git rev-parse --short=12 HEAD)) + HCG Nexus $(sed -n
 
 # --- HCG Halo Settings bundle (same sources and flags as preferences/Makefile) ---
 H="$APP/Stage/HCGHaloPrefs.bundle"; mkdir -p "$H" "$OUT/obj/halo"
-for f in preferences/*.m src/HaloPreferences.m src/HaloScreen.m src/HaloRenderer.m src/HaloNexusDefinition.m src/HaloPanelBorderView.m \
+for f in preferences/*.m src/HaloPreferences.m src/HaloScreen.m src/HaloRenderer.m src/HaloNexusDefinition.m src/HaloNexusControl.m src/HaloPanelBorderView.m \
          src/HaloGeometry.c src/HaloConfig.c src/HaloProfiles.c src/HaloProfiles.generated.c; do
 	"${CC[@]}" -Wall -Wextra -Wno-unused-parameter -Isrc -I"$OUT/inc" \
 		-DHALO_VERSION="\"$VERSION\"" -DHALO_BUILD_ID="\"settings-preview\"" -c "$f" -o "$OUT/obj/halo/$(basename "$f").o"

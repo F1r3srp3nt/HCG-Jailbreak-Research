@@ -37,7 +37,7 @@ DEFS=(-DHALO_VERSION="\"$VERSION\"" -DHALO_BUILD_ID="\"surfaces-preview\"" -DHAL
 
 stamp "HCG Halo $VERSION ($(git rev-parse --short=12 HEAD))"
 for f in src/HaloController.m src/HaloEdgeWindow.m src/HaloOverlayView.m src/HaloRenderer.m src/HaloPreferences.m \
-         src/HaloScreen.m src/HaloNexusLink.m src/HaloNexusDefinition.m src/HaloPanelBorderView.m src/HaloLog.m \
+         src/HaloScreen.m src/HaloNexusLink.m src/HaloNexusDefinition.m src/HaloNexusControl.m src/HaloPanelBorderView.m src/HaloLog.m \
          src/HaloGeometry.c src/HaloConfig.c src/HaloProfiles.c src/HaloProfiles.generated.c preview/HaloSurfacesPreview.m; do
 	"${CC[@]}" -Wall -Wextra -Wno-unused-parameter -Werror -Isrc "${DEFS[@]}" -c "$f" -o "$OUT/obj/$(basename "$f").o"
 done

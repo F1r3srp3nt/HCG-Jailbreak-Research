@@ -1,7 +1,9 @@
-# HCG-repo changes for HCG Halo 0.1.0~beta1 (proposed, not applied)
+# HCG-repo changes for HCG Halo 0.1.0~beta1 (applied on a review branch, not merged)
 
-These are written against HCG-repo `main` at `6ff63fd` (17 Nov 2026). This session can read HCG-repo but not write
-to it.
+These are written against HCG-repo `main` at `6ff63fd` (17 Nov 2026). They are **applied on the review branch
+[`candidate/hcg-halo-0.1.0-beta1`](https://github.com/F1r3srp3nt/HCG-repo/tree/candidate/hcg-halo-0.1.0-beta1)**
+(§1, §2, plus an access-decision row in `docs/ACCESS.md` and an inventory row in `docs/CANDIDATE.md`). Nothing is
+merged or published.
 
 ## 1. New package: `packages/com.hakmicapitalgroup.halo/`
 
@@ -49,22 +51,13 @@ Copy it from `hcg-repo/imports/` in the handoff archive. It is the only manifest
 `PROVENANCE.md`). Push it on a branch: **Prepare packages** fetches the artifact, checks it and commits the `.deb`,
 provenance and lock entry for review. Then merge, and run **Publish** when HCG decides to.
 
-## 3. Optional: website product entry (`config/products.toml`)
+## 3. No website product entry (yet)
 
-```toml
-[[products]]
-key = "hcg-halo"
-name = "HCG Halo"
-package_ids = ["com.hakmicapitalgroup.halo"]
-layouts = ["iphoneos-arm64"]
-kind = "Jailbreak tweak"
-access = "connect"   # match [access] level above
-status = "Free public beta demo in testing: not yet device-tested"
-summary = "Animated neon light border around the Home Screen edges: Static, Breathing, Colour Flow, Orbit and Sci-Fi Circuit."
-detail = "Free public beta demo in the HCG Repo Candidate testing channel, no sign-in. Rootless (iphoneos-arm64). Not yet installed on any device."
-```
-
-There is no `store_slug`, because no HCG Store page exists for Halo. Add one when it does.
+Do **not** add a `config/products.toml` entry for Halo now. HCG-repo's validator requires a `store_slug` for
+`connect`/`paid` products ("access is granted by HCG Store"), and HCG Halo has no HCG Store page. Inventing a slug
+would point at a page that does not exist. The indexed candidate package is listed on its own. Add a product entry
+with a real `store_slug` when a Store page exists. (An earlier draft of this file proposed an entry; HCG-repo's own
+`validate` rejected it, so it was dropped.)
 
 ## 4. Before running Publish (HCG's decision)
 

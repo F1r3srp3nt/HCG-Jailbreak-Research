@@ -1,7 +1,8 @@
 # HCG Repo distribution kit: HCG Halo
 
-**Nothing here publishes anything, and HCG Repo has not been changed.** This session can read HCG-repo but cannot
-write to it.
+**Nothing here publishes anything.** The candidate import is prepared on the HCG-repo review branch
+[`candidate/hcg-halo-0.1.0-beta1`](https://github.com/F1r3srp3nt/HCG-repo/tree/candidate/hcg-halo-0.1.0-beta1); HCG-repo
+`main` and the live sources are unchanged.
 
 | | |
 |---|---|
@@ -18,6 +19,7 @@ write to it.
 | `hcg-repo/packages/com.hakmicapitalgroup.halo/CHANGELOG.md` | `packages/com.hakmicapitalgroup.halo/CHANGELOG.md` | **the** changelog for this version |
 | `hcg-repo/packages/com.hakmicapitalgroup.halo/icon.png` | `packages/com.hakmicapitalgroup.halo/icon.png` | 180 px, **provisional** |
 | `hcg-repo/packages/com.hakmicapitalgroup.halo/README.md` | `packages/com.hakmicapitalgroup.halo/README.md` | asset provenance |
+| — | `config/products.toml` | **no entry**: `connect`/`paid` products need a `store_slug`, and Halo has no HCG Store page |
 | `handoff/0.1.0-beta1/` | — | handoff notes, proposed HCG-repo edits, and known issues |
 | `icon-512.png` | — | provisional source icon (`scripts/make_icon.py`) |
 

@@ -29,6 +29,7 @@ stamp() { echo "==> [$(date -u +%H:%M:%S)] $*"; }
 OUT=${1:-build-settings-preview}
 APP="$OUT/HaloSettingsPreview.app"
 rm -rf "$OUT"; mkdir -p "$APP/Stage" "$OUT/obj" "$OUT/inc"
+OUT=$(cd "$OUT" && pwd); APP="$OUT/HaloSettingsPreview.app"   # absolute: simctl writes the app's stdout there
 ln -s "$THEOS/vendor/include/Preferences" "$OUT/inc/Preferences"   # only these headers, nothing else from Theos
 VERSION=$(sed -n 's/^Version: *//p' control | tr '~' '-')
 ARCH=$(uname -m); [ "$ARCH" = x86_64 ] || ARCH=arm64
@@ -100,7 +101,7 @@ sleep 4
 LOG="$OUT/console.log"; : > "$LOG"; : > "$OUT/stderr.log"
 # Launch detached with stdout/stderr redirected to files (more robust than a pty on CI), then poll.
 launch_status=0
-limit 60 xcrun simctl launch --terminate-running-process --stdout="$PWD/$LOG" --stderr="$PWD/$OUT/stderr.log" \
+limit 60 xcrun simctl launch --terminate-running-process --stdout="$LOG" --stderr="$OUT/stderr.log" \
 	"$UDID" com.hakmicapitalgroup.halo.settings-preview 2>&1 | tee "$OUT/launch.txt" || launch_status=$?
 stamp "launch exit status $launch_status: $(cat "$OUT/launch.txt")"
 for _ in $(seq 1 90); do

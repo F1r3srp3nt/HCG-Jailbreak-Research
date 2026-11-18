@@ -566,9 +566,15 @@ static UIImage *WallpaperImage(NSString *title, double hue) {
 
 - (void)shot:(NSString *)name {
     [CATransaction flush];
+    // Handshake with scripts/preview.sh: it takes the Simulator screenshot, then
+    // creates Documents/shot-ack/<name>. Hold this exact state until then.
+    NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *ack = [[docs stringByAppendingPathComponent:@"shot-ack"] stringByAppendingPathComponent:name];
     Say(@"HAC-PREVIEW-SHOT %@", name);
-    // Hold this state while scripts/preview.sh takes the Simulator screenshot.
-    [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:2.5]];
+    NSDate *limit = [NSDate dateWithTimeIntervalSinceNow:20];
+    while (![[NSFileManager defaultManager] fileExistsAtPath:ack] && [limit timeIntervalSinceNow] > 0)
+        [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:ack]) Say(@"HAC-PREVIEW-NOTE no screenshot ack for %@", name);
 }
 
 - (void)next {
@@ -1000,6 +1006,7 @@ int main(int argc, char *argv[]) {
         NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
         NSString *store = [docs stringByAppendingPathComponent:@"HCGAnimationCenter"];
         [[NSFileManager defaultManager] removeItemAtPath:store error:NULL];
+        [[NSFileManager defaultManager] removeItemAtPath:[docs stringByAppendingPathComponent:@"shot-ack"] error:NULL];
         [HACPreferences setStoreRootForTesting:store];
         // Fresh preferences: the package's defaults (off).
         CFArrayRef keys = CFPreferencesCopyKeyList((__bridge CFStringRef)HACPreferencesDomain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);

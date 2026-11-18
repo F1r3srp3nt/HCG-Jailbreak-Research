@@ -137,13 +137,19 @@ launch_app() {
 	stamp "launch: $(cat "$OUT/launch.txt")"
 }
 launch_app
-if [ ! -s "$LOG" ]; then stamp "no output yet: launching again"; launch_app; fi
+# Relaunch only if the app produced nothing for 30 s (a relaunch kills a slow first run).
+for _ in $(seq 1 30); do [ -s "$LOG" ] && break; sleep 1; done
+if [ ! -s "$LOG" ]; then stamp "no output after 30 s: launching again"; launch_app; fi
+DATA=$(xcrun simctl get_app_container "$UDID" com.hakmicapitalgroup.animationcenter.preview data 2>/dev/null || true)
+stamp "app data container: ${DATA:-unknown}"
+mkdir -p "$DATA/Documents/shot-ack" 2>/dev/null || true
 taken=""
 for _ in $(seq 1 1000); do
 	for name in $(sed -n 's/^HAC-PREVIEW-SHOT //p' "$LOG" 2>/dev/null); do
 		case " $taken " in *" $name "*) continue ;; esac
-		sleep 0.4
 		xcrun simctl io "$UDID" screenshot "$OUT/shots/$name.png" >/dev/null 2>&1 && taken="$taken $name"
+		# Tell the app the screenshot is taken; it holds the state until then.
+		[ -n "$DATA" ] && mkdir -p "$DATA/Documents/shot-ack" && touch "$DATA/Documents/shot-ack/$name"
 	done
 	grep -q 'HAC-PREVIEW-DONE' "$LOG" 2>/dev/null && break
 	sleep 0.25

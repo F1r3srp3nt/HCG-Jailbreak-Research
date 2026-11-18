@@ -11,7 +11,7 @@
 # It publishes nothing and changes no repository.
 #
 # Handoff text comes from HCGVortex/distribution/handoff/<display version>/
-# on this branch (0.2.0~beta1 -> 0.2.0-beta1).
+# on this branch (0.3.0~beta1 -> 0.3.0-beta1).
 name: HCG Vortex handoff archive
 
 on:
@@ -50,16 +50,16 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      # Pinned fallbacks (used by the push run): 0.2.0~beta1.
-      RUN_ID: ${{ inputs.run_id || '44204965738' }}
-      ARTIFACT_ID: ${{ inputs.artifact_id || '14384020297' }}
-      EXPECTED_COMMIT: ${{ inputs.commit || 'd8ceacdaa0e378e11f85117703dcf8d7b2a108e8' }}
-      EXPECTED_SHA256: ${{ inputs.sha256 || 'c379266d9033261ffb3ab5064884dc04f30fe99f21ac50ca5b91862ea47a1c43' }}
-      EXPECTED_VERSION: ${{ inputs.version || '0.2.0~beta1' }}
-      # Baseline: 0.1.0~beta2 (the previous candidate), kept unchanged.
-      BASELINE_RUN_ID: ${{ inputs.baseline_run_id || '44012915117' }}
-      BASELINE_SHA256: ${{ inputs.baseline_sha256 || 'a326759a697899ee938b3db3ccc62521994c01084880b43802c0769f90179395' }}
-      # 0.2.0~beta1 adds code (Tornado), so the comparison reports rather than gates.
+      # Pinned fallbacks (used by the push run): 0.3.0~beta1.
+      RUN_ID: ${{ inputs.run_id || '44208118648' }}
+      ARTIFACT_ID: ${{ inputs.artifact_id || '14383938597' }}
+      EXPECTED_COMMIT: ${{ inputs.commit || 'd5636ca0ccb16fc2b7e34640b1718126aace70ff' }}
+      EXPECTED_SHA256: ${{ inputs.sha256 || '0711465af25edbeff302baa7dbedfc5725bb0f0ca77b1b15133a82f7fc5e55d6' }}
+      EXPECTED_VERSION: ${{ inputs.version || '0.3.0~beta1' }}
+      # Baseline: 0.2.0~beta1 (the previous candidate), kept unchanged.
+      BASELINE_RUN_ID: ${{ inputs.baseline_run_id || '44204965738' }}
+      BASELINE_SHA256: ${{ inputs.baseline_sha256 || 'c379266d9033261ffb3ab5064884dc04f30fe99f21ac50ca5b91862ea47a1c43' }}
+      # 0.3.0~beta1 adds code (five effects), so the comparison reports rather than gates.
       COMPARE_STRICT: ${{ inputs.compare_strict || 'false' }}
       HANDOFF_LABEL: "Free public demo for the candidate channel: not yet installed or tested on a device."
       ARTIFACT_NAME: hcg-vortex-rootless-deb

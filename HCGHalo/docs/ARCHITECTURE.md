@@ -51,7 +51,9 @@ The other choices draw beyond the Home Screen, so the overlay moves to HCG Halo'
 - created on SpringBoard's main window scene (the Home Screen window's scene, or the foreground scene on the main
   screen), sized to the screen, level 2050 (above system alerts);
 - never interactive: `userInteractionEnabled = NO`, `-hitTest:` returns `nil`, never key, never affects the status
-  bar, hidden from accessibility; its root view declines touches too;
+  bar, hidden from accessibility; it has no root view controller (no rotation or status-bar influence), and
+  its content view, a direct subview so the overlay is attached even while the window is hidden, declines
+  touches too;
 - asks for a secure context (private overrides `_shouldCreateContextAsSecure` / `_isSecure`) so it can be shown
   above the Lock Screen. If UIKit stops calling them, the window simply stays under the Lock Screen;
 - **hidden whenever the border is hidden**, so a hidden border costs no compositing.

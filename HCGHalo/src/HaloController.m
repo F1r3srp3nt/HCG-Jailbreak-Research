@@ -344,7 +344,8 @@ static void HaloStatusRequested(CFNotificationCenterRef center, void *observer, 
     }
     if (_edgeWindow) {
         _edgeWindow.hidden = YES;
-        _edgeWindow = nil; // released: UIKit drops the window
+        _edgeWindow.windowScene = nil; // leave the scene's window list now, not whenever UIKit releases it
+        _edgeWindow = nil;
     }
     _host = nil;
     _hostIsEdge = NO;

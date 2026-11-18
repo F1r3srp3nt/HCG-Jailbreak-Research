@@ -26,7 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 #define HALO_EDGE_WINDOW_LEVEL 2050.0
 
 @interface HaloEdgeWindow : UIWindow
-/// A window on `scene`, sized to its screen, with a non-interactive root view.
+/// A window on `scene`, sized to its screen, with a non-interactive content view.
 - (instancetype)initForScene:(UIWindowScene *)scene;
 /// Where to add the overlay (fills the window, declines touches).
 @property (nonatomic, readonly) UIView *contentView;

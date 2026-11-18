@@ -391,7 +391,7 @@ static NSString *FooterText(UITableViewController *controller) {
         id picker = ((id (*)(id, SEL, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"specifierForID:"), @"openAppPicker");
         NSString *pickerName = picker ? ((id (*)(id, SEL))objc_msgSend)(picker, NSSelectorFromString(@"name")) : nil;
         Check([pickerName isEqualToString:@"Choose App…"], [NSString stringWithFormat:@"app row: %@", pickerName]);
-        UITableView *table = ((UITableViewController *)haloRoot).tableView;
+        UITableView *table = ((id (*)(id, SEL))objc_msgSend)(haloRoot, NSSelectorFromString(@"table")); // PSListController: -table
         id indexPath = ((id (*)(id, SEL, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"indexPathForSpecifier:"), spec);
         if (indexPath) [table scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionTop animated:NO];
         [self state:@"E1-show-halo-on-default" caption:@"Settings › HCG Halo › Show Halo on (default)"];
@@ -440,7 +440,7 @@ static NSString *FooterText(UITableViewController *controller) {
         ((void (*)(id, SEL, id, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"setPreferenceValue:specifier:"), @"lockscreen", spec);
         Check([PrefValue(@"showOn") isEqualToString:@"home"], @"an unknown Show Halo on value is stored as Home Screen Only");
         ((void (*)(id, SEL, id, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"setPreferenceValue:specifier:"), @"exceptLock", spec);
-        UITableView *table = ((UITableViewController *)haloRoot).tableView;
+        UITableView *table = ((id (*)(id, SEL))objc_msgSend)(haloRoot, NSSelectorFromString(@"table")); // PSListController: -table
         id indexPath = ((id (*)(id, SEL, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"indexPathForSpecifier:"), spec);
         if (indexPath) [table scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionTop animated:NO];
         [self state:@"E3-show-halo-on-except-lock" caption:@"Show Halo on: Always Except Lock Screen"];

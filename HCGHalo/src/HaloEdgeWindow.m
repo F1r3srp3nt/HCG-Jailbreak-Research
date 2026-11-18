@@ -18,34 +18,9 @@
 }
 @end
 
-/// Root controller: only so UIKit sizes the window properly. It never asks
-/// for an orientation or a status bar change; the overlay maps the border
-/// from the screen's fixed coordinate space whatever the window does.
-@interface HaloEdgeRootController : UIViewController
-@end
-
-@implementation HaloEdgeRootController
-- (void)loadView {
-    HaloPassthroughView *view = [[HaloPassthroughView alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    view.backgroundColor = UIColor.clearColor;
-    view.opaque = NO;
-    view.userInteractionEnabled = NO;
-    view.isAccessibilityElement = NO;
-    view.accessibilityElementsHidden = YES;
-    self.view = view;
+@implementation HaloEdgeWindow {
+    HaloPassthroughView *_content;
 }
-- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    return UIInterfaceOrientationMaskAll;
-}
-- (BOOL)prefersStatusBarHidden {
-    return NO;
-}
-- (UIViewController *)childViewControllerForStatusBarStyle {
-    return nil;
-}
-@end
-
-@implementation HaloEdgeWindow
 
 - (instancetype)initForScene:(UIWindowScene *)scene {
     if ((self = [super initWithWindowScene:scene])) {
@@ -57,14 +32,27 @@
         self.isAccessibilityElement = NO;
         self.accessibilityElementsHidden = YES;
         self.accessibilityIdentifier = @"HCGHaloEdgeWindow";
-        self.rootViewController = [[HaloEdgeRootController alloc] init];
+        // The content view is a direct subview, so the overlay is in this window (view.window
+        // is set) even while the window is hidden. A root view controller's view would only be
+        // installed when the window is first shown, and the window is shown only once the border
+        // is attached: the overlay would never count as attached. Without a root view
+        // controller the window also never takes part in rotation or status-bar decisions; the
+        // overlay maps the border from the screen's fixed coordinate space itself.
+        _content = [[HaloPassthroughView alloc] initWithFrame:self.bounds];
+        _content.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        _content.backgroundColor = UIColor.clearColor;
+        _content.opaque = NO;
+        _content.userInteractionEnabled = NO;
+        _content.isAccessibilityElement = NO;
+        _content.accessibilityElementsHidden = YES;
+        [self addSubview:_content];
         self.hidden = YES; // shown only while the border is visible
     }
     return self;
 }
 
 - (UIView *)contentView {
-    return self.rootViewController.view;
+    return _content;
 }
 
 #pragma mark Never interactive, never key

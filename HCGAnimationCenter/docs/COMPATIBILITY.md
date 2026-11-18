@@ -20,9 +20,9 @@ See `TESTING.md` for the numbers and run links.
 | Item | Status |
 |---|---|
 | Host unit tests (C core, schema, packaging format) | Pass (Linux GCC/Clang, macOS) |
-| Simulator runtime tests (format, importer, renderer, preferences, AI rules) | See TESTING.md |
-| Simulator preview (real tweak code + Settings in a stand-in SpringBoard; real Halo / Vortex / Nexus code) | See TESTING.md |
-| Package build + validation (macOS / Xcode, `--require-new-abi`) | See TESTING.md |
+| Simulator runtime tests (format, importer, renderer, preferences, AI rules) | Pass, 103 checks (run 44242604467) |
+| Simulator preview (real tweak code + Settings in a stand-in SpringBoard; real Halo / Vortex / Nexus code) | Pass, 53 checks (run 44249973461) |
+| Package build + validation (macOS / Xcode, `--require-new-abi`) | Pass, 0 failures / 0 warnings (run 44242604467, commit `2d642bd`) |
 | Device installation | **Not performed** |
 | Runtime behaviour on a device | **Not verified** |
 

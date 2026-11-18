@@ -46,7 +46,33 @@ Package: `com.hakmicapitalgroup.animationcenter_0.1.0~beta1_iphoneos-arm64.deb`,
 **real code** of HCG Halo 0.3.0~beta1 (controller), HCG Vortex 0.3.1~beta1 (engine) and HCG Nexus 0.3.1~beta1 (panel).
 Not SpringBoard, not a device.
 
-PREVIEW_RESULT_PLACEHOLDER
+Run [44249973461](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44249973461) (preview commit
+`5d5f4b6`; the tweak and Settings sources are identical to the candidate `2d642bd`): **53 checks passed, 0 failed.**
+Simulator iPhone 17 Pro Max, iOS 26.2 (the runner's runtime; the tweak notes it is outside the iOS 15–17 interfaces it
+targets). Other projects' code: HCG Halo 0.3.0~beta1 `e22527d`, HCG Vortex 0.3.1~beta1 `945a701`, HCG Nexus
+0.3.1~beta1 `8a37a46`. Contact sheet: `preview/hac-preview-sheet.jpg` (frame 00 was captured late and shows the
+Settings page); the run's artifact also holds the full video and console log.
+
+- **Settings:** the real bundle loads with Preferences.framework; 31 rows; generated video (with sound) and GIF imported;
+  damaged file and still image refused with reasons; editor crop + zoom; *Apply to Home Screen* stores the edited
+  preset and offers to turn the tweak on; *Apply to Lock Screen* explains "experimental" first, then turns it on and
+  assigns; Enable written through CFPreferences.
+- **AI interface** (local test provider, no network): the result opens as a preview; the library and assignments are
+  unchanged; *Save to Library* adopts it with `origin: ai` and the generator record.
+- **Home Screen:** background in `SBHomeScreenWindow` at index 0, playing, muted; icon taps reach the icon; the
+  background never takes a touch; paused with an app in front, resumes after.
+- **Coexistence (real code):** HCG Halo's controller draws its border **above** the background in the same window;
+  HCG Vortex's engine transforms the icon pages during a swipe while the background does not move or reorder and keeps
+  playing; HCG Nexus's panel opens over the Home Screen with the background unaffected; disabling Animation Center
+  leaves Halo untouched.
+- **Lock Screen:** on top of the Lock wallpaper view (wallpaper placement) and playing while locked; Home paused; screen
+  off → paused with the reason shown; after 8 s hidden every decoder is released; screen on → plays again; *Cover
+  Sheet* placement → index 0 of `SBCoverSheetWindow`; unlocked → Lock hidden with no decoder, Home plays.
+- **Failure and recovery:** a damaged video shows the still with the reason; **disable removes every background view
+  and the system wallpaper is untouched and visible**; re-enable restores; no assignment → system wallpaper.
+
+Limits of this evidence: SpringBoard, PosterBoard, real window levels, the Lock Screen's real structure, Reduce Motion /
+Low Power toggles (covered by the C policy tests instead), performance and battery are **not** represented.
 
 ## 4. Device testing — NOT DONE
 

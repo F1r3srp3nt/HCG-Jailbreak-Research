@@ -208,6 +208,14 @@ static NSString *FooterText(UITableViewController *controller) {
 - (void)buildScript {
     NSString *documents = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
     _bundles = [documents stringByAppendingPathComponent:@"PreferenceBundles"];
+    // Start from HCG Halo's defaults, whatever an earlier (retried) launch left behind.
+    CFStringRef domain = CFSTR("com.hakmicapitalgroup.halo");
+    CFArrayRef keys = CFPreferencesCopyKeyList(domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    if (keys) {
+        CFPreferencesSetMultiple(NULL, keys, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+        CFRelease(keys);
+    }
+    CFPreferencesAppSynchronize(domain);
     _stage = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"Stage"];
     [NSFileManager.defaultManager removeItemAtPath:_bundles error:nil];
     [NSFileManager.defaultManager createDirectoryAtPath:_bundles withIntermediateDirectories:YES attributes:nil error:nil];

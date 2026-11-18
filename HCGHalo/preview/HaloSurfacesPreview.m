@@ -247,10 +247,12 @@ static NSString *HostName(UIView *overlay) {
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     if (_steps) return;
+    UILabel *appLabel = nil;
     _appWindow = [self windowWithLevel:UIWindowLevelNormal + 1
                                 colour:[UIColor colorWithRed:0.10 green:0.12 blue:0.18 alpha:1]
                                   text:@"APP"
-                                 label:&_appLabel];
+                                 label:&appLabel];
+    _appLabel = appLabel;
     _lockWindow = [self windowWithLevel:1000
                                  colour:[UIColor colorWithRed:0.05 green:0.02 blue:0.12 alpha:1]
                                    text:@"LOCK SCREEN\n9:41"

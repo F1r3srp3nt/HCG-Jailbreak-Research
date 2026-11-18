@@ -103,8 +103,11 @@ launch_app() {
 	stamp "launch: $(cat "$OUT/launch.txt")"
 }
 launch_app
+# A slow CI Simulator can take over a minute to print anything: wait before relaunching, because a relaunch
+# kills a first instance that is already running (and would interleave two runs in the log).
+for _ in $(seq 1 45); do [ -s "$LOG" ] && break; sleep 2; done
 if [ ! -s "$LOG" ]; then stamp "no output yet: launching again"; launch_app; fi
-for _ in $(seq 1 90); do
+for _ in $(seq 1 180); do
 	grep -q 'HALO-SURFACES-DONE' "$LOG" 2>/dev/null && break
 	sleep 2
 done
@@ -117,6 +120,8 @@ for f in ~/Library/Logs/DiagnosticReports/HaloSurfacesPreview*; do [ -f "$f" ] &
 xcrun simctl terminate "$UDID" com.hakmicapitalgroup.halo.surfaces-preview 2>/dev/null || true
 xcrun simctl shutdown "$UDID" 2>/dev/null || true
 
+echo "--- every check and state (final console)"
+grep -E 'CHECK|STATE|DONE|INFO|GEOMETRY|START' "$LOG" || true
 status=0
 grep -q 'HALO-SURFACES-DONE failures=0' "$LOG" || status=1
 grep -q 'HALO-SURFACES-CHECK FAIL' "$LOG" && status=1

@@ -100,12 +100,15 @@ REC=$!
 sleep 4
 LOG="$OUT/console.log"; : > "$LOG"; : > "$OUT/stderr.log"
 # Launch detached with stdout/stderr redirected to files (more robust than a pty on CI), then poll.
-# simctl keeps the launch call open while stdout is redirected: run it in the background.
-xcrun simctl launch --terminate-running-process --stdout="$LOG" --stderr="$OUT/stderr.log" \
-	"$UDID" com.hakmicapitalgroup.halo.settings-preview > "$OUT/launch.txt" 2>&1 &
-LAUNCH=$!
-sleep 5
-stamp "launch: $(cat "$OUT/launch.txt")"
+# simctl keeps the launch call open while stdout is redirected; a foreground launch with a time limit is what
+# reliably starts the app on CI (a backgrounded one sometimes never launched it). Retry once if nothing ran.
+launch_app() {
+	limit 60 xcrun simctl launch --terminate-running-process --stdout="$LOG" --stderr="$OUT/stderr.log" \
+		"$UDID" com.hakmicapitalgroup.halo.settings-preview > "$OUT/launch.txt" 2>&1 || true
+	stamp "launch: $(cat "$OUT/launch.txt")"
+}
+launch_app
+if [ ! -s "$LOG" ]; then stamp "no output yet: launching again"; launch_app; fi
 for _ in $(seq 1 90); do
 	grep -q 'HALO-SETTINGS-DONE' "$LOG" 2>/dev/null && break
 	sleep 2
@@ -120,7 +123,6 @@ xcrun simctl spawn "$UDID" log show --last 10m --style compact \
 echo "--- system log (last 80 lines)"; tail -80 "$OUT/system.log" || true
 for f in ~/Library/Logs/DiagnosticReports/HaloSettingsPreview*; do [ -f "$f" ] && { echo "--- crash report $f"; head -120 "$f"; cp "$f" "$OUT/"; }; done
 xcrun simctl terminate "$UDID" com.hakmicapitalgroup.halo.settings-preview 2>/dev/null || true
-kill "$LAUNCH" 2>/dev/null || true
 xcrun simctl shutdown "$UDID" 2>/dev/null || true
 
 status=0

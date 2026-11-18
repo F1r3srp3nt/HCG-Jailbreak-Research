@@ -12,6 +12,8 @@
 //    SBIconView.layer.sublayerTransform       (offset, scale, rotation)
 //    SBIconView.layer.zPosition               (depth ordering among siblings)
 //    SBIconView.layer.opacity
+//    SBIconView labelHidden                   (only while shrunk into a formation, via
+//                                              -isLabelHidden/-setLabelHidden: if present)
 //  None of these change frames, centres, subview order, icon order or the
 //  persisted layout, and none affect UIKit hit-testing.
 //
@@ -53,6 +55,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)folderView:(UIView *)folderView didScroll:(UIScrollView *)scrollView;
 /// Called after SpringBoard's own -layoutSubviews has run.
 - (void)folderViewDidLayout:(UIView *)folderView;
+/// Called after an SBIconListView's own -layoutSubviews (optional hook).
+- (void)iconListViewDidLayout:(UIView *)listView;
 
 /// Put every modified layer back exactly as it was.
 - (void)restoreAll;

@@ -23,6 +23,7 @@ os_log_t VortexLogHandle(void) {
 static Class gFolderViewClass = Nil;
 static Class gRootFolderViewClass = Nil;
 static BOOL gHooksInstalled = NO;
+static BOOL gListLayoutHookInstalled = NO;
 
 #pragma mark - Status
 
@@ -89,6 +90,8 @@ static NSString *VortexCompatibilityNotes(void) {
     if (root && !class_getInstanceMethod(root, @selector(isEditing)))
         [notes addObject:@"-isEditing missing; edit-mode bypass unavailable"];
     NSOperatingSystemVersion v = [[NSProcessInfo processInfo] operatingSystemVersion];
+    [notes addObject:gListLayoutHookInstalled ? @"icon-list layout hook active"
+                                              : @"icon-list layout hook not installed (first-frame guard only)"];
     if (v.majorVersion != 17) [notes addObject:[NSString stringWithFormat:@"iOS %ld: hooks were designed from iOS 17 headers; this version is untested", (long)v.majorVersion]];
     return [notes componentsJoinedByString:@"; "];
 }
@@ -195,6 +198,25 @@ void VortexCoreHandleScroll(UIView *folderView, UIScrollView *scrollView) {
         [engine folderView:folderView didScroll:scrollView];
     } @catch (NSException *exception) {
         [engine tripWithReason:[NSString stringWithFormat:@"scroll: %@", exception.reason]];
+        VortexReportStatus(@"fault", exception.reason);
+    }
+}
+
+BOOL VortexCoreListLayoutHookAvailable(void) {
+    return VortexClassImplementsSelector(objc_getClass(VORTEX_SB_ICON_LIST_VIEW_CLASS), @selector(layoutSubviews));
+}
+
+void VortexCoreNoteListLayoutHookInstalled(BOOL installed) {
+    gListLayoutHookInstalled = installed;
+}
+
+void VortexCoreHandleListLayout(UIView *iconListView) {
+    VortexAnimationEngine *engine = [VortexAnimationEngine sharedEngine];
+    if (engine.tripped) return;
+    @try {
+        [engine iconListViewDidLayout:iconListView];
+    } @catch (NSException *exception) {
+        [engine tripWithReason:[NSString stringWithFormat:@"list layout: %@", exception.reason]];
         VortexReportStatus(@"fault", exception.reason);
     }
 }

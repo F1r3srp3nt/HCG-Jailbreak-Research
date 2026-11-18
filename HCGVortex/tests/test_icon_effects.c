@@ -387,6 +387,154 @@ static void test_settings(void) {
     }
 }
 
+/* ---- Regression tests for the 0.3.0~beta1 device recording ---------------
+   iPhone 11 Pro Max layout: 414 x 896 pt, outgoing page with 10 icons,
+   incoming page with 24. On device Tornado read as a thin rope piling up at
+   the tip near the dock, and Orbital scattered into a disc. */
+
+static int device_page(VortexIconSlot *slots, int count) {
+    for (int k = 0; k < count; k++) {
+        slots[k].homeX = -1.5 * 103.5 + (k % 4) * 103.5;
+        slots[k].homeY = -2.5 * 117.0 - 40.0 + (k / 4) * 117.0;
+    }
+    vortex_tornado_rank(slots, count, 8.0);
+    return count;
+}
+
+static void test_device_tornado_reads_as_funnel(void) {
+    const double DW = 414.0, DH = 896.0;
+    VortexIconSlot out[24], in[24];
+    int nOut = device_page(out, 10), nIn = device_page(in, 24);
+    VortexEffectParameters ep = vortex_default_parameters();
+    for (int preset = 0; preset < VortexTornadoPresetCount; preset++) {
+        VortexIconEffectSettings s = vortex_icon_settings_defaults();
+        s.tornado = vortex_tornado_preset((VortexTornadoPreset)preset);
+        double xs[48], ys[48], sizes[48];
+        int n = 0;
+        for (int pg = 0; pg < 2; pg++) {
+            VortexIconSlot *sl = pg ? in : out;
+            for (int i = 0; i < (pg ? nIn : nOut); i++) {
+                VortexIconVisual v = vortex_icon_effect_visual(VortexIconEffectTornado, pg ? VortexPageRoleIncoming : VortexPageRoleOutgoing,
+                                                               0.5, 1, sl[i], DW, DH, &s, &ep);
+                if (v.opacity < 0.3) continue;
+                xs[n] = sl[i].homeX + v.tx; ys[n] = sl[i].homeY + v.ty; sizes[n] = 60.0 * v.scale; n++;
+            }
+        }
+        CHECK(n >= 24, "device tornado: most icons visible mid-swipe (%d)", n);
+        /* Width at every height: split the funnel into 4 height bands. */
+        double y0 = 1e9, y1 = -1e9;
+        for (int i = 0; i < n; i++) { y0 = fmin(y0, ys[i]); y1 = fmax(y1, ys[i]); }
+        int bandsWide = 0;
+        for (int b = 0; b < 4; b++) {
+            double lo = y0 + (y1 - y0) * b / 4.0, hi = y0 + (y1 - y0) * (b + 1) / 4.0 + 1e-9;
+            double xmin = 1e9, xmax = -1e9; int c = 0;
+            for (int i = 0; i < n; i++) if (ys[i] >= lo && ys[i] <= hi) { xmin = fmin(xmin, xs[i]); xmax = fmax(xmax, xs[i]); c++; }
+            if (c >= 3 && xmax - xmin >= 1.2 * 60.0 * 0.4) bandsWide++;
+        }
+        CHECK(bandsWide == 4, "device tornado (preset %d): icons spread around every height band, not a rope (%d/4)", preset, bandsWide);
+        /* Tip above the dock band (dock is roughly the bottom 13 % of the screen). */
+        CHECK(y1 < 0.30 * DH, "device tornado (preset %d): lowest icon %.0f pt below centre stays above the dock", preset, y1);
+        /* Opening wider than the tip. */
+        double topSpan = 0, tipSpan = 0;
+        { double a = 1e9, b = -1e9, c = 1e9, d = -1e9;
+          for (int i = 0; i < n; i++) {
+              if (ys[i] <= y0 + 0.25 * (y1 - y0)) { a = fmin(a, xs[i]); b = fmax(b, xs[i]); }
+              if (ys[i] >= y0 + 0.75 * (y1 - y0)) { c = fmin(c, xs[i]); d = fmax(d, xs[i]); } }
+          topSpan = b - a; tipSpan = d - c; }
+        CHECK(topSpan > 1.8 * tipSpan, "device tornado (preset %d): opening %.0f pt wider than tip %.0f pt", preset, topSpan, tipSpan);
+        /* No pile-up: median nearest-neighbour distance at least half an icon. */
+        double nn[48];
+        for (int i = 0; i < n; i++) {
+            nn[i] = 1e9;
+            for (int j = 0; j < n; j++) if (j != i) nn[i] = fmin(nn[i], hypot(xs[i] - xs[j], ys[i] - ys[j]));
+        }
+        for (int i = 1; i < n; i++) for (int j = i; j > 0 && nn[j - 1] > nn[j]; j--) { double t = nn[j]; nn[j] = nn[j - 1]; nn[j - 1] = t; }
+        double meanSize = 0; for (int i = 0; i < n; i++) meanSize += sizes[i] / n;
+        CHECK(nn[n / 2] >= 0.5 * meanSize, "device tornado (preset %d): median neighbour gap %.1f pt vs icon %.1f pt", preset, nn[n / 2], meanSize);
+    }
+}
+
+static void test_device_orbital_shared_rings(void) {
+    const double DW = 414.0, DH = 896.0;
+    VortexIconSlot out[24], in[24];
+    int nOut = device_page(out, 10), nIn = device_page(in, 24);
+    VortexEffectParameters ep = vortex_default_parameters();
+    for (int rings = 2; rings <= 5; rings++) {
+        VortexIconEffectSettings s = vortex_icon_settings_defaults();
+        s.orbital.rings = rings;
+        s.orbital.tilt = 0.0;
+        double p = 0.5, cx = 0.12 * DW * (1.0 - 2.0 * p), cy = -0.04 * DH;
+        double radii[8]; int distinct = 0; int pagesOnRing[8][2] = { { 0 } };
+        for (int pg = 0; pg < 2; pg++) {
+            VortexIconSlot *sl = pg ? in : out;
+            for (int i = 0; i < (pg ? nIn : nOut); i++) {
+                VortexIconVisual v = vortex_icon_effect_visual(VortexIconEffectOrbital, pg ? VortexPageRoleIncoming : VortexPageRoleOutgoing,
+                                                               p, 1, sl[i], DW, DH, &s, &ep);
+                double r = hypot(sl[i].homeX + v.tx - cx, sl[i].homeY + v.ty - cy);
+                int k = 0;
+                while (k < distinct && fabs(radii[k] - r) >= 0.5) k++;
+                if (k == distinct && distinct < 8) radii[distinct++] = r;
+                if (k < 8) pagesOnRing[k][pg] = 1;
+            }
+        }
+        CHECK(distinct == rings, "device orbital: both pages on the same %d rings (found %d)", rings, distinct);
+        int shared = 0;
+        for (int k = 0; k < distinct; k++) shared += pagesOnRing[k][0] && pagesOnRing[k][1];
+        CHECK(shared == distinct, "device orbital: the 10-icon page occupies every ring too (%d/%d)", shared, distinct);
+    }
+}
+
+/* Orbital with default settings on the device layout: no crowded disc. */
+static void test_device_orbital_not_crowded(void) {
+    const double DW = 414.0, DH = 896.0;
+    VortexIconSlot out[24], in[24];
+    int nOut = device_page(out, 10), nIn = device_page(in, 24);
+    VortexEffectParameters ep = vortex_default_parameters();
+    VortexIconEffectSettings s = vortex_icon_settings_defaults();
+    for (int k = 0; k <= 4; k++) {
+        double p = 0.4 + 0.05 * k;
+        double xs[48], ys[48], size = 0; int n = 0;
+        for (int pg = 0; pg < 2; pg++) {
+            VortexIconSlot *sl = pg ? in : out;
+            for (int i = 0; i < (pg ? nIn : nOut); i++) {
+                VortexIconVisual v = vortex_icon_effect_visual(VortexIconEffectOrbital, pg ? VortexPageRoleIncoming : VortexPageRoleOutgoing,
+                                                               p, 1, sl[i], DW, DH, &s, &ep);
+                if (v.opacity < 0.3) continue;
+                xs[n] = sl[i].homeX + v.tx; ys[n] = sl[i].homeY + v.ty; size += 60.0 * v.scale; n++;
+            }
+        }
+        size /= n > 0 ? n : 1;
+        int crowded = 0;
+        for (int i = 0; i < n; i++) {
+            double nn = 1e9;
+            for (int j = 0; j < n; j++) if (j != i) nn = fmin(nn, hypot(xs[i] - xs[j], ys[i] - ys[j]));
+            if (nn < 0.6 * size) crowded++;
+        }
+        CHECK(crowded <= n / 8, "device orbital p=%.2f: %d of %d icons overlap a neighbour (icon %.0f pt)", p, crowded, n, size);
+    }
+}
+
+static void test_labels_hidden_only_in_formation(void) {
+    VortexIconSlot slots[24];
+    int n = make_grid(slots, 24);
+    VortexEffectParameters ep = vortex_default_parameters();
+    VortexIconEffectSettings s = vortex_icon_settings_defaults();
+    CHECK(!vortex_icon_hides_label(vortex_icon_identity()), "labels shown at rest");
+    for (int kind = 0; kind < VortexIconEffectCount; kind++) {
+        int hidAtMid = 0;
+        for (int i = 0; i < n; i++) {
+            CHECK(!vortex_icon_hides_label(visual(kind, VortexPageRoleOutgoing, 0, 1, slots[i], &s, &ep)) &&
+                      !vortex_icon_hides_label(visual(kind, VortexPageRoleIncoming, 1, 1, slots[i], &s, &ep)),
+                  "%s: labels back at both ends", NAMES[kind]);
+            hidAtMid += vortex_icon_hides_label(visual(kind, VortexPageRoleOutgoing, 0.6, 1, slots[i], &s, &ep));
+        }
+        if (kind == VortexIconEffectTornado || kind == VortexIconEffectOrbital)
+            CHECK(hidAtMid == n, "%s: labels hidden inside the formation (%d/%d)", NAMES[kind], hidAtMid, n);
+        if (kind == VortexIconEffectMagnetic || kind == VortexIconEffectHolographic)
+            CHECK(hidAtMid == 0, "%s: labels stay visible (%d hidden)", NAMES[kind], hidAtMid);
+    }
+}
+
 int main(void) {
     test_contract();
     test_continuity();
@@ -397,6 +545,10 @@ int main(void) {
     test_circuit_traces();
     test_magnetic_snap();
     test_settings();
+    test_device_tornado_reads_as_funnel();
+    test_device_orbital_shared_rings();
+    test_device_orbital_not_crowded();
+    test_labels_hidden_only_in_formation();
     printf("%d checks, %d failures\n", g_checks, g_failures);
     return g_failures ? 1 : 0;
 }

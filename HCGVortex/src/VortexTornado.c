@@ -16,11 +16,13 @@
 #define TORNADO_GATHER       0.30   /* travel an icon takes to join the funnel */
 #define TORNADO_FADE_START   0.72   /* travel at which a swept icon starts to vanish */
 #define TORNADO_FADE_END     0.97
-#define TORNADO_RISE         0.12   /* swept icons climb this fraction of the funnel height */
+#define TORNADO_RISE         0.08   /* swept icons climb this fraction of the funnel height */
+#define TORNADO_STRANDS      3      /* spiral strands per page (the other page sits between them) */
+#define TORNADO_CENTRE_Y     (-0.08) /* funnel centre above the page centre: keeps the tip off the dock */
 #define TORNADO_TAPER        1.5    /* > 1: concave funnel wall */
 #define TORNADO_TRAVEL       0.20   /* axis travel either side of centre, fraction of width */
 #define TORNADO_LEAN         0.08   /* tip trails the opening by this fraction of width */
-#define TORNADO_ICON_SCALE   0.70   /* icon size inside the funnel (before perspective) */
+#define TORNADO_ICON_SCALE   0.56   /* icon size at the opening (before perspective); smaller towards the tip */
 #define TORNADO_BACK_DIM     0.40   /* opacity lost at the back of the funnel (depth on) */
 
 static double clampd(double v, double lo, double hi) {
@@ -41,14 +43,14 @@ VortexTornadoParameters vortex_tornado_preset(VortexTornadoPreset preset) {
     p.iconSpin = 0;
     switch (preset) {
         case VortexTornadoPresetSubtle:
-            p.intensity = 0.4; p.radius = 0.26; p.tipRadius = 0.06; p.height = 0.45; p.rotations = 1.5; p.depth = 0.4;
+            p.intensity = 0.4; p.radius = 0.28; p.tipRadius = 0.08; p.height = 0.42; p.rotations = 0.75; p.depth = 0.4;
             break;
         case VortexTornadoPresetSciFi:
-            p.intensity = 1.0; p.radius = 0.48; p.tipRadius = 0.03; p.height = 0.75; p.rotations = 3.5; p.depth = 1.0;
+            p.intensity = 1.0; p.radius = 0.46; p.tipRadius = 0.05; p.height = 0.62; p.rotations = 1.75; p.depth = 1.0;
             break;
         case VortexTornadoPresetClassic:
         default:
-            p.intensity = 0.7; p.radius = 0.32; p.tipRadius = 0.05; p.height = 0.60; p.rotations = 2.5; p.depth = 0.7;
+            p.intensity = 0.7; p.radius = 0.36; p.tipRadius = 0.07; p.height = 0.52; p.rotations = 1.25; p.depth = 0.7;
             break;
     }
     return p;
@@ -65,7 +67,7 @@ VortexTornadoParameters vortex_tornado_sanitize(VortexTornadoParameters p) {
     p.tipRadius = isfinite(p.tipRadius) ? clampd(p.tipRadius, 0.02, 0.25) : d.tipRadius;
     if (p.tipRadius > 0.9 * p.radius) p.tipRadius = 0.9 * p.radius;   /* always a taper */
     p.height = isfinite(p.height) ? clampd(p.height, 0.35, 0.85) : d.height;
-    p.rotations = isfinite(p.rotations) ? clampd(p.rotations, 1.0, 4.0) : d.rotations;
+    p.rotations = isfinite(p.rotations) ? clampd(p.rotations, 0.5, 3.0) : d.rotations;
     if ((int)p.direction < 0 || p.direction >= VortexSpinCount) p.direction = d.direction;
     if ((int)p.travel < 0 || p.travel >= VortexTravelCount) p.travel = d.travel;
     p.depth = isfinite(p.depth) ? clampd(p.depth, 0.0, 1.0) : d.depth;
@@ -197,18 +199,25 @@ VortexIconVisual vortex_tornado_icon(VortexPageRole role,
     double gather = smoothstep(start, start + TORNADO_GATHER, u);
     double a = clampd((u - start) / (1.0 - start), 0.0, 1.0);
 
-    /* Place along the helix: icons in rank order from the opening to the tip,
-       the incoming page interleaved half a step from the outgoing page. */
+    /* Place on TORNADO_STRANDS interleaved spiral strands, so every height of
+       the funnel has icons spread around it (one strand of icons reads as a
+       rope, not a funnel: seen on device, 0.3.0~beta1). Rank order runs from
+       the opening to the tip; the incoming page sits half a strand apart. */
     int count = slot.count > 0 ? slot.count : 1;
-    double step = 1.0 / (double)count;
-    double h = clampd(rank * (1.0 - step) + (role == VortexPageRoleIncoming ? 0.75 : 0.25) * step, 0.0, 1.0);
+    int index = slot.index >= 0 ? slot.index : 0;
+    int strand = index % TORNADO_STRANDS;
+    int perStrand = (count + TORNADO_STRANDS - 1) / TORNADO_STRANDS;
+    int along = index / TORNADO_STRANDS;
+    int incoming = role == VortexPageRoleIncoming;
+    double h = clampd(((double)along + (incoming ? 0.75 : 0.25)) / (double)(perStrand > 0 ? perStrand : 1), 0.0, 1.0);
+    double strandPhase = ((double)strand + (incoming ? 0.5 : 0.0)) / (double)TORNADO_STRANDS;
 
     double spin = vortex_tornado_spin_sign(tp.direction, navigation);
     double travel = travel_sign(navigation, tp.travel, params);
     double rTop = tp.radius * pageWidth;
     double rTip = tp.tipRadius * pageWidth;
     double height = tp.height * pageHeight;
-    double top = -0.5 * height;
+    double top = TORNADO_CENTRE_Y * pageHeight - 0.5 * height;
     double level = clampd(h - TORNADO_RISE * a, 0.0, 1.0);         /* swept icons climb towards the opening */
     double y = top + level * height;
     double r = rTip + (rTop - rTip) * pow(1.0 - level, TORNADO_TAPER);
@@ -217,7 +226,7 @@ VortexIconVisual vortex_tornado_icon(VortexPageRole role,
 
     /* Helix angle + the whole funnel turning with the gesture. */
     double turning = (0.75 + 0.75 * tp.intensity) * pp + 0.25 * a;
-    double theta = 2.0 * VORTEX_PI * (tp.rotations * h + spin * turning);
+    double theta = 2.0 * VORTEX_PI * (tp.rotations * h + strandPhase + spin * turning);
     double X = r * sin(theta);
     double Z = r * cos(theta);                                      /* + towards the viewer */
 
@@ -228,7 +237,8 @@ VortexIconVisual vortex_tornado_icon(VortexPageRole role,
     }
     double fx = axis + X * persp;
     double fy = y;
-    double funnelScale = clampd(TORNADO_ICON_SCALE * persp, 0.5, 1.1);
+    double taper = rTop > 1e-9 ? 0.7 + 0.3 * (r / rTop) : 1.0;     /* icons shrink towards the tip */
+    double funnelScale = clampd(TORNADO_ICON_SCALE * taper * persp, 0.3, 1.1);
 
     v.tx = (fx - slot.homeX) * gather;
     v.ty = (fy - slot.homeY) * gather;

@@ -92,6 +92,11 @@ VortexIconVisual vortex_icon_effect_visual(VortexIconEffectKind kind, VortexPage
                                            const VortexIconEffectSettings *settings,
                                            const VortexEffectParameters *params);
 
+/// 1 while an icon is shrunk into a formation (scale < 0.85): its label is
+/// hidden so formations are not cluttered with tiny text (seen on device,
+/// 0.3.0~beta1). Always 0 at identity, so labels return with the grid.
+int vortex_icon_hides_label(VortexIconVisual v);
+
 /// Explicit fallback for widgets / oversized icon views.
 VortexIconVisual vortex_icon_effect_fallback(VortexIconEffectKind kind, VortexPageRole role, double progress,
                                              const VortexEffectParameters *params);

@@ -150,7 +150,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>footerText</key>
-			<string>How many times the funnel winds from opening to tip.</string>
+			<string>How many times each spiral strand winds from opening to tip.</string>
 			<key>label</key>
 			<string>Spiral Turns</string>
 		</dict>
@@ -168,9 +168,9 @@
 			<key>label</key>
 			<string></string>
 			<key>max</key>
-			<real>4.0</real>
+			<real>3.0</real>
 			<key>min</key>
-			<real>1.0</real>
+			<real>0.5</real>
 			<key>showValue</key>
 			<true/>
 		</dict>

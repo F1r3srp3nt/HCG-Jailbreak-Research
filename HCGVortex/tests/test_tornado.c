@@ -88,7 +88,7 @@ static void test_defaults_and_sanitize(void) {
                                     .direction = (VortexSpinDirection)17, .travel = (VortexTravelMode)9, .depth = 7.0,
                                     .iconSpin = -2 };
     VortexTornadoParameters s = vortex_tornado_sanitize(bad);
-    CHECK(s.intensity == d.intensity && s.radius == 0.6 && s.rotations == 1.0 && s.direction == VortexSpinFollowSwipe &&
+    CHECK(s.intensity == d.intensity && s.radius == 0.6 && s.rotations == 0.5 && s.direction == VortexSpinFollowSwipe &&
               s.travel == VortexTravelFollowSwipe && s.depth == 1.0 && s.iconSpin == 1 && s.height == 0.35,
           "sanitize clamps (%.2f %.2f %.2f %d)", s.intensity, s.radius, s.rotations, (int)s.direction);
     CHECK(s.tipRadius < s.radius, "tip always narrower than the opening (%.2f < %.2f)", s.tipRadius, s.radius);
@@ -180,7 +180,7 @@ static void sweep_worst(const VortexIconSlot *slots, int n, int role, int nav, c
             double d = fabs(cur.opacity - prev.opacity);
             if (d > *opacity) *opacity = d;
             CHECK(isfinite(cur.tx) && isfinite(cur.ty) && isfinite(cur.scale) && isfinite(cur.z) &&
-                      isfinite(cur.rotation) && cur.opacity >= 0 && cur.opacity <= 1 && cur.scale > 0.4 && cur.scale < 1.2,
+                      isfinite(cur.rotation) && cur.opacity >= 0 && cur.opacity <= 1 && cur.scale > 0.3 && cur.scale < 1.2,
                   "finite and restrained (scale %.3f)", cur.scale);
             prev = cur;
         }
@@ -252,9 +252,18 @@ static void test_navigation_cancel_and_reverse(void) {
     s = vortex_nav_step(&st, 1.6, positions, 4); /* pause */
     VortexIconVisual paused = vortex_tornado_icon(vortex_nav_role(&s, 1), s.progress, s.direction, slots[9], W, H, &tp, &ep);
     CHECK(memcmp(&held, &paused, sizeof held) == 0, "pause holds the formation");
+    /* Mean distance from the grid over all icons, before and after reversing. */
+    double heldMean = 0, unwoundMean = 0;
+    for (int i = 0; i < n; i++) {
+        VortexIconVisual v = vortex_tornado_icon(vortex_nav_role(&s, 1), s.progress, s.direction, slots[i], W, H, &tp, &ep);
+        heldMean += hypot(v.tx, v.ty) / n;
+    }
     s = vortex_nav_step(&st, 1.2, positions, 4); /* reverse */
-    VortexIconVisual unwound = vortex_tornado_icon(vortex_nav_role(&s, 1), s.progress, s.direction, slots[9], W, H, &tp, &ep);
-    CHECK(hypot(unwound.tx, unwound.ty) < hypot(held.tx, held.ty), "reversing unwinds towards the grid");
+    for (int i = 0; i < n; i++) {
+        VortexIconVisual v = vortex_tornado_icon(vortex_nav_role(&s, 1), s.progress, s.direction, slots[i], W, H, &tp, &ep);
+        unwoundMean += hypot(v.tx, v.ty) / n;
+    }
+    CHECK(unwoundMean < heldMean, "reversing unwinds towards the grid (mean %.0f -> %.0f pt)", heldMean, unwoundMean);
     s = vortex_nav_step(&st, 1.0, positions, 4); /* cancelled: back on the original page */
     CHECK(!s.active, "cancel settles the state machine (engine then restores every icon)");
     for (int i = 0; i < n; i++) {

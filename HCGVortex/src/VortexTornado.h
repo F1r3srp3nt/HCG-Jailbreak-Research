@@ -51,8 +51,8 @@ typedef struct {
     double intensity;            ///< 0.1 .. 1.0: how fast the funnel turns and how far icons climb.
     double radius;               ///< 0.15 .. 0.60: upper opening radius, fraction of page width.
     double tipRadius;            ///< 0.02 .. 0.25: lower tip radius, fraction of page width (< radius).
-    double height;               ///< 0.35 .. 0.85: funnel height, fraction of page height.
-    double rotations;            ///< 1.0 .. 4.0: spiral turns of the funnel from opening to tip.
+    double height;               ///< 0.35 .. 0.85: funnel height, fraction of page height (centred 8 % above the page centre).
+    double rotations;            ///< 0.5 .. 3.0: turns of each spiral strand from opening to tip.
     VortexSpinDirection direction;
     VortexTravelMode travel;
     double depth;                ///< 0 .. 1: perspective scale, depth ordering and back-side dimming.

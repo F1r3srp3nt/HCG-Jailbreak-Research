@@ -95,7 +95,7 @@ PANES = {
         *labelled("Funnel Height", "Fraction of the screen height.", slider("tornadoHeight", 0.35, 0.85)),
         *labelled("Upper Radius", "The wide opening, as a fraction of the screen width.", slider("tornadoRadius", 0.15, 0.6)),
         *labelled("Lower Radius", "The narrow tip. Always smaller than the opening.", slider("tornadoTipRadius", 0.02, 0.25)),
-        *labelled("Spiral Turns", "How many times the funnel winds from opening to tip.", slider("tornadoRotations", 1.0, 4.0)),
+        *labelled("Spiral Turns", "How many times each spiral strand winds from opening to tip.", slider("tornadoRotations", 0.5, 3.0)),
         *labelled("Intensity", "How fast the funnel turns as you swipe and how far icons climb.",
                   slider("tornadoIntensity", 0.1, 1.0)),
         *labelled("Depth & Perspective", "0 = flat. Higher values add perspective scaling, front/back ordering and "

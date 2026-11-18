@@ -14,7 +14,9 @@
 | **Magnetic Grid** | `magnetic` | icons (pages move as iOS) | 0.3.0 | build-validated, geometry preview |
 | iOS Default | `stock` | nothing | 0.1.0 | — |
 
-**No effect has been run on a device yet.** "Geometry preview" means images drawn from the real geometry functions
+**Device testing so far:** one partial recording (`docs/device-tests/2026-11-18-recording-0.3.0.md`). Orbital,
+Tornado and Magnetic Grid were seen running on 0.3.0, and their findings are fixed in 0.3.1. Warp, Holographic Layers
+and Circuit Flow have not been run on a device. "Geometry preview" means images drawn from the real geometry functions
 with mock icons (`tests/build/effect_frames` → `scripts/render_effect_preview.py`). They are **not** captures of
 SpringBoard. Every effect is optional and selectable as the preset or per swipe direction.
 
@@ -49,11 +51,15 @@ SpringBoard. Every effect is optional and selectable as the preset or per swipe 
 
 The icons lift out of the grid into a 3-D tornado and the funnel travels with the swipe. It has:
 - a narrow lower tip and a wider upper opening;
-- spiral turns around a vertical axis;
-- icons spread along it with depth.
+- three interleaved spiral strands per page, with the other page's three between them, so every height has icons
+  around it;
+- icons that shrink towards the tip, with depth.
 
-The incoming page's icons are interleaved on the same helix and unwind into their exact grid positions. Both pages
-are in the funnel at mid-swipe.
+The incoming page's icons unwind into their exact grid positions. Labels hide while icons are in the funnel. Both
+pages are in the funnel at mid-swipe. In 0.3.1 the funnel was rebuilt after a device recording showed a thin rope;
+see the before/after image below.
+
+![Before/after on the recorded device layout](media/0.3.1-before-after-device-layout.png)
 
 | Classic Tornado (default) | Subtle | Sci-Fi Vortex |
 |---|---|---|
@@ -64,7 +70,7 @@ are in the funnel at mid-swipe.
 - **Funnel Height:** 0.35–0.85 of the screen height.
 - **Upper Radius:** 0.15–0.6 of the screen width.
 - **Lower Radius:** 0.02–0.25, always smaller than the upper radius.
-- **Spiral Turns:** 1–4.
+- **Spiral Turns:** 0.5–3 (turns per strand).
 - **Intensity:** 0.1–1.
 - **Depth & Perspective:** 0–1.
 - **Rotation Direction:** Follow Swipe / Clockwise / Counterclockwise.
@@ -76,6 +82,9 @@ are in the funnel at mid-swipe.
 
 Icons move onto 2–5 concentric rings around a shared centre. Inner rings travel faster. The icons orbit, then resolve
 into the next page's grid. The rings are tilted slightly for subtle depth: rings, not a funnel.
+
+Since 0.3.1 the rings use shared slots with fixed capacity: a partial page still occupies every ring, and the two pages
+take alternate positions on an interleaved lattice, so they never coincide. Labels hide while icons are in orbit.
 ![](media/orbital-sheet.png)
 
 **Controls:** Outer Radius, Rings, Ring Tilt, Orbit Speed, Direction, Reset.

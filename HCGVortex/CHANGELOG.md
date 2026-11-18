@@ -1,5 +1,37 @@
 # Changelog — HCG Vortex
 
+## 0.3.1-beta1 (Debian version `0.3.1~beta1`)
+
+Polish and fixes after the first device recording of the icon effects. See `docs/device-tests/2026-11-18-recording-0.3.0.md`;
+that recording is partial device testing only. No new effects.
+
+### Fixed
+- **Flash at swipe start (Orbital, Tornado):** the incoming page's icons could show for about one frame at their grid
+  positions over the outgoing page. Fixed by:
+  - holding an incoming pinned page invisible on its first frame;
+  - an optional `SBIconListView -layoutSubviews` hook that re-applies icon visuals in the same frame, installed only
+    when that class implements the method itself and reported in Engine Detail;
+  - transforming hidden icon views too.
+- **Tornado:** read as a thin rope that piled up at the tip near the dock. Now:
+  - 3 interleaved spiral strands per page, so the funnel has width at every height;
+  - smaller icons that shrink towards the tip;
+  - the funnel sits 8 % higher, clear of the dock;
+  - fewer turns per strand (Spiral Turns now 0.5–3, default 1.25);
+  - presets retuned.
+- **Orbital:** crowded into a disc. Now:
+  - shared ring slots, so a partial page still uses every ring;
+  - an interleaved lattice, so the two pages never coincide;
+  - smaller icons, both pages rotating together, and a flatter default tilt.
+- **Labels** are hidden while an icon is shrunk into a formation, and restored with the grid.
+
+### Added
+- Regression tests on the recorded device layout (414 × 896 pt, a 10-icon and a 24-icon page). They fail on 0.3.0 and
+  pass now. There is also a host test for the optional-hook gate.
+
+### Unchanged
+- Warp, Holographic Layers, Circuit Flow, Magnetic Grid, the page effects, exclusions, Reduce Motion, the kill switch,
+  and gzip packaging.
+
 ## 0.3.0-beta1 (Debian version `0.3.0~beta1`)
 
 Free experimental beta. **Not yet installed or tested on a device.**

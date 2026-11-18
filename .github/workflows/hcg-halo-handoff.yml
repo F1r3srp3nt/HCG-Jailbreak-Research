@@ -169,10 +169,13 @@ jobs:
           cp validate.txt "$OUT/VALIDATE.txt"
           dpkg-deb -f "$OUT/$FILE" > "$OUT/control.txt"
           dpkg-deb -c "$OUT/$FILE" > "$OUT/contents.txt"
-          # Exactly one import manifest, pinning exactly what is in this archive.
+          # Exactly one import manifest in the archive: this version's. The kit keeps one
+          # per version; the others are not part of this handoff.
+          M="$OUT/hcg-repo/imports/hcg-halo-$DISPLAY_VERSION-rootless.toml"
+          [ -f "$M" ] || { echo "no import manifest for $EXPECTED_VERSION (hcg-halo-$DISPLAY_VERSION-rootless.toml)"; exit 1; }
+          find "$OUT/hcg-repo/imports" -name '*.toml' ! -path "$M" -delete
           MANIFESTS=$(find "$OUT/hcg-repo/imports" -name '*.toml' | wc -l)
           [ "$MANIFESTS" -eq 1 ] || { echo "expected exactly one import manifest, found $MANIFESTS"; exit 1; }
-          M=$(find "$OUT/hcg-repo/imports" -name '*.toml')
           grep -qx "sha256 = \"$EXPECTED_SHA256\"" "$M"
           grep -qx "commit = \"$EXPECTED_COMMIT\"" "$M"
           grep -qx "run_id = $RUN_ID" "$M"
@@ -180,8 +183,9 @@ jobs:
           grep -qx "package = \"$PACKAGE\"" "$M"
           grep -qx 'channel = "candidate"' "$M"
           grep -qx 'artifact = "hcg-halo-rootless-deb"' "$M"
-          grep -qx "exception_versions = \[\"$EXPECTED_VERSION\"\]" "$OUT/hcg-repo/packages/$PACKAGE/package.toml"
-          head -1 "$OUT/hcg-repo/packages/$PACKAGE/CHANGELOG.md" | grep -qx "## $EXPECTED_VERSION"
+          # The free-demo exception must name this exact version (it may list earlier ones too).
+          grep -E '^exception_versions = \[' "$OUT/hcg-repo/packages/$PACKAGE/package.toml" | grep -qF "\"$EXPECTED_VERSION\""
+          grep -qx "## $EXPECTED_VERSION" "$OUT/hcg-repo/packages/$PACKAGE/CHANGELOG.md"
           SIZE=$(stat -c %s "$OUT/$FILE")
           python3 - "$OUT" "$FILE" "$SIZE" <<'PY'
           import json, os, sys

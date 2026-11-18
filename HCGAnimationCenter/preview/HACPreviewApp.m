@@ -623,18 +623,25 @@ static UIImage *WallpaperImage(NSString *title, double hue) {
 
 - (void)buildScript {
     __weak HACPreviewController *weakSelf = self;
-#define STEP(delay, ...)                                                                                  \
+// Steps fire from run-loop TIMERS, not dispatch_after: a block running on the
+// main dispatch queue blocks every other main-queue block (the importer's and
+// the AI provider's completions) until it returns, so WAIT_UNTIL could never
+// see them finish. A timer callback is not on the main queue, so the nested
+// run loop in WAIT_UNTIL drains it.
+#define STEP(delay, ...)                                                                                   \
     [_steps addObject:^{                                                                                   \
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((delay)*NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ \
-            HACPreviewController *self = weakSelf;                                                         \
-            if (!self) return;                                                                             \
-            @try {                                                                                         \
-                __VA_ARGS__;                                                                               \
-            } @catch (NSException * e) {                                                                   \
-                Check(NO, [NSString stringWithFormat:@"exception: %@ — %@", e.name, e.reason]);           \
-            }                                                                                              \
-            [self next];                                                                                   \
-        });                                                                                                \
+        [NSTimer scheduledTimerWithTimeInterval:(delay)                                                    \
+                                        repeats:NO                                                         \
+                                          block:^(NSTimer *timer_) {                                       \
+                                              HACPreviewController *self = weakSelf;                       \
+                                              if (!self) return;                                           \
+                                              @try {                                                       \
+                                                  __VA_ARGS__;                                             \
+                                              } @catch (NSException * e) {                                 \
+                                                  Check(NO, [NSString stringWithFormat:@"exception: %@ — %@", e.name, e.reason]); \
+                                              }                                                            \
+                                              [self next];                                                 \
+                                          }];                                                              \
     }]
 #define WAIT_UNTIL(timeout, cond)                                                                          \
     do {                                                                                                   \

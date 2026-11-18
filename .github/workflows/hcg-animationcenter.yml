@@ -13,6 +13,11 @@ on:
       - "!HCGAnimationCenter/distribution/**"
       - "!HCGAnimationCenter/docs/**"
       - "!HCGAnimationCenter/**/*.md"
+      - "!HCGAnimationCenter/LICENSE"
+      # The Simulator preview harness is not part of the package (its own workflow runs it).
+      - "!HCGAnimationCenter/preview/**"
+      - "!HCGAnimationCenter/scripts/preview.sh"
+      - "!HCGAnimationCenter/scripts/make_sheet.py"
       - ".github/workflows/hcg-animationcenter.yml"
   workflow_dispatch:
 

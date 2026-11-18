@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0~beta1 (unreleased candidate)
+## 0.3.0~beta1 (HCG Repo Candidate, 18 Nov 2026)
 
 **Free public beta demo — simulator-tested, real-device testing pending.** 0.2.0~beta1 and 0.1.0~beta1 are unchanged.
 
@@ -39,6 +39,7 @@ the two bugs below and must not be used.
 | Settings preview (both real Settings bundles; Show Halo on row, footer, app picker with 24 installed apps, choosing an app) | all checks passed, `failures=0` (run 44246501303) |
 | Show Halo on surfaces preview (real controller in a stand-in SpringBoard, iPhone 11 Pro Max Simulator) | 51/51 (run 44246501303): app switching, lock, wake and screen-off under all five choices; live re-hosting; 60 rapid transitions; Always ≡ Always Except When Screen Is Off |
 | Device | **not tested** — rows S0–S16 |
+| **Published** | **HCG Repo Candidate**, 18 Nov 2026 (owner-approved free demo): HCG-repo PR #10 (`d3a8c99`), Publish run 44379393712. Its live check downloaded and verified every candidate `.deb` (10 packages, 0 errors); the stable source is unchanged. Listing: https://repo.hakmicapitalgroup.com/repo/candidate/depictions/com.hakmicapitalgroup.halo/ |
 
 Found and fixed by the previews before this build: the overlay window never showed the border (its content
 view was installed only once the window was shown), and Settings crashed once an app was chosen (a BOOL private

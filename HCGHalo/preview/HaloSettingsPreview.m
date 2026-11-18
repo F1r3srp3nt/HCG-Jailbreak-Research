@@ -97,6 +97,7 @@ static NSString *FooterText(UITableViewController *controller) {
     NSString *_chosenName;
     NSMutableArray<void (^)(void)> *_steps;
     UIViewController *_nexusRoot;
+    NSString *_nexusVersion; // read from the installed definition (step B)
 }
 
 - (void)viewDidLoad {
@@ -242,7 +243,16 @@ static NSString *FooterText(UITableViewController *controller) {
         Check([NSStringFromClass([self->_nexusRoot class]) isEqualToString:@"HCGNexusRootListController"], @"HCG Nexus principal class loads");
         [self show:self->_nexusRoot];
         NSString *footer = FooterText((UITableViewController *)self->_nexusRoot);
-        Check([footer containsString:@"HCG Halo is not installed."], [NSString stringWithFormat:@"Nexus alone: Appearance footer says Halo is not installed"]);
+        Check([footer containsString:@"HCG Halo is not installed"], [NSString stringWithFormat:@"Nexus alone: Appearance footer says Halo is not installed"]);
+        // HCG Nexus 0.3.2~beta1+: "Use HCG Halo border" (absent in older Nexus builds: then nothing to check here).
+        id useSpec = ((id (*)(id, SEL, id))objc_msgSend)(self->_nexusRoot, NSSelectorFromString(@"specifierForID:"), @"useHaloBorder");
+        if (useSpec) {
+            id statusSpec = ((id (*)(id, SEL, id))objc_msgSend)(self->_nexusRoot, NSSelectorFromString(@"specifierForID:"), @"haloBorderStatus");
+            NSString *state = ((id (*)(id, SEL, id))objc_msgSend)(self->_nexusRoot, NSSelectorFromString(@"haloBorderStatusValue:"), statusSpec);
+            id enabled = ((id (*)(id, SEL, id))objc_msgSend)(useSpec, NSSelectorFromString(@"propertyForKey:"), @"enabled");
+            Check([state isEqualToString:@"Not installed"] && enabled && ![enabled boolValue],
+                  [NSString stringWithFormat:@"Nexus alone: Use HCG Halo border = %@, switch disabled", state]);
+        }
         [self state:@"A1-nexus-settings-alone" caption:@"Settings › HCG Nexus (Halo not installed)"];
     });
     STEP(2.0, {
@@ -272,7 +282,8 @@ static NSString *FooterText(UITableViewController *controller) {
         Check([self install:@"HCGHaloPrefs.bundle"], @"HCG Halo Settings bundle installed next to HCG Nexus");
         [self send:@"reloadSpecifiers" to:self->_nexusRoot];
         NSString *footer = FooterText((UITableViewController *)self->_nexusRoot);
-        Check([footer containsString:@"HCG Halo is installed"], @"both: Appearance footer says Halo is installed");
+        // Nexus 0.3.1 says "HCG Halo is installed"; 0.3.2+ states the switch's real state. Either way, not "missing".
+        Check(footer.length && ![footer containsString:@"HCG Halo is not installed"], @"both: Appearance footer no longer says Halo is missing");
         [self send:@"openHaloBorder:" to:self->_nexusRoot];
     });
     STEP(1.5, {
@@ -284,9 +295,11 @@ static NSString *FooterText(UITableViewController *controller) {
         NSString *path = [definition valueForKey:@"path"];
         Check(definition && [path hasSuffix:@"PreferenceBundles/HCGNexusPrefs.bundle/HaloBorder.plist"],
               [NSString stringWithFormat:@"Halo page read the INSTALLED Nexus definition (%@)", path]);
-        Check([version isEqualToString:@"0.3.1~beta1"], [NSString stringWithFormat:@"definition nexusVersion %@", version]);
+        Check(version.length > 0, [NSString stringWithFormat:@"definition nexusVersion %@", version]);
+        self->_nexusVersion = version;
         NSString *text = AllText(top);
-        Check([text containsString:@"0.3.1~beta1 · compatible"], @"status row: HCG Nexus 0.3.1~beta1 · compatible");
+        Check([text containsString:[version stringByAppendingString:@" · compatible"]],
+              [NSString stringWithFormat:@"status row: HCG Nexus %@ · compatible", version]);
         Check([text containsString:@"HCG Nexus"] && [text containsString:@"PREVIEW"], @"panel outline preview shown");
         [self state:@"B1-halo-page-from-nexus" caption:@"Nexus › Appearance › Halo border → HCG Halo page"];
         [self send:@"replayOpening" to:top];
@@ -299,13 +312,54 @@ static NSString *FooterText(UITableViewController *controller) {
         [top.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:2] atScrollPosition:UITableViewScrollPositionTop animated:NO];
         [self state:@"B3-halo-page-target-look" caption:@"Border Target and Panel Look"];
     });
+    // B4. Nexus › Appearance › Use HCG Halo border (HCG Nexus 0.3.2~beta1+): Nexus's real Settings bundle calls
+    // HCG Halo's own HaloNexusControl; the screen edge must never be turned on or off by it.
+    STEP(1.5, {
+        [self->_nav popToRootViewControllerAnimated:NO];
+        id root = self->_nexusRoot;
+        [self send:@"reloadSpecifiers" to:root];
+        id useSpec = ((id (*)(id, SEL, id))objc_msgSend)(root, NSSelectorFromString(@"specifierForID:"), @"useHaloBorder");
+        if (!useSpec) {
+            Say(@"HALO-SETTINGS-INFO this HCG Nexus build has no Use HCG Halo border switch (before 0.3.2~beta1); B4 skipped");
+            return;
+        }
+        id statusSpec = ((id (*)(id, SEL, id))objc_msgSend)(root, NSSelectorFromString(@"specifierForID:"), @"haloBorderStatus");
+        NSString *(^state)(void) = ^NSString * {
+            return ((id (*)(id, SEL, id))objc_msgSend)(root, NSSelectorFromString(@"haloBorderStatusValue:"), statusSpec);
+        };
+        void (^flip)(BOOL) = ^(BOOL on) {
+            ((void (*)(id, SEL, id, id))objc_msgSend)(root, NSSelectorFromString(@"setHaloBorderSwitchValue:specifier:"), @(on), useSpec);
+        };
+        Class prefsClass = NSClassFromString(@"HaloPreferences");
+        void (^write)(NSDictionary *) = ^(NSDictionary *values) {
+            ((void (*)(id, SEL, id))objc_msgSend)(prefsClass, NSSelectorFromString(@"writeValues:"), values);
+        };
+        id enabled = ((id (*)(id, SEL, id))objc_msgSend)(useSpec, NSSelectorFromString(@"propertyForKey:"), @"enabled");
+        Check(enabled && [enabled boolValue], @"both installed: Use HCG Halo border can be switched (HCGHaloNexusControl 1)");
+        write(@{ @"enabled" : @NO, @"target" : @"screen" });
+        Check([state() isEqualToString:@"Disabled"], [NSString stringWithFormat:@"Halo off: state %@ (Disabled)", state()]);
+        flip(YES);
+        Check([PrefValue(@"enabled") boolValue] && [PrefValue(@"target") isEqualToString:@"nexus"],
+              [NSString stringWithFormat:@"switch on with Halo off: panel only (enabled %@, target %@)", PrefValue(@"enabled"), PrefValue(@"target")]);
+        Check([state() isEqualToString:@"Ready"], [NSString stringWithFormat:@"switched on: state %@ (Ready)", state()]);
+        [self state:@"B4-nexus-use-halo-border-on" caption:@"Nexus › Appearance › Use HCG Halo border: on (Ready)"];
+        flip(NO);
+        Check(![PrefValue(@"enabled") boolValue], @"switch off: HCG Halo off again (screen edge never turned on)");
+        write(@{ @"enabled" : @YES, @"target" : @"screen" });
+        flip(YES);
+        Check([PrefValue(@"enabled") boolValue] && [PrefValue(@"target") isEqualToString:@"both"], @"screen edge on + switch on: Both (screen edge kept)");
+        flip(NO);
+        Check([PrefValue(@"enabled") boolValue] && [PrefValue(@"target") isEqualToString:@"screen"], @"switch off: screen edge only, unchanged");
+        write(@{ @"enabled" : [NSNull null], @"target" : [NSNull null] });
+    });
     // C. HCG Halo's own entry point, and its controls.
     STEP(2.0, {
         UIViewController *haloRoot = [self principalOf:@"HCGHaloPrefs.bundle"];
         Check([NSStringFromClass([haloRoot class]) isEqualToString:@"HaloRootListController"], @"HCG Halo principal class loads");
         [self show:haloRoot];
         NSString *footer = FooterText((UITableViewController *)haloRoot);
-        Check([footer containsString:@"HCG Nexus 0.3.1~beta1: compatible."], @"Halo › Border Target footer: HCG Nexus 0.3.1~beta1 compatible");
+        NSString *compatible = [NSString stringWithFormat:@"HCG Nexus %@: compatible.", self->_nexusVersion ?: @"?"];
+        Check([footer containsString:compatible], [NSString stringWithFormat:@"Halo › Border Target footer: %@", compatible]);
         [self state:@"C1-halo-settings-root" caption:@"Settings › HCG Halo"];
         [self send:@"openNexusBorder:" to:haloRoot];
     });

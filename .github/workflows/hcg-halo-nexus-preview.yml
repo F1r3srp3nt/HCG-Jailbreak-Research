@@ -38,7 +38,7 @@ on:
     inputs:
       nexus_ref:
         description: "HCG-Nexus branch, tag or commit to preview against"
-        default: "claude/nexus-combined-0.3.1"
+        default: "claude/nexus-0.3.2-integrations"
       only_settings:
         description: "Run only the Settings entry-point step"
         type: boolean
@@ -60,7 +60,7 @@ jobs:
         shell: bash
         working-directory: HCGHalo
     env:
-      NEXUS_REF: ${{ inputs.nexus_ref || 'claude/nexus-combined-0.3.1' }}
+      NEXUS_REF: ${{ inputs.nexus_ref || 'claude/nexus-0.3.2-integrations' }}
     steps:
       - uses: actions/checkout@v4
 

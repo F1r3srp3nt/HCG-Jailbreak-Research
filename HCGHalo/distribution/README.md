@@ -46,6 +46,8 @@ It publishes nothing.
 |---|---|
 | Build | run [44062061609](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44062061609), commit `ab439f8bd0990500ba373616073a1d9b108686e6`, `validate.sh --require-new-abi` 0 failures / 0 warnings, 310 simulator runtime checks passed |
 | Package | `com.hakmicapitalgroup.halo_0.1.0~beta1_iphoneos-arm64.deb`, 264,782 bytes, SHA-256 `c0a3301c9b38cdac812d439fb919c3a77bfcb7999c52ea174d799e88ba24c9af` (artifact `hcg-halo-rootless-deb`, ID 14317739735, kept until 2027-02-15) |
+| HCG-repo | review PR [F1r3srp3nt/HCG-repo#7](https://github.com/F1r3srp3nt/HCG-repo/pull/7), branch `candidate/hcg-halo-0.1.0-beta1`. **Prepare packages** [run 44204563439](https://github.com/F1r3srp3nt/HCG-repo/actions/runs/44204563439) imported the artifact (`IMPORTED: hcg-halo-0.1.0-beta1-rootless`, commit `3d2aade`); pool file, lock entry (`channel: candidate`) and provenance match the pin. Not merged, not published |
+| Handoff (refreshed text) | run [44204642906](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44204642906), archive `hcg-halo-0.1.0-beta1-handoff` (ID 14381939451): same `.deb`, corrected HCG-repo notes |
 | Handoff | run [44063187804](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44063187804): API provenance checked, SHA-256 recomputed from a fresh download, re-validated from the source commit, archive re-extracted and `SHA256SUMS` verified. Archive artifact `hcg-halo-0.1.0-beta1-handoff` (ID 14318997915, kept until 2027-02-15) |
 
 ## Dry run with HCG-repo's own tools

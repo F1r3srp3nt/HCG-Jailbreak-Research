@@ -110,6 +110,18 @@ Then **Tornado** (0.2.0), with the defaults first, then with Spin Icons on, then
 - turn Enable Vortex off mid-session: every icon is in place;
 - record the frame rate impression (smooth / occasional hitches / laggy). Don't claim smoothness without this.
 
+Then each of **Orbital, Warp, Holographic Layers, Circuit Flow and Magnetic Grid** (0.3.0) at their defaults, with
+the same checks: pause, reverse, cancel, complete, rapid flicks, taps after completion and after cancellation,
+widgets, a partly filled page, Reduce Motion, and disabling mid-session. Also check:
+- **Orbital:** concentric rings, distinct from Tornado's funnel;
+- **Warp:** no flashing at any point;
+- **Holographic Layers:** labels and icons look exactly as before once the page settles;
+- **Circuit Flow:** traces vanish completely once the page settles; note any hitching;
+- **Magnetic Grid:** one small snap, then nothing moves.
+
+Also try two Tornado presets (Subtle, Sci-Fi Vortex), Reset to Defaults on one effect page, and the live preview on
+each effect page.
+
 If HCG Halo or HCG Nexus is installed, note it in the report. They are untested together.
 
 ### D. Preferences persistence

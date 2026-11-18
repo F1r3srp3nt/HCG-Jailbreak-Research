@@ -47,6 +47,11 @@
 				<string>Vertical Rise</string>
 				<string>Vertical Fall</string>
 				<string>Tornado</string>
+				<string>Orbital</string>
+				<string>Warp</string>
+				<string>Holographic Layers</string>
+				<string>Circuit Flow</string>
+				<string>Magnetic Grid</string>
 				<string>Custom Directions</string>
 				<string>Per-Swipe Effects</string>
 				<string>iOS Default</string>
@@ -57,6 +62,11 @@
 				<string>vertical-rise</string>
 				<string>vertical-fall</string>
 				<string>tornado</string>
+				<string>orbital</string>
+				<string>warp</string>
+				<string>holographic</string>
+				<string>circuit-flow</string>
+				<string>magnetic</string>
 				<string>custom</string>
 				<string>per-direction</string>
 				<string>stock</string>
@@ -71,6 +81,98 @@
 			<string>restoreDefault</string>
 			<key>label</key>
 			<string>Restore Default Behavior</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Each effect has its own page with a live preview, controls and Reset to Defaults. Tornado: icons form a travelling 3-D funnel. Orbital: icons circle on concentric rings. Warp: icons pass through a tunnel. Holographic Layers: floating parallax layers. Circuit Flow: icons run along glowing circuit traces. Magnetic Grid: subtle loosen-and-snap. All six are implemented and build-validated; none has been tested on a device yet.</string>
+			<key>label</key>
+			<string>Effects</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkCell</string>
+			<key>detail</key>
+			<string>VortexEffectPaneController</string>
+			<key>id</key>
+			<string>paneTornado</string>
+			<key>isController</key>
+			<true/>
+			<key>label</key>
+			<string>Tornado</string>
+			<key>pane</key>
+			<string>Tornado</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkCell</string>
+			<key>detail</key>
+			<string>VortexEffectPaneController</string>
+			<key>id</key>
+			<string>paneOrbital</string>
+			<key>isController</key>
+			<true/>
+			<key>label</key>
+			<string>Orbital</string>
+			<key>pane</key>
+			<string>Orbital</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkCell</string>
+			<key>detail</key>
+			<string>VortexEffectPaneController</string>
+			<key>id</key>
+			<string>paneWarp</string>
+			<key>isController</key>
+			<true/>
+			<key>label</key>
+			<string>Warp</string>
+			<key>pane</key>
+			<string>Warp</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkCell</string>
+			<key>detail</key>
+			<string>VortexEffectPaneController</string>
+			<key>id</key>
+			<string>paneHolographic</string>
+			<key>isController</key>
+			<true/>
+			<key>label</key>
+			<string>Holographic Layers</string>
+			<key>pane</key>
+			<string>Holographic</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkCell</string>
+			<key>detail</key>
+			<string>VortexEffectPaneController</string>
+			<key>id</key>
+			<string>paneCircuitFlow</string>
+			<key>isController</key>
+			<true/>
+			<key>label</key>
+			<string>Circuit Flow</string>
+			<key>pane</key>
+			<string>CircuitFlow</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkCell</string>
+			<key>detail</key>
+			<string>VortexEffectPaneController</string>
+			<key>id</key>
+			<string>paneMagnetic</string>
+			<key>isController</key>
+			<true/>
+			<key>label</key>
+			<string>Magnetic Grid</string>
+			<key>pane</key>
+			<string>Magnetic</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -101,6 +203,11 @@
 				<string>Vertical Rise</string>
 				<string>Vertical Fall</string>
 				<string>Tornado</string>
+				<string>Orbital</string>
+				<string>Warp</string>
+				<string>Holographic Layers</string>
+				<string>Circuit Flow</string>
+				<string>Magnetic Grid</string>
 				<string>Custom Directions</string>
 				<string>iOS Default</string>
 			</array>
@@ -110,6 +217,11 @@
 				<string>vertical-rise</string>
 				<string>vertical-fall</string>
 				<string>tornado</string>
+				<string>orbital</string>
+				<string>warp</string>
+				<string>holographic</string>
+				<string>circuit-flow</string>
+				<string>magnetic</string>
 				<string>custom</string>
 				<string>stock</string>
 			</array>
@@ -135,6 +247,11 @@
 				<string>Vertical Rise</string>
 				<string>Vertical Fall</string>
 				<string>Tornado</string>
+				<string>Orbital</string>
+				<string>Warp</string>
+				<string>Holographic Layers</string>
+				<string>Circuit Flow</string>
+				<string>Magnetic Grid</string>
 				<string>Custom Directions</string>
 				<string>iOS Default</string>
 			</array>
@@ -144,6 +261,11 @@
 				<string>vertical-rise</string>
 				<string>vertical-fall</string>
 				<string>tornado</string>
+				<string>orbital</string>
+				<string>warp</string>
+				<string>holographic</string>
+				<string>circuit-flow</string>
+				<string>magnetic</string>
 				<string>custom</string>
 				<string>stock</string>
 			</array>
@@ -241,166 +363,36 @@
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
-			<key>footerText</key>
-			<string>Used when the Tornado effect is selected (as the preset or for a swipe direction). The icons lift out of the grid into a spiral funnel that travels with your swipe, and the next page's icons unwind into place. It follows your finger: pause, reverse or let go and the icons return to the grid. Icons keep facing you unless Spin Icons is on. Widgets fade in place instead of joining the funnel. With Reduce Motion on, Tornado uses the stock animation.</string>
 			<key>label</key>
-			<string>Tornado</string>
+			<string>Appearance &amp; Accessibility</string>
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSDefaultCell</string>
-			<key>cellClass</key>
-			<string>VortexTornadoPreviewCell</string>
-			<key>height</key>
-			<integer>300</integer>
-			<key>id</key>
-			<string>tornadoPreview</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>footerText</key>
-			<string>How large the funnel is and how fast it turns as you swipe.</string>
-			<key>label</key>
-			<string>Tornado Intensity</string>
-		</dict>
-		<dict>
-			<key>PostNotification</key>
-			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
-			<key>cell</key>
-			<string>PSSliderCell</string>
-			<key>defaults</key>
-			<string>com.hakmicapitalgroup.vortex</string>
-			<key>id</key>
-			<string>tornadoIntensity</string>
-			<key>key</key>
-			<string>tornadoIntensity</string>
-			<key>label</key>
-			<string></string>
-			<key>max</key>
-			<real>1.0</real>
-			<key>min</key>
-			<real>0.1</real>
-			<key>showValue</key>
-			<true/>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>footerText</key>
-			<string>Width of the funnel's upper opening, as a fraction of the screen width. The tip is always narrow.</string>
-			<key>label</key>
-			<string>Spiral Radius</string>
-		</dict>
-		<dict>
-			<key>PostNotification</key>
-			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
-			<key>cell</key>
-			<string>PSSliderCell</string>
-			<key>defaults</key>
-			<string>com.hakmicapitalgroup.vortex</string>
-			<key>id</key>
-			<string>tornadoRadius</string>
-			<key>key</key>
-			<string>tornadoRadius</string>
-			<key>label</key>
-			<string></string>
-			<key>max</key>
-			<real>0.6</real>
-			<key>min</key>
-			<real>0.15</real>
-			<key>showValue</key>
-			<true/>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>footerText</key>
-			<string>How many times the funnel winds from its opening to its tip.</string>
-			<key>label</key>
-			<string>Spiral Turns</string>
-		</dict>
-		<dict>
-			<key>PostNotification</key>
-			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
-			<key>cell</key>
-			<string>PSSliderCell</string>
-			<key>defaults</key>
-			<string>com.hakmicapitalgroup.vortex</string>
-			<key>id</key>
-			<string>tornadoRotations</string>
-			<key>key</key>
-			<string>tornadoRotations</string>
-			<key>label</key>
-			<string></string>
-			<key>max</key>
-			<real>4.0</real>
-			<key>min</key>
-			<real>1.0</real>
-			<key>showValue</key>
-			<true/>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>Tornado Options</string>
-		</dict>
-		<dict>
-			<key>PostNotification</key>
-			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
-			<key>cell</key>
-			<string>PSLinkListCell</string>
-			<key>defaults</key>
-			<string>com.hakmicapitalgroup.vortex</string>
+			<string>PSLinkCell</string>
 			<key>detail</key>
-			<string>PSListItemsController</string>
+			<string>VortexEffectPaneController</string>
 			<key>id</key>
-			<string>tornadoDirection</string>
-			<key>key</key>
-			<string>tornadoDirection</string>
+			<string>paneAppearance</string>
+			<key>isController</key>
+			<true/>
 			<key>label</key>
-			<string>Spin Direction</string>
-			<key>validTitles</key>
-			<array>
-				<string>Follow Swipe</string>
-				<string>Clockwise</string>
-				<string>Counterclockwise</string>
-			</array>
-			<key>validValues</key>
-			<array>
-				<string>follow-swipe</string>
-				<string>clockwise</string>
-				<string>counterclockwise</string>
-			</array>
+			<string>Appearance</string>
+			<key>pane</key>
+			<string>Appearance</string>
 		</dict>
 		<dict>
-			<key>PostNotification</key>
-			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
 			<key>cell</key>
-			<string>PSSwitchCell</string>
-			<key>defaults</key>
-			<string>com.hakmicapitalgroup.vortex</string>
+			<string>PSLinkCell</string>
+			<key>detail</key>
+			<string>VortexEffectPaneController</string>
 			<key>id</key>
-			<string>tornadoDepth</string>
-			<key>key</key>
-			<string>tornadoDepth</string>
+			<string>paneAccessibility</string>
+			<key>isController</key>
+			<true/>
 			<key>label</key>
-			<string>Depth &amp; Scale</string>
-		</dict>
-		<dict>
-			<key>PostNotification</key>
-			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
-			<key>cell</key>
-			<string>PSSwitchCell</string>
-			<key>defaults</key>
-			<string>com.hakmicapitalgroup.vortex</string>
-			<key>id</key>
-			<string>tornadoIconSpin</string>
-			<key>key</key>
-			<string>tornadoIconSpin</string>
-			<key>label</key>
-			<string>Spin Icons</string>
+			<string>Accessibility &amp; Performance</string>
+			<key>pane</key>
+			<string>Accessibility</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -462,7 +454,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>footerText</key>
-			<string>How far the outgoing page travels. Below 1.0 it moves less and fades out (parallax) while the incoming page covers it.</string>
+			<string>Page effects: how far the outgoing page travels. Below 1.0 it moves less and fades out (parallax) while the incoming page covers it.</string>
 			<key>label</key>
 			<string>Animation Intensity</string>
 		</dict>
@@ -544,7 +536,7 @@
 			<key>footerText</key>
 			<string>Engine status is reported by SpringBoard after each respring. HCG Vortex makes no network connections and collects no analytics or telemetry.</string>
 			<key>label</key>
-			<string>Development</string>
+			<string>Reset &amp; Diagnostics</string>
 		</dict>
 		<dict>
 			<key>cell</key>

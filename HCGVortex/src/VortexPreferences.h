@@ -13,7 +13,7 @@
 
 #import <Foundation/Foundation.h>
 #import "VortexTypes.h"
-#import "VortexTornado.h"
+#import "VortexIconEffects.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -41,13 +41,35 @@ extern NSString *const VortexKeyIntensity;
 extern NSString *const VortexKeyEasing;
 extern NSString *const VortexKeyFadePages;
 extern NSString *const VortexKeyDiagnosticLogging;
-// Tornado effect (v0.2.0)
+// Tornado (0.2.0; height, tip, travel, preset and depth intensity 0.3.0)
+extern NSString *const VortexKeyTornadoPreset;      // "subtle" | "classic" | "scifi" | "custom"
 extern NSString *const VortexKeyTornadoIntensity;   // 0.1 .. 1.0
-extern NSString *const VortexKeyTornadoRadius;      // 0.15 .. 0.60 (fraction of page width)
+extern NSString *const VortexKeyTornadoRadius;      // 0.15 .. 0.60 upper radius (fraction of page width)
+extern NSString *const VortexKeyTornadoTipRadius;   // 0.02 .. 0.25 lower radius
+extern NSString *const VortexKeyTornadoHeight;      // 0.35 .. 0.85 (fraction of page height)
 extern NSString *const VortexKeyTornadoRotations;   // 1.0 .. 4.0 spiral turns
 extern NSString *const VortexKeyTornadoDirection;   // "follow-swipe" | "clockwise" | "counterclockwise"
-extern NSString *const VortexKeyTornadoDepth;       // bool
+extern NSString *const VortexKeyTornadoTravel;      // "follow-swipe" | "against-swipe" | "centred"
+extern NSString *const VortexKeyTornadoDepth;       // 0 .. 1
 extern NSString *const VortexKeyTornadoIconSpin;    // bool
+// Orbital / Warp / Holographic / Circuit Flow / Magnetic Grid (0.3.0)
+extern NSString *const VortexKeyOrbitalRadius;
+extern NSString *const VortexKeyOrbitalRings;
+extern NSString *const VortexKeyOrbitalTilt;
+extern NSString *const VortexKeyOrbitalSpeed;
+extern NSString *const VortexKeyOrbitalDirection;
+extern NSString *const VortexKeyWarpIntensity;
+extern NSString *const VortexKeyWarpPerspective;
+extern NSString *const VortexKeyHoloDepth;
+extern NSString *const VortexKeyHoloTilt;
+extern NSString *const VortexKeyHoloLayers;
+extern NSString *const VortexKeyCircuitTrail;
+extern NSString *const VortexKeyCircuitIntensity;
+extern NSString *const VortexKeyMagneticStrength;
+extern NSString *const VortexKeyMagneticSnap;
+// Appearance (0.3.0): Circuit Flow trace colour and glow, previews.
+extern NSString *const VortexKeyAccentColor;        // "cyan" | "purple" | "green" | "amber" | "magenta" | "white"
+extern NSString *const VortexKeyGlowIntensity;      // 0 .. 1
 
 // Status keys (domain VortexStatusDomain)
 extern NSString *const VortexStatusKeyState;      // "active" | "disabled" | "incompatible" | "kill-switch" | "auto-disabled" | "fault"
@@ -62,7 +84,12 @@ extern NSString *const VortexEffectIdentifierStock;
 extern NSString *const VortexEffectIdentifierReverseSlide;
 extern NSString *const VortexEffectIdentifierVerticalRise;
 extern NSString *const VortexEffectIdentifierVerticalFall;
-extern NSString *const VortexEffectIdentifierTornado;    // per-icon effect (VortexIconEffect)
+extern NSString *const VortexEffectIdentifierTornado;    // per-icon effects (VortexIconEffect) ...
+extern NSString *const VortexEffectIdentifierOrbital;
+extern NSString *const VortexEffectIdentifierWarp;
+extern NSString *const VortexEffectIdentifierHolographic;
+extern NSString *const VortexEffectIdentifierCircuitFlow;
+extern NSString *const VortexEffectIdentifierMagnetic;
 extern NSString *const VortexEffectIdentifierCustom;      // uses incoming/outgoing direction keys
 extern NSString *const VortexPresetPerDirection;          // use swipe-left / swipe-right effect keys
 
@@ -78,6 +105,9 @@ extern NSString *const VortexPresetPerDirection;          // use swipe-left / sw
 @property (nonatomic, readonly) VortexEffectParameters parameters;
 @property (nonatomic, readonly) BOOL diagnosticLogging;
 @property (nonatomic, readonly) VortexTornadoParameters tornadoParameters;
+@property (nonatomic, readonly) VortexIconEffectSettings iconEffectSettings;
+/// Accent colour as @[r, g, b] in 0..1 (Circuit Flow traces, previews).
+@property (nonatomic, readonly, copy) NSArray<NSNumber *> *accentRGB;
 
 /// True when the configuration would produce stock iOS behaviour: the engine
 /// then installs no transforms at all.
@@ -97,7 +127,18 @@ extern NSString *const VortexPresetPerDirection;          // use swipe-left / sw
 + (NSArray<NSString *> *)validEffectIdentifiers;
 + (NSArray<NSString *> *)validDirections;
 + (NSArray<NSString *> *)validEasings;
-+ (NSArray<NSString *> *)validTornadoDirections;
++ (NSArray<NSString *> *)validTornadoDirections;   // also Orbital's direction
++ (NSArray<NSString *> *)validTravelModes;
++ (NSArray<NSString *> *)validTornadoPresets;
++ (NSArray<NSString *> *)validAccentColors;
++ (NSArray<NSNumber *> *)rgbForAccentColor:(NSString *)name;
+
+/// Per-icon effects: identifier -> C kind. NO for any other identifier.
++ (BOOL)iconEffectKind:(VortexIconEffectKind *)kind forIdentifier:(NSString *)identifier;
+/// Preference keys that belong to an effect pane (for "Reset to Defaults").
++ (NSArray<NSString *> *)keysForEffectPane:(NSString *)pane;
+/// Values a Tornado preset sets (key -> value). Empty for "custom".
++ (NSDictionary<NSString *, id> *)valuesForTornadoPreset:(NSString *)preset;
 + (VortexEasing)easingFromString:(NSString *)string;
 
 /// Returns `value` if valid for `key` (numbers are clamped), otherwise the default.

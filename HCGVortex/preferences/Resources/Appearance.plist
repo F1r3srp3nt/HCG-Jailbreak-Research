@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>items</key>
+	<array>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Colour and glow of Circuit Flow traces and the effect previews. A shared appearance with HCG Halo and HCG Nexus is planned but not implemented: these settings affect HCG Vortex only.</string>
+			<key>label</key>
+			<string>Appearance</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>id</key>
+			<string>accentColor</string>
+			<key>key</key>
+			<string>accentColor</string>
+			<key>label</key>
+			<string>Accent Colour</string>
+			<key>validTitles</key>
+			<array>
+				<string>Cyan</string>
+				<string>Purple</string>
+				<string>Green</string>
+				<string>Amber</string>
+				<string>Magenta</string>
+				<string>White</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>cyan</string>
+				<string>purple</string>
+				<string>green</string>
+				<string>amber</string>
+				<string>magenta</string>
+				<string>white</string>
+			</array>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>0 = thin traces only.</string>
+			<key>label</key>
+			<string>Glow Intensity</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>id</key>
+			<string>glowIntensity</string>
+			<key>key</key>
+			<string>glowIntensity</string>
+			<key>label</key>
+			<string></string>
+			<key>max</key>
+			<real>1.0</real>
+			<key>min</key>
+			<real>0.0</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Returns only this page's settings to their defaults.</string>
+		</dict>
+		<dict>
+			<key>action</key>
+			<string>resetPane:</string>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>id</key>
+			<string>resetPane</string>
+			<key>label</key>
+			<string>Reset to Defaults</string>
+		</dict>
+	</array>
+	<key>title</key>
+	<string>Appearance</string>
+</dict>
+</plist>

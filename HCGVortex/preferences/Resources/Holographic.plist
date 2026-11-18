@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>items</key>
+	<array>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Icons separate into floating depth layers that slide at different speeds (parallax) and tilt during the swipe. Icons and labels return exactly to their original look. Implemented and build-validated; not yet tested on a device.</string>
+			<key>label</key>
+			<string>Holographic Layers</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSDefaultCell</string>
+			<key>cellClass</key>
+			<string>VortexEffectPreviewCell</string>
+			<key>effect</key>
+			<string>holographic</string>
+			<key>height</key>
+			<integer>300</integer>
+			<key>id</key>
+			<string>holographicPreview</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Separation between layers.</string>
+			<key>label</key>
+			<string>Depth</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>id</key>
+			<string>holoDepth</string>
+			<key>key</key>
+			<string>holoDepth</string>
+			<key>label</key>
+			<string></string>
+			<key>max</key>
+			<real>1.0</real>
+			<key>min</key>
+			<real>0.0</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>3-D tilt of the icons while they move.</string>
+			<key>label</key>
+			<string>Tilt</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>id</key>
+			<string>holoTilt</string>
+			<key>key</key>
+			<string>holoTilt</string>
+			<key>label</key>
+			<string></string>
+			<key>max</key>
+			<real>1.0</real>
+			<key>min</key>
+			<real>0.0</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>2 to 4 depth layers.</string>
+			<key>label</key>
+			<string>Layers</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.vortex/preferences-changed</string>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.vortex</string>
+			<key>id</key>
+			<string>holoLayers</string>
+			<key>isSegmented</key>
+			<true/>
+			<key>key</key>
+			<string>holoLayers</string>
+			<key>label</key>
+			<string></string>
+			<key>max</key>
+			<integer>4</integer>
+			<key>min</key>
+			<integer>2</integer>
+			<key>segmentCount</key>
+			<integer>2</integer>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Returns only this page's settings to their defaults.</string>
+		</dict>
+		<dict>
+			<key>action</key>
+			<string>resetPane:</string>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>id</key>
+			<string>resetPane</string>
+			<key>label</key>
+			<string>Reset to Defaults</string>
+		</dict>
+	</array>
+	<key>title</key>
+	<string>Holographic</string>
+</dict>
+</plist>

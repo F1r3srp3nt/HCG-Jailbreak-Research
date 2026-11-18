@@ -237,12 +237,15 @@ static NSString *FooterText(UITableViewController *controller) {
     STEP(2.0, {
         // PSListController exposes its table as -table (not -tableView).
         UITableView *table = ((id (*)(id, SEL))objc_msgSend)(self->_nexusRoot, NSSelectorFromString(@"table"));
+        // Find the row through its specifier (id "haloBorder" in Nexus's Root.plist).
         NSIndexPath *row = nil;
-        for (NSInteger s = 0; s < table.numberOfSections && !row; s++)
-            for (NSInteger r = 0; r < [table numberOfRowsInSection:s]; r++) {
-                UITableViewCell *cell = [table.dataSource tableView:table cellForRowAtIndexPath:[NSIndexPath indexPathForRow:r inSection:s]];
-                if ([cell.textLabel.text isEqualToString:@"Halo border"]) { row = [NSIndexPath indexPathForRow:r inSection:s]; break; }
-            }
+        NSArray *specifiers = ((id (*)(id, SEL))objc_msgSend)(self->_nexusRoot, NSSelectorFromString(@"specifiers"));
+        for (id spec in specifiers) {
+            NSString *identifier = ((id (*)(id, SEL))objc_msgSend)(spec, NSSelectorFromString(@"identifier"));
+            if (![identifier isEqualToString:@"haloBorder"]) continue;
+            row = ((id (*)(id, SEL, id))objc_msgSend)(self->_nexusRoot, NSSelectorFromString(@"indexPathForSpecifier:"), spec);
+            break;
+        }
         Check(row != nil, @"Appearance › Halo border row is shown");
         if (row) [table scrollToRowAtIndexPath:row atScrollPosition:UITableViewScrollPositionMiddle animated:NO];
         [self send:@"openHaloBorder:" to:self->_nexusRoot];

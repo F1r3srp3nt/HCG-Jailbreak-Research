@@ -51,6 +51,17 @@ typedef enum {
     HaloCutoutModeCount
 } HaloCutoutMode;
 
+/// Where the SCREEN-EDGE border is shown ("Show Halo on"). The HCG Nexus
+/// panel border never uses this: it follows the panel's own visibility.
+typedef enum {
+    HaloShowOnHome = 0,            // Home Screen only (default; the 0.1.0 / 0.2.0 behaviour)
+    HaloShowOnApp = 1,             // only while the chosen app is in front
+    HaloShowOnAlways = 2,          // every lit surface: Lock Screen, Home Screen, apps
+    HaloShowOnExceptLock = 3,      // Home Screen and apps; hidden whenever the phone is locked
+    HaloShowOnExceptScreenOff = 4, // like Always, stated explicitly: hidden and paused when the display is off
+    HaloShowOnCount
+} HaloShowOn;
+
 typedef struct {
     double r, g, b; // 0...1, sRGB
 } HaloRGB;
@@ -106,6 +117,14 @@ const char *halo_low_power_id(HaloLowPowerPolicy policy);
 int halo_low_power_from_id(const char *identifier, HaloLowPowerPolicy *out);
 const char *halo_cutout_mode_id(HaloCutoutMode mode);
 int halo_cutout_mode_from_id(const char *identifier, HaloCutoutMode *out);
+const char *halo_show_on_id(HaloShowOn showOn);
+const char *halo_show_on_title(HaloShowOn showOn);
+int halo_show_on_from_id(const char *identifier, HaloShowOn *out);
+/// 1 if the policy can draw over apps or the Lock Screen (so it needs Halo's own
+/// overlay window instead of the Home Screen window).
+int halo_show_on_uses_overlay_window(HaloShowOn showOn);
+/// 1 if the policy can draw on the lit Lock Screen.
+int halo_show_on_includes_lock_screen(HaloShowOn showOn);
 
 /// "#RRGGBB" or "RRGGBB" (case-insensitive). Returns 1 on success.
 int halo_parse_hex(const char *text, HaloRGB *out);
@@ -157,15 +176,30 @@ HaloRenderPlan halo_render_plan(HaloMode requested, int reduceMotion, int lowPow
 /// Inputs for the "should the overlay draw now?" decision.
 typedef struct {
     int enabled;      // master switch on
-    int attached;     // overlay is in the Home Screen window
+    int attached;     // overlay is in its host window
     int screenOn;     // display not blanked
     int unlocked;     // device not locked (Lock Screen / Cover Sheet not up)
     int homeInFront;  // no app (or other full-screen display item) in front of the Home Screen
-    int hostVisible;  // the Home Screen window is not hidden
+    int hostVisible;  // the host window is not hidden
 } HaloVisibilityInputs;
 
 /// NULL if the overlay should draw; otherwise a short reason it should not.
+/// The Home Screen Only policy (the 0.2.0 rules).
 const char *halo_visibility_block(const HaloVisibilityInputs *inputs);
+
+/// The same decision for every "Show Halo on" policy.
+typedef struct {
+    HaloVisibilityInputs base;
+    HaloShowOn showOn;
+    int appChosen;            // Selected App Only: an app is chosen
+    int frontAppKnown;        // the front app can be detected (the SpringBoard hook is installed)
+    int chosenAppInFront;     // the chosen app is the app in front
+} HaloSurfaceInputs;
+
+/// NULL if the screen-edge border should draw; otherwise a short reason.
+/// Every policy hides it while the display is off: a dark display cannot show
+/// a border, and a hidden overlay is also paused (no rendering work).
+const char *halo_surface_block(const HaloSurfaceInputs *inputs);
 
 #ifdef __cplusplus
 }

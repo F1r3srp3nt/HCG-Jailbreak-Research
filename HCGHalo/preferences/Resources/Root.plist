@@ -52,19 +52,61 @@
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSTitleValueCell</string>
-			<key>get</key>
-			<string>displayContext:</string>
+			<string>PSGroupCell</string>
 			<key>id</key>
-			<string>displayContext</string>
-			<key>label</key>
-			<string>Display Context</string>
+			<string>statusDetailGroup</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>id</key>
-			<string>statusDetailGroup</string>
+			<string>showOnGroup</string>
+			<key>label</key>
+			<string>Screen Edge</string>
+		</dict>
+		<dict>
+			<key>PostNotification</key>
+			<string>com.hakmicapitalgroup.halo/preferences-changed</string>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>defaults</key>
+			<string>com.hakmicapitalgroup.halo</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>id</key>
+			<string>showOn</string>
+			<key>key</key>
+			<string>showOn</string>
+			<key>label</key>
+			<string>Show Halo on</string>
+			<key>staticTextMessage</key>
+			<string>A display that is fully off can't show a border: every choice hides the border and pauses rendering when the screen goes black. HCG Halo has no Always-On display mode. HCG Nexus panel lighting follows the panel and is not affected.</string>
+			<key>validTitles</key>
+			<array>
+				<string>Home Screen Only</string>
+				<string>Selected App Only</string>
+				<string>Always</string>
+				<string>Always Except Lock Screen</string>
+				<string>Always Except When Screen Is Off</string>
+			</array>
+			<key>validValues</key>
+			<array>
+				<string>home</string>
+				<string>app</string>
+				<string>always</string>
+				<string>exceptLock</string>
+				<string>exceptScreenOff</string>
+			</array>
+		</dict>
+		<dict>
+			<key>action</key>
+			<string>openAppPicker:</string>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>id</key>
+			<string>openAppPicker</string>
+			<key>label</key>
+			<string>Chosen App</string>
 		</dict>
 		<dict>
 			<key>cell</key>

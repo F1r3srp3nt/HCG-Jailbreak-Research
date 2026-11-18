@@ -74,6 +74,35 @@ HaloDisplayGeometry halo_profile_geometry(const HaloProfile *profile, HaloCalibr
 /// 1 if a screen of `width` x `height` points (either orientation) matches the profile.
 int halo_profile_matches_screen(const HaloProfile *profile, double width, double height);
 
+/// How the real screen relates to a profile.
+typedef enum {
+    HaloScreenFitUnknown = 0,     // no implemented profile, or no usable screen measurement
+    HaloScreenFitMatch = 1,       // same point size: the profile applies as is
+    HaloScreenFitDisplayZoom = 2, // same physical panel (same pixels), fewer points: Display Zoom
+    HaloScreenFitMismatch = 3,    // a different display: the profile's corners and notch do not apply
+} HaloScreenFit;
+
+/// Measurement of the real screen (portrait or landscape; order does not matter).
+typedef struct {
+    double pointWidth, pointHeight; // UIScreen.fixedCoordinateSpace bounds (pt)
+    double pixelWidth, pixelHeight; // UIScreen.nativeBounds (px); 0 if unknown
+} HaloScreenMeasure;
+
+/// Classifies the screen against the profile. *lengthScale receives the factor
+/// from profile points to screen points for corner and notch lengths (1 unless
+/// Display Zoom). Under Display Zoom the same panel is drawn with fewer, larger
+/// points, so every physical length shrinks by the same factor in points.
+HaloScreenFit halo_profile_fit(const HaloProfile *profile, HaloScreenMeasure screen, double *lengthScale);
+const char *halo_screen_fit_id(HaloScreenFit fit);
+
+/// Profile geometry for the real screen: width/height are the screen's points,
+/// corner and notch lengths are scaled by halo_profile_fit()'s factor, then the
+/// calibration deltas (screen points) are added and the result sanitised.
+/// For a Mismatch the profile lengths are kept unscaled (the frame fits the
+/// screen, but the corners and notch belong to another display).
+HaloDisplayGeometry halo_profile_geometry_for_screen(const HaloProfile *profile, HaloCalibration calibration,
+                                                     HaloScreenMeasure screen, HaloScreenFit *fit, double *lengthScale);
+
 #ifdef __cplusplus
 }
 #endif

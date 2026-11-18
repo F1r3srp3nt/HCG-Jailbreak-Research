@@ -64,6 +64,9 @@ extern NSString *const HaloKeyNexusOpenTrace;        // light trace when the pan
 extern NSString *const HaloKeyNexusCloseFade;        // fade with the panel (off: disappear at once)
 extern NSString *const HaloKeyNexusWorkspacePulse;   // small pulse on workspace changes
 extern NSString *const HaloKeyDiagnosticLogging;
+extern NSString *const HaloKeyShowOn;                // screen edge: "home" | "app" | "always" | "exceptLock" | "exceptScreenOff"
+extern NSString *const HaloKeyShowOnApp;             // Selected App Only: bundle identifier ("" = none chosen)
+extern NSString *const HaloKeyShowOnAppName;         // its display name when chosen (shown if the app is removed)
 
 // Status keys (HaloStatusDomain)
 extern NSString *const HaloStatusKeyState;       // see HaloEngineState* below
@@ -81,6 +84,10 @@ extern NSString *const HaloStatusKeyUnstableLaunches;
 extern NSString *const HaloStatusKeyNexusState;      // "attached" | "waiting" | "off" | "unavailable"
 extern NSString *const HaloStatusKeyNexusDetail;     // human-readable reason
 extern NSString *const HaloStatusKeyNexusRendering;  // what the panel border is doing now
+extern NSString *const HaloStatusKeyShowOn;          // the policy SpringBoard applied
+extern NSString *const HaloStatusKeyFrontApp;        // bundle identifier of the app in front ("" = none / unknown)
+extern NSString *const HaloStatusKeySurfaceHost;     // "Home Screen window" | "HCG Halo overlay window"
+extern NSString *const HaloStatusKeyScreenFit;       // halo_screen_fit_id()
 
 extern NSString *const HaloEngineStateActive;        // overlay attached and managed
 extern NSString *const HaloEngineStateDisabled;      // loaded, master switch off
@@ -124,6 +131,11 @@ typedef NS_ENUM(NSInteger, HaloTarget) {
 @property (nonatomic, readonly) HaloCalibration calibration;
 @property (nonatomic, readonly) HaloCutoutMode cutoutMode;
 @property (nonatomic, readonly) BOOL diagnosticLogging;
+/// Where the screen-edge border is shown. Never affects the HCG Nexus panel border.
+@property (nonatomic, readonly) HaloShowOn showOn;
+/// Selected App Only: the chosen bundle identifier, or "" if none.
+@property (nonatomic, readonly, copy) NSString *showOnApp;
+@property (nonatomic, readonly, copy) NSString *showOnAppName;
 @property (nonatomic, readonly, nullable) const HaloProfile *profile;
 /// Profile geometry plus calibration; width 0 if no implemented profile.
 @property (nonatomic, readonly) HaloDisplayGeometry geometry;
@@ -140,6 +152,9 @@ typedef NS_ENUM(NSInteger, HaloTarget) {
 /// The keys "Reset Nexus Lighting" resets (not the target, not the screen edge).
 + (NSArray<NSString *> *)nexusLightingKeys;
 + (NSArray<NSString *> *)validTargets;
++ (NSArray<NSString *> *)validShowOn;
+/// A bundle identifier as stored for Selected App Only ("" if not one).
++ (NSString *)sanitizedBundleIdentifier:(nullable id)value;
 /// Default look of the Nexus border: the "Nexus Signature" preset.
 + (HaloAppearance)nexusSignatureAppearance;
 

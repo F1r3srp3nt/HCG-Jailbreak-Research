@@ -11,6 +11,9 @@
 # Settings › HCG Halo › Nexus Panel Border) with HCG Nexus alone, both, and a
 # malformed or missing Nexus definition (scripts/settings-preview.sh).
 #
+# A third step runs HCG Halo's real SpringBoard controller and overlay window in a
+# stand-in SpringBoard to exercise "Show Halo on" (scripts/surfaces-preview.sh).
+#
 # This is preview evidence only: no SpringBoard, no Settings app, no device, no
 # package is built or published. It never installs anything on a phone.
 name: HCG Halo × Nexus preview
@@ -24,6 +27,12 @@ on:
       - "HCGHalo/preferences/**"
       - "HCGHalo/src/HaloNexus*"
       - "HCGHalo/src/HaloPanelBorderView.*"
+      - "HCGHalo/src/HaloController.m"
+      - "HCGHalo/src/HaloEdgeWindow.*"
+      - "HCGHalo/src/HaloScreen.*"
+      - "HCGHalo/src/HaloConfig.*"
+      - "HCGHalo/src/HaloProfiles.*"
+      - "HCGHalo/scripts/surfaces-preview.sh"
       - ".github/workflows/hcg-halo-nexus-preview.yml"
   workflow_dispatch:
     inputs:
@@ -32,6 +41,10 @@ on:
         default: "claude/nexus-combined-0.3.1"
       only_settings:
         description: "Run only the Settings entry-point step"
+        type: boolean
+        default: false
+      only_surfaces:
+        description: "Run only the Show Halo on surfaces step"
         type: boolean
         default: false
 
@@ -77,7 +90,7 @@ jobs:
           xcrun simctl list runtimes
 
       - name: Build and run the panel preview, recording video
-        if: ${{ !inputs.only_settings }}
+        if: ${{ !inputs.only_settings && !inputs.only_surfaces }}
         timeout-minutes: 20
         run: |
           {
@@ -93,7 +106,7 @@ jobs:
           echo "PANEL_PREVIEW_STATUS=$status" >> "$GITHUB_ENV"
 
       - name: Settings entry points (both real Settings bundles), recording video
-        if: ${{ always() }}
+        if: ${{ always() && !inputs.only_surfaces }}
         timeout-minutes: 20
         run: |
           [ -f "$RUNNER_TEMP/PROVENANCE.txt" ] || {
@@ -105,8 +118,33 @@ jobs:
           status=0
           scripts/settings-preview.sh "$RUNNER_TEMP/halo-settings-preview" || status=$?
           cp "$RUNNER_TEMP/PROVENANCE.txt" "$RUNNER_TEMP/halo-settings-preview/" || true
+          echo "SETTINGS_PREVIEW_STATUS=$status" >> "$GITHUB_ENV"
           echo "panel preview: ${PANEL_PREVIEW_STATUS:-?}, settings preview: $status"
-          [ "${PANEL_PREVIEW_STATUS:-0}" = 0 ] && [ "$status" = 0 ]
+
+      # HCG Halo's real SpringBoard controller, overlay window and renderer in a
+      # stand-in SpringBoard: app switching, lock, wake and screen-off under every
+      # "Show Halo on" choice (scripts/surfaces-preview.sh). No Nexus needed.
+      - name: Show Halo on surfaces (real controller, stand-in SpringBoard), recording video
+        if: ${{ always() && !inputs.only_settings }}
+        timeout-minutes: 20
+        run: |
+          {
+            echo "PREVIEW EVIDENCE — iOS Simulator, stand-in SpringBoard, not a device result."
+            echo "HCG Halo commit:  $(git rev-parse HEAD)"
+            echo "Workflow run:     $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/PROVENANCE-surfaces.txt"
+          status=0
+          scripts/surfaces-preview.sh "$RUNNER_TEMP/halo-surfaces-preview" || status=$?
+          cp "$RUNNER_TEMP/PROVENANCE-surfaces.txt" "$RUNNER_TEMP/halo-surfaces-preview/PROVENANCE.txt" || true
+          echo "SURFACES_PREVIEW_STATUS=$status" >> "$GITHUB_ENV"
+
+      - name: Result
+        if: always()
+        run: |
+          echo "panel: ${PANEL_PREVIEW_STATUS:-skipped}  settings: ${SETTINGS_PREVIEW_STATUS:-skipped}  surfaces: ${SURFACES_PREVIEW_STATUS:-skipped}"
+          for s in "${PANEL_PREVIEW_STATUS:-0}" "${SETTINGS_PREVIEW_STATUS:-0}" "${SURFACES_PREVIEW_STATUS:-0}"; do
+            [ "$s" = 0 ] || exit 1
+          done
 
       - name: Upload preview evidence
         if: always()
@@ -125,5 +163,10 @@ jobs:
             ${{ runner.temp }}/halo-settings-preview/*.txt
             ${{ runner.temp }}/halo-settings-preview/*.log
             ${{ runner.temp }}/halo-settings-preview/*.ips
+            ${{ runner.temp }}/halo-surfaces-preview/*.mp4
+            ${{ runner.temp }}/halo-surfaces-preview/console.log
+            ${{ runner.temp }}/halo-surfaces-preview/*.txt
+            ${{ runner.temp }}/halo-surfaces-preview/*.sha256
+            ${{ runner.temp }}/halo-surfaces-preview/*.ips
           retention-days: 30
           if-no-files-found: warn

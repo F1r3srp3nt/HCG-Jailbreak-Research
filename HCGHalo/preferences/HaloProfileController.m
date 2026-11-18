@@ -5,9 +5,9 @@
 
 #import "HaloProfileController.h"
 #import "HaloPreferences.h"
+#import "HaloScreen.h"
 #import "HaloTheme.h"
 
-#include <sys/utsname.h>
 
 typedef NS_ENUM(NSInteger, HaloProfileSection) {
     HaloProfileSectionAutomatic = 0,
@@ -50,9 +50,7 @@ static NSString *const kCellID = @"HaloProfileCell";
 }
 
 static NSString *HaloMachine(void) {
-    struct utsname info;
-    if (uname(&info) != 0) return @"unknown";
-    return @(info.machine);
+    return HaloMachineIdentifier();
 }
 
 - (const HaloProfile *)profileForMachine:(NSString *)machine {
@@ -164,17 +162,12 @@ static NSString *HaloMachine(void) {
             else
                 cell.detailTextLabel.text = @"Not in the profile list.";
         } else {
-            UIScreen *screen = UIScreen.mainScreen;
-            CGSize size = screen.fixedCoordinateSpace.bounds.size;
-            cell.textLabel.text = [NSString stringWithFormat:@"Screen %.0f × %.0f pt @%.0fx", size.width, size.height, screen.scale];
+            cell.textLabel.text = [NSString stringWithFormat:@"Screen %@", HaloScreenSummary()];
+            cell.textLabel.adjustsFontSizeToFitWidth = YES;
+            cell.textLabel.minimumScaleFactor = 0.7;
             const HaloProfile *selected = halo_profile_find(_selected.UTF8String);
-            if (selected && halo_profile_matches_screen(selected, size.width, size.height))
-                cell.detailTextLabel.text = [NSString stringWithFormat:@"Same size as %s.", selected->name];
-            else if (selected)
-                cell.detailTextLabel.text = [NSString stringWithFormat:@"Different size from %s: the border will not line up.",
-                                                                       selected->name];
-            else
-                cell.detailTextLabel.text = @"";
+            cell.detailTextLabel.text = HaloScreenFitSentence(selected, HaloCurrentScreenMeasure());
+            cell.detailTextLabel.numberOfLines = 0;
         }
         break;
     }

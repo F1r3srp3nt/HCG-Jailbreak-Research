@@ -17,6 +17,7 @@
 #import "HaloPreferences.h"
 #import "HaloProfiles.h"
 #import "HaloRenderer.h"
+#import "HaloScreen.h"
 
 #include <math.h>
 
@@ -342,6 +343,66 @@ static void TestPreferences(void) {
     ClearAll();
 }
 
+static void TestShowOnPreferences(void) {
+    ClearAll();
+    HaloSettings *s = [HaloPreferences loadSettings];
+    CHECK(s.showOn == HaloShowOnHome && s.showOnApp.length == 0, @"Show Halo on defaults to Home Screen Only, no app");
+    CHECK(s.target == HaloTargetScreen, @"target still defaults to the screen edge");
+    NSDictionary *policies = @{
+        @"home" : @(HaloShowOnHome), @"app" : @(HaloShowOnApp), @"always" : @(HaloShowOnAlways),
+        @"exceptLock" : @(HaloShowOnExceptLock), @"exceptScreenOff" : @(HaloShowOnExceptScreenOff)
+    };
+    for (NSString *policy in policies) {
+        [HaloPreferences writeValue:policy forKey:HaloKeyShowOn];
+        CHECK([HaloPreferences loadSettings].showOn == [policies[policy] integerValue], @"showOn %@ round trip", policy);
+    }
+    for (id bad in @[ @"lockscreen", @"", @3, @[], @"HOME" ]) {
+        [HaloPreferences writeValue:bad forKey:HaloKeyShowOn];
+        CHECK([[HaloPreferences readValueForKey:HaloKeyShowOn] isEqualToString:@"home"], @"invalid showOn %@ -> home", bad);
+    }
+    [HaloPreferences writeValue:@"com.apple.mobilesafari" forKey:HaloKeyShowOnApp];
+    CHECK([[HaloPreferences loadSettings].showOnApp isEqualToString:@"com.apple.mobilesafari"], @"bundle ID stored");
+    for (id bad in @[ @"com apple", @"../etc", @".x", @"x.", @"a..b", @"com.apple.$", @42 ]) {
+        [HaloPreferences writeValue:bad forKey:HaloKeyShowOnApp];
+        CHECK([HaloPreferences loadSettings].showOnApp.length == 0, @"invalid bundle ID %@ rejected", bad);
+    }
+    NSString *longName = [@"" stringByPaddingToLength:200 withString:@"x" startingAtIndex:0];
+    [HaloPreferences writeValue:longName forKey:HaloKeyShowOnAppName];
+    CHECK([HaloPreferences loadSettings].showOnAppName.length == 80, @"app name capped at 80");
+    // Show Halo on is not appearance: presets and Reset Appearance never change it.
+    [HaloPreferences writeValue:@"always" forKey:HaloKeyShowOn];
+    CHECK(![[HaloPreferences appearanceKeys] containsObject:HaloKeyShowOn], @"showOn is not an appearance key");
+    [HaloPreferences resetAppearance];
+    CHECK([HaloPreferences loadSettings].showOn == HaloShowOnAlways, @"Reset Appearance keeps Show Halo on");
+    ClearAll();
+}
+
+static void TestScreenMeasure(void) {
+    HaloScreenMeasure m = HaloCurrentScreenMeasure();
+    UIScreen *screen = UIScreen.mainScreen;
+    CHECK(m.pointWidth > 0 && m.pointHeight > m.pointWidth, @"portrait points %.0f x %.0f", m.pointWidth, m.pointHeight);
+    CHECK(fabs(m.pixelWidth - m.pointWidth * screen.nativeScale) < 2, @"pixels = points x native scale (%.0f)", m.pixelWidth);
+    NSString *summary = HaloScreenSummary();
+    CHECK([summary containsString:@" pt @"] && [summary containsString:@" px"], @"summary %@", summary);
+    CHECK(HaloMachineIdentifier().length > 0, @"model identifier %@", HaloMachineIdentifier());
+    const HaloProfile *max = halo_profile_find("iphone-11-pro-max");
+    HaloScreenMeasure zoomed = {375, 812, 1242, 2688};
+    NSString *zoom = HaloScreenFitSentence(max, zoomed);
+    CHECK([zoom hasPrefix:@"Display Zoom:"] && [zoom containsString:@"375 × 812 pt"] && [zoom containsString:@"0.906"],
+          @"zoom sentence: %@", zoom);
+    HaloScreenMeasure eleven = {375, 812, 1125, 2436};
+    CHECK([HaloScreenFitSentence(max, eleven) hasPrefix:@"MISMATCH:"], @"11 Pro sentence: %@", HaloScreenFitSentence(max, eleven));
+    HaloScreenMeasure standard = {414, 896, 1242, 2688};
+    CHECK([HaloScreenFitSentence(max, standard) hasPrefix:@"Screen size matches"], @"match sentence");
+    // The overlay draws the zoomed geometry at the zoomed size.
+    HaloCalibration zero = {0, 0, 0, 0};
+    HaloDisplayGeometry z = halo_profile_geometry_for_screen(max, zero, zoomed, NULL, NULL);
+    HaloRenderer *renderer = [[HaloRenderer alloc] initWithContentsScale:3];
+    [renderer setGeometry:z traceCutout:YES transform:CGAffineTransformIdentity unitScale:1 bounds:CGRectMake(0, 0, 375, 812)];
+    CHECK(renderer.layer != nil, @"renderer accepts the zoomed geometry");
+    [renderer teardown];
+}
+
 int HaloRunNexusTests(long *checks, long *failures); // test_nexus.m
 
 int main(void) {
@@ -350,12 +411,14 @@ int main(void) {
         TestRendererPlans();
         TestOverlay();
         TestPreferences();
+        TestShowOnPreferences();
+        TestScreenMeasure();
         HaloRunNexusTests(&gChecks, &gFailures);
     }
     if (gFailures) {
         printf("%ld of %ld runtime checks FAILED\n", gFailures, gChecks);
         return 1;
     }
-    printf("All %ld runtime checks passed (renderer, overlay, preferences, HCG Nexus panel border; iOS Simulator)\n", gChecks);
+    printf("All %ld runtime checks passed (renderer, overlay, preferences, Show Halo on, screen fit, HCG Nexus panel border; iOS Simulator)\n", gChecks);
     return 0;
 }

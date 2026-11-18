@@ -33,6 +33,13 @@ static const HaloName kLowPower[] = {
     {HaloLowPowerAnimate, "animate", "Keep Animating"},
     {HaloLowPowerHide, "hide", "Hide Border"},
 };
+static const HaloName kShowOn[] = {
+    {HaloShowOnHome, "home", "Home Screen Only"},
+    {HaloShowOnApp, "app", "Selected App Only"},
+    {HaloShowOnAlways, "always", "Always"},
+    {HaloShowOnExceptLock, "exceptLock", "Always Except Lock Screen"},
+    {HaloShowOnExceptScreenOff, "exceptScreenOff", "Always Except When Screen Is Off"},
+};
 static const HaloName kCutout[] = {
     {HaloCutoutTrace, "trace", "Trace Notch"},
     {HaloCutoutStraight, "straight", "Straight Edge"},
@@ -100,6 +107,28 @@ int halo_cutout_mode_from_id(const char *identifier, HaloCutoutMode *out) {
     if (!find_id(kCutout, COUNT(kCutout), identifier, &v)) return 0;
     *out = (HaloCutoutMode)v;
     return 1;
+}
+
+const char *halo_show_on_id(HaloShowOn showOn) {
+    const HaloName *n = find_value(kShowOn, COUNT(kShowOn), showOn);
+    return n ? n->identifier : "home";
+}
+const char *halo_show_on_title(HaloShowOn showOn) {
+    const HaloName *n = find_value(kShowOn, COUNT(kShowOn), showOn);
+    return n ? n->title : "Home Screen Only";
+}
+int halo_show_on_from_id(const char *identifier, HaloShowOn *out) {
+    int v;
+    if (!find_id(kShowOn, COUNT(kShowOn), identifier, &v)) return 0;
+    *out = (HaloShowOn)v;
+    return 1;
+}
+int halo_show_on_uses_overlay_window(HaloShowOn showOn) {
+    return showOn == HaloShowOnApp || showOn == HaloShowOnAlways || showOn == HaloShowOnExceptLock ||
+           showOn == HaloShowOnExceptScreenOff;
+}
+int halo_show_on_includes_lock_screen(HaloShowOn showOn) {
+    return showOn == HaloShowOnAlways || showOn == HaloShowOnExceptScreenOff;
 }
 
 // MARK: - Colours
@@ -329,6 +358,33 @@ HaloRenderPlan halo_render_plan(HaloMode requested, int reduceMotion, int lowPow
     }
     plan.animated = plan.mode != HaloModeStatic;
     return plan;
+}
+
+const char *halo_surface_block(const HaloSurfaceInputs *in) {
+    const HaloVisibilityInputs *v = &in->base;
+    HaloShowOn policy = in->showOn;
+    if ((int)policy < 0 || policy >= HaloShowOnCount) policy = HaloShowOnHome;
+    if (policy == HaloShowOnHome) return halo_visibility_block(v);
+    if (!v->enabled) return "disabled";
+    if (!v->attached) return "not attached";
+    if (!v->screenOn) return "screen off";
+    switch (policy) {
+    case HaloShowOnApp:
+        if (!v->unlocked) return "locked";
+        if (!in->appChosen) return "no app chosen";
+        if (!in->frontAppKnown) return "app detection unavailable";
+        if (!in->chosenAppInFront) return "chosen app not in front";
+        break;
+    case HaloShowOnExceptLock:
+        if (!v->unlocked) return "locked";
+        break;
+    case HaloShowOnAlways:
+    case HaloShowOnExceptScreenOff:
+    default:
+        break;
+    }
+    if (!v->hostVisible) return "window hidden";
+    return NULL;
 }
 
 const char *halo_visibility_block(const HaloVisibilityInputs *v) {

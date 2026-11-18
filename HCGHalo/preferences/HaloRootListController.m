@@ -10,6 +10,7 @@
 //
 
 #import "HaloRootListController.h"
+#import "HaloAppPickerController.h"
 #import "HaloColoursController.h"
 #import "HaloHeaderView.h"
 #import "HaloNexusBorderController.h"
@@ -17,6 +18,7 @@
 #import "HaloPreferences.h"
 #import "HaloPresetsController.h"
 #import "HaloProfileController.h"
+#import "HaloScreen.h"
 #import "HaloTheme.h"
 
 #import <Preferences/PSControlTableCell.h>
@@ -69,6 +71,9 @@ static void HaloStatusUpdated(CFNotificationCenterRef center, void *observer, CF
     if ([detail isKindOfClass:[NSString class]] && detail.length) [lines addObject:detail];
     NSString *match = status[HaloStatusKeyProfileMatch];
     if ([match isKindOfClass:[NSString class]] && match.length) [lines addObject:match];
+    NSString *front = status[HaloStatusKeyFrontApp];
+    if (settings.showOn == HaloShowOnApp && settings.targetsScreen && [front isKindOfClass:[NSString class]])
+        [lines addObject:[NSString stringWithFormat:@"App in front: %@.", front.length ? front : @"none (Home Screen)"]];
     NSDate *when = status[HaloStatusKeyTimestamp];
     NSString *reportedVersion = status[HaloStatusKeyTweakVersion];
     if ([when isKindOfClass:[NSDate class]]) {
@@ -86,6 +91,8 @@ static void HaloStatusUpdated(CFNotificationCenterRef center, void *observer, CF
     }
     [detailGroup setProperty:[lines componentsJoinedByString:@"\n\n"] forKey:@"footerText"];
 
+    [self applyShowOnText:settings];
+
     PSSpecifier *profileGroup = [self specifierForID:@"profileGroup"];
     const HaloProfile *profile = settings.profile;
     NSString *profileText;
@@ -99,6 +106,9 @@ static void HaloStatusUpdated(CFNotificationCenterRef center, void *observer, CF
     NSString *screen = status[HaloStatusKeyScreen];
     if ([screen isKindOfClass:[NSString class]] && screen.length)
         profileText = [profileText stringByAppendingFormat:@"\nThis screen: %@.", screen];
+    // Measured here too, so the explanation is right even before SpringBoard reports.
+    NSString *fit = HaloScreenFitSentence(profile, HaloCurrentScreenMeasure());
+    if (fit.length) profileText = [profileText stringByAppendingFormat:@"\n%@", fit];
     [profileGroup setProperty:profileText forKey:@"footerText"];
 
     // Border target: whether a compatible HCG Nexus is installed (its own
@@ -123,6 +133,63 @@ static void HaloStatusUpdated(CFNotificationCenterRef center, void *observer, CF
     [targetGroup setProperty:[targetLines componentsJoinedByString:@"\n\n"] forKey:@"footerText"];
 }
 
+/// "Show Halo on": what each choice does, the chosen app, and the dark-display rule.
+- (void)applyShowOnText:(HaloSettings *)settings {
+    PSSpecifier *group = [self specifierForID:@"showOnGroup"];
+    PSSpecifier *picker = [self specifierForID:@"openAppPicker"];
+    NSString *appName = nil;
+    if (settings.showOnApp.length) {
+        appName = [HaloAppPickerController nameForBundleIdentifier:settings.showOnApp];
+        if (!appName) {
+            NSString *stored = settings.showOnAppName.length ? settings.showOnAppName : settings.showOnApp;
+            appName = [NSString stringWithFormat:@"%@ (not installed)", stored];
+        }
+    }
+    [picker setName:appName ? [NSString stringWithFormat:@"Chosen App: %@", appName] : @"Choose App…"];
+
+    NSMutableArray *lines = [NSMutableArray array];
+    switch (settings.showOn) {
+    case HaloShowOnHome:
+        [lines addObject:@"Home Screen Only (default): the border shows on the Home Screen and hides while an app is "
+                         @"open or the phone is locked."];
+        break;
+    case HaloShowOnApp:
+        [lines addObject:appName ? [NSString stringWithFormat:@"Selected App Only: the border shows only while %@ is in "
+                                                              @"front, unlocked.",
+                                                              appName]
+                                 : @"Selected App Only: no app chosen yet, so nothing is drawn. Tap Choose App."];
+        break;
+    case HaloShowOnAlways:
+        [lines addObject:@"Always: the border shows on every lit screen: the Lock Screen, the Home Screen and apps."];
+        break;
+    case HaloShowOnExceptLock:
+        [lines addObject:@"Always Except Lock Screen: the border shows on the Home Screen and in apps, and hides whenever "
+                         @"the phone is locked."];
+        break;
+    case HaloShowOnExceptScreenOff:
+    default:
+        [lines addObject:@"Always Except When Screen Is Off: the border shows on the lit Lock Screen, the Home Screen and "
+                         @"apps, and hides with rendering paused when the display goes black."];
+        break;
+    }
+    [lines addObject:@"A display that is fully off can't show a border, so every choice hides it and pauses rendering "
+                     @"then."];
+    NSString *machine = HaloMachineIdentifier();
+    if (HaloDeviceHasAlwaysOnDisplay(machine)) {
+        [lines addObject:@"This iPhone has an Always-On display. HCG Halo has no Always-On mode and leaves it unchanged; "
+                         @"whether the dimmed Always-On Lock Screen counts as off is not yet verified on this model. "
+                         @"Always and Always Except When Screen Is Off use the same rule."];
+    } else {
+        [lines addObject:@"On this iPhone, Always and Always Except When Screen Is Off behave identically: there is no "
+                         @"Always-On display, so once the screen is off there is nothing to draw on."];
+    }
+    [lines addObject:@"Low Power Mode and Reduce Motion apply to every choice (see Animation). The HCG Nexus panel "
+                     @"border follows the panel itself and is not affected."];
+    if (settings.target == HaloTargetNexus)
+        [lines addObject:@"Draw Border Around is set to HCG Nexus Panel, so the screen edge is off."];
+    [group setProperty:[lines componentsJoinedByString:@"\n\n"] forKey:@"footerText"];
+}
+
 - (id)readPreferenceValue:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
     if (!key) return [super readPreferenceValue:specifier];
@@ -142,6 +209,10 @@ static void HaloStatusUpdated(CFNotificationCenterRef center, void *observer, CF
     [HaloPreferences postChangeNotification];
     [_header reloadWithSettings:[HaloPreferences loadSettings]];
     if ([key isEqualToString:HaloKeyEnabled]) [self requestStatusSoon];
+    if ([key isEqualToString:HaloKeyShowOn] || [key isEqualToString:HaloKeyTarget]) {
+        [self reloadSpecifiers]; // footer and Chosen App row follow the choice
+        [self requestStatusSoon];
+    }
 }
 
 #pragma mark Lifecycle and styling
@@ -216,7 +287,7 @@ static void HaloStatusUpdated(CFNotificationCenterRef center, void *observer, CF
         }
     }
     NSString *identifier = [self specifierAtIndexPath:indexPath].identifier;
-    if ([@[ @"openPresets", @"openColours", @"openProfiles", @"openNexusBorder" ] containsObject:identifier]) {
+    if ([@[ @"openPresets", @"openColours", @"openProfiles", @"openNexusBorder", @"openAppPicker" ] containsObject:identifier]) {
         cell.textLabel.textColor = HaloTheme.textPrimary;
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         cell.accessibilityTraits |= UIAccessibilityTraitButton;
@@ -224,7 +295,7 @@ static void HaloStatusUpdated(CFNotificationCenterRef center, void *observer, CF
         cell.textLabel.textColor = [UIColor systemRedColor];
     } else if ([identifier isEqualToString:@"engineStatus"]) {
         cell.detailTextLabel.textColor = [self colourForEngineState];
-    } else if ([identifier isEqualToString:@"renderingStatus"] || [identifier isEqualToString:@"displayContext"]) {
+    } else if ([identifier isEqualToString:@"renderingStatus"]) {
         cell.detailTextLabel.adjustsFontSizeToFitWidth = YES;
         cell.detailTextLabel.minimumScaleFactor = 0.6;
     }
@@ -253,13 +324,6 @@ static void HaloStatusUpdated(CFNotificationCenterRef center, void *observer, CF
 
 - (NSString *)systemVersion:(PSSpecifier *)specifier {
     return [NSString stringWithFormat:@"iOS %@", [UIDevice currentDevice].systemVersion];
-}
-
-- (NSString *)displayContext:(PSSpecifier *)specifier {
-    HaloSettings *settings = [HaloPreferences loadSettings];
-    if (settings.target == HaloTargetNexus) return @"HCG Nexus panel only";
-    if (settings.target == HaloTargetBoth) return @"Home Screen + HCG Nexus panel";
-    return @"Home Screen only";
 }
 
 - (NSString *)engineStatus:(PSSpecifier *)specifier {
@@ -311,6 +375,10 @@ static void HaloStatusUpdated(CFNotificationCenterRef center, void *observer, CF
 
 - (void)openNexusBorder:(PSSpecifier *)specifier {
     [self push:[[HaloNexusBorderController alloc] init]];
+}
+
+- (void)openAppPicker:(PSSpecifier *)specifier {
+    [self push:[[HaloAppPickerController alloc] init]];
 }
 
 #pragma mark Actions

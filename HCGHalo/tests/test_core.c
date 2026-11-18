@@ -513,6 +513,138 @@ static void test_profiles(void) {
                     }
 }
 
+static void test_show_on(void) {
+    const char *ids[] = {"home", "app", "always", "exceptLock", "exceptScreenOff"};
+    for (int i = 0; i < HaloShowOnCount; i++) {
+        HaloShowOn v = HaloShowOnCount;
+        CHECK(halo_show_on_from_id(ids[i], &v) && v == (HaloShowOn)i, "show-on id %s", ids[i]);
+        CHECK(strcmp(halo_show_on_id((HaloShowOn)i), ids[i]) == 0, "show-on round trip %d", i);
+        CHECK(halo_show_on_title((HaloShowOn)i)[0], "show-on title %d", i);
+    }
+    HaloShowOn v = HaloShowOnApp;
+    CHECK(!halo_show_on_from_id("lockscreen", &v) && v == HaloShowOnApp, "unknown show-on id rejected");
+    CHECK(!halo_show_on_from_id(NULL, &v), "NULL show-on id rejected");
+    CHECK(strcmp(halo_show_on_id((HaloShowOn)99), "home") == 0, "invalid show-on -> home");
+    CHECK(!halo_show_on_uses_overlay_window(HaloShowOnHome), "home uses the Home Screen window");
+    CHECK(halo_show_on_uses_overlay_window(HaloShowOnApp) && halo_show_on_uses_overlay_window(HaloShowOnAlways) &&
+              halo_show_on_uses_overlay_window(HaloShowOnExceptLock) &&
+              halo_show_on_uses_overlay_window(HaloShowOnExceptScreenOff),
+          "other policies use the overlay window");
+    CHECK(halo_show_on_includes_lock_screen(HaloShowOnAlways) && halo_show_on_includes_lock_screen(HaloShowOnExceptScreenOff) &&
+              !halo_show_on_includes_lock_screen(HaloShowOnExceptLock) && !halo_show_on_includes_lock_screen(HaloShowOnHome) &&
+              !halo_show_on_includes_lock_screen(HaloShowOnApp),
+          "lock screen inclusion");
+
+    // Every combination of the surface inputs, against the specification.
+    for (int policy = 0; policy < HaloShowOnCount; policy++)
+        for (int bits = 0; bits < (1 << 9); bits++) {
+            HaloSurfaceInputs in;
+            memset(&in, 0, sizeof in);
+            in.showOn = (HaloShowOn)policy;
+            in.base.enabled = bits & 1;
+            in.base.attached = (bits >> 1) & 1;
+            in.base.screenOn = (bits >> 2) & 1;
+            in.base.unlocked = (bits >> 3) & 1;
+            in.base.homeInFront = (bits >> 4) & 1;
+            in.base.hostVisible = (bits >> 5) & 1;
+            in.appChosen = (bits >> 6) & 1;
+            in.frontAppKnown = (bits >> 7) & 1;
+            in.chosenAppInFront = (bits >> 8) & 1;
+            int ready = in.base.enabled && in.base.attached && in.base.screenOn && in.base.hostVisible;
+            int expect;
+            switch (policy) {
+            case HaloShowOnHome: expect = ready && in.base.unlocked && in.base.homeInFront; break;
+            case HaloShowOnApp:
+                expect = ready && in.base.unlocked && in.appChosen && in.frontAppKnown && in.chosenAppInFront;
+                break;
+            case HaloShowOnExceptLock: expect = ready && in.base.unlocked; break;
+            default: expect = ready; break; // Always, Always Except When Screen Is Off
+            }
+            const char *block = halo_surface_block(&in);
+            CHECK((block == NULL) == expect, "policy %d bits %03x: expected %s, got %s", policy, bits,
+                  expect ? "draw" : "hidden", block ? block : "draw");
+            if (in.base.enabled && in.base.attached && !in.base.screenOn)
+                CHECK(block && strcmp(block, "screen off") == 0, "policy %d: screen off always hides (%03x)", policy, bits);
+            if (policy == HaloShowOnHome) {
+                const char *legacy = halo_visibility_block(&in.base);
+                CHECK((legacy == NULL) == (block == NULL), "home policy == 0.2.0 rules (%03x)", bits);
+            }
+        }
+    // Always and Always Except When Screen Is Off are the same decision.
+    HaloSurfaceInputs lit;
+    memset(&lit, 0, sizeof lit);
+    lit.base = (HaloVisibilityInputs){1, 1, 1, 0, 0, 1}; // lit Lock Screen
+    lit.showOn = HaloShowOnAlways;
+    CHECK(halo_surface_block(&lit) == NULL, "Always draws on the lit Lock Screen");
+    lit.showOn = HaloShowOnExceptScreenOff;
+    CHECK(halo_surface_block(&lit) == NULL, "Except Screen Off draws on the lit Lock Screen");
+    lit.showOn = HaloShowOnExceptLock;
+    CHECK(halo_surface_block(&lit) && strcmp(halo_surface_block(&lit), "locked") == 0, "Except Lock hides when locked");
+    lit.showOn = (HaloShowOn)42;
+    CHECK(halo_surface_block(&lit) != NULL, "invalid policy behaves as Home Screen Only");
+}
+
+static void test_screen_fit(void) {
+    const HaloProfile *max = halo_profile_find("iphone-11-pro-max");
+    HaloCalibration zero = {0, 0, 0, 0};
+    double k = 0;
+    HaloScreenMeasure standard = {414, 896, 1242, 2688};
+    CHECK(halo_profile_fit(max, standard, &k) == HaloScreenFitMatch && k == 1, "standard 11 Pro Max matches");
+    HaloScreenMeasure landscape = {896, 414, 2688, 1242};
+    CHECK(halo_profile_fit(max, landscape, &k) == HaloScreenFitMatch, "orientation does not matter");
+    HaloScreenMeasure unknownPixels = {414, 896, 0, 0};
+    CHECK(halo_profile_fit(max, unknownPixels, &k) == HaloScreenFitMatch, "points alone suffice for a match");
+
+    // iPhone 11 Pro Max with Display Zoom (Larger Text): 375 x 812 pt on the 1242 x 2688 px panel.
+    HaloScreenMeasure zoomed = {375, 812, 1242, 2688};
+    CHECK(halo_profile_fit(max, zoomed, &k) == HaloScreenFitDisplayZoom, "Display Zoom detected");
+    CHECK(NEAR(k, 375.0 / 414.0, 1e-9), "zoom factor %.6f", k);
+    HaloScreenFit fit = HaloScreenFitUnknown;
+    HaloDisplayGeometry z = halo_profile_geometry_for_screen(max, zero, zoomed, &fit, &k);
+    CHECK(fit == HaloScreenFitDisplayZoom, "geometry fit zoom");
+    CHECK(z.width == 375 && z.height == 812, "zoomed frame %.1f x %.1f", z.width, z.height);
+    CHECK(NEAR(z.cornerRadius, 39 * 375.0 / 414.0, 1e-6), "zoomed corner %.3f", z.cornerRadius);
+    CHECK(NEAR(z.notchWidth, 209 * 375.0 / 414.0, 1e-6), "zoomed notch width %.3f", z.notchWidth);
+    CHECK(NEAR(z.notchHeight, 30 * 375.0 / 414.0, 1e-6), "zoomed notch depth %.3f", z.notchHeight);
+    // Physically the same: corner radius and notch width as a fraction of the screen width are unchanged.
+    CHECK(NEAR(z.cornerRadius / z.width, 39.0 / 414.0, 1e-9) && NEAR(z.notchWidth / z.width, 209.0 / 414.0, 1e-9),
+          "zoomed geometry is the same physical outline");
+    HaloBorderPath zp;
+    CHECK(halo_build_border(&z, 1.5, 1, &zp) == 1, "zoomed path builds");
+    check_path_invariants(&zp, &z, 1.5, "zoomed");
+    // Calibration deltas are screen points, added after scaling.
+    HaloCalibration cal = {2, -4, 1, 3};
+    HaloDisplayGeometry zc = halo_profile_geometry_for_screen(max, cal, zoomed, NULL, NULL);
+    CHECK(NEAR(zc.cornerRadius, z.cornerRadius + 2, 1e-6) && NEAR(zc.notchWidth, z.notchWidth - 4, 1e-6) &&
+              NEAR(zc.notchHeight, z.notchHeight + 1, 1e-6) && NEAR(zc.notchOffsetX, 3, 1e-6),
+          "calibration after scaling");
+
+    // The 0.2.0 code: real frame, unscaled corners and notch (what a 375 x 812 report used to draw).
+    HaloDisplayGeometry old = halo_profile_geometry(max, zero);
+    old.width = 375;
+    old.height = 812;
+    CHECK(NEAR(old.cornerRadius / old.width * 414.0, 43.06, 0.01), "0.2.0 drew the corner ~43 pt (standard pt)");
+
+    // A real iPhone X / XS / 11 Pro (375 x 812 pt on 1125 x 2436 px): a different display.
+    HaloScreenMeasure eleven = {375, 812, 1125, 2436};
+    CHECK(halo_profile_fit(max, eleven, &k) == HaloScreenFitMismatch && k == 1, "11 Pro is a mismatch, not zoom");
+    HaloDisplayGeometry m = halo_profile_geometry_for_screen(max, zero, eleven, &fit, &k);
+    CHECK(fit == HaloScreenFitMismatch && m.width == 375 && m.height == 812 && m.cornerRadius == 39,
+          "mismatch keeps the frame fitted and the profile lengths unscaled");
+    HaloScreenMeasure noPixels = {375, 812, 0, 0};
+    CHECK(halo_profile_fit(max, noPixels, &k) == HaloScreenFitMismatch, "unknown pixels cannot prove zoom");
+    HaloScreenMeasure odd = {375, 700, 1242, 2688};
+    CHECK(halo_profile_fit(max, odd, &k) == HaloScreenFitMismatch, "non-uniform shrink is not zoom");
+    HaloScreenMeasure bad = {NAN, 812, 1242, 2688};
+    CHECK(halo_profile_fit(max, bad, &k) == HaloScreenFitUnknown, "NaN screen -> unknown");
+    CHECK(halo_profile_fit(NULL, zoomed, &k) == HaloScreenFitUnknown, "no profile -> unknown");
+    CHECK(halo_profile_fit(halo_profile_find("iphone-11-pro"), zoomed, &k) == HaloScreenFitUnknown, "planned -> unknown");
+    HaloDisplayGeometry same = halo_profile_geometry_for_screen(max, cal, standard, NULL, NULL);
+    HaloDisplayGeometry ref = halo_profile_geometry(max, cal);
+    CHECK(memcmp(&same, &ref, sizeof same) == 0, "standard screen: identical to halo_profile_geometry");
+    CHECK(strcmp(halo_screen_fit_id(HaloScreenFitDisplayZoom), "displayZoom") == 0, "fit id");
+}
+
 int main(void) {
     test_geometry_no_cutout();
     test_geometry_notch();
@@ -527,10 +659,12 @@ int main(void) {
     test_render_plan();
     test_visibility();
     test_profiles();
+    test_show_on();
+    test_screen_fit();
     if (gFailures) {
         printf("%ld of %ld checks FAILED\n", gFailures, gChecks);
         return 1;
     }
-    printf("All %ld checks passed (geometry, config, patterns, profiles)\n", gChecks);
+    printf("All %ld checks passed (geometry, config, patterns, profiles, show-on, screen fit)\n", gChecks);
     return 0;
 }

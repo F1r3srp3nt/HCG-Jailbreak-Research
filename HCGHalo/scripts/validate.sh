@@ -91,10 +91,14 @@ def bad(msg):
 keys = dict(re.findall(r'NSString \*const (HaloKey\w+) = @"([^"]+)"', prefs))
 def table(name):
     body = re.search(r"static const HaloName %s\[\] = \{(.*?)\n\};" % name, config_c, re.S).group(1)
-    return [m for m in re.findall(r'\{\w+, "([a-z-]+)", "[^"]+"\}', body)]
+    return [m for m in re.findall(r'\{\w+, "([A-Za-z-]+)", "[^"]+"\}', body)]
 expect = {"mode": table("kModes"), "colourStyle": table("kStyles"), "lowPower": table("kLowPower"),
           "cutoutMode": table("kCutout"), "direction": ["clockwise", "counterclockwise"],
-          "target": ["screen", "nexus", "both"]}
+          "target": ["screen", "nexus", "both"], "showOn": table("kShowOn")}
+if table("kShowOn") != ["home", "app", "always", "exceptLock", "exceptScreenOff"]:
+    bad(f"show-on identifiers changed: {table('kShowOn')}")
+if 'HaloKeyShowOn : @"home"' not in prefs:
+    bad("Show Halo on must default to Home Screen Only (existing users keep the 0.2.0 behaviour)")
 if 'return @[ @"screen", @"nexus", @"both" ];' not in prefs:
     bad("validTargets must be screen / nexus / both")
 if 'HaloKeyTarget : @"screen"' not in prefs:
@@ -128,9 +132,12 @@ for item in plist["items"]:
         if (item.get("min"), item.get("max")) != (lo, hi):
             bad(f"{key}: slider {item.get('min')}..{item.get('max')} != code {lo}..{hi}")
 for required in ("enabled", "mode", "colourStyle", "brightness", "thickness", "glow", "inset", "speed", "direction",
-                 "lowPower", "cutoutMode", "target", "pulse"):
+                 "lowPower", "cutoutMode", "target", "pulse", "showOn"):
     if required not in seen:
         bad(f"Settings lacks {required}")
+for build_file in ("Makefile", "preferences/Makefile"):
+    if "HALO_PREVIEW_HOST" in open(os.path.join(root, build_file)).read() or "HALO_BLANKED_NOTIFICATION" in open(os.path.join(root, build_file)).read():
+        bad(f"{build_file}: preview-only defines must never reach the package")
 if not re.search(r"HaloKeyEnabled : @NO", prefs):
     bad("master switch must default to off (HaloKeyEnabled : @NO)")
 # "automatic" must never be accepted: validProfiles lists implemented profiles only.

@@ -24,7 +24,9 @@ HCGHaloPrefs_FILES = \
 	HaloPresetsController.m \
 	HaloProfileController.m \
 	HaloNexusBorderController.m \
+	HaloAppPickerController.m \
 	../src/HaloPreferences.m \
+	../src/HaloScreen.m \
 	../src/HaloRenderer.m \
 	../src/HaloNexusDefinition.m \
 	../src/HaloPanelBorderView.m \

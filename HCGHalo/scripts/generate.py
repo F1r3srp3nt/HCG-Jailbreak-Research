@@ -148,6 +148,8 @@ DIRECTIONS = [("Clockwise", "clockwise"), ("Counter-clockwise", "counterclockwis
 LOW_POWER = [("Static Border", "static"), ("Keep Animating", "animate"), ("Hide Border", "hide")]
 CUTOUT = [("Trace Notch", "trace"), ("Straight Edge", "straight")]
 TARGETS = [("Screen Edge", "screen"), ("HCG Nexus Panel", "nexus"), ("Both", "both")]
+SHOW_ON = [("Home Screen Only", "home"), ("Selected App Only", "app"), ("Always", "always"),
+           ("Always Except Lock Screen", "exceptLock"), ("Always Except When Screen Is Off", "exceptScreenOff")]
 
 ITEMS = [
     group("HCG Halo", "Off after installation. Every setting on this page applies immediately, without a respring. "
@@ -155,8 +157,14 @@ ITEMS = [
     pref("PSSwitchCell", "enabled", "Enable HCG Halo", default=False),
     info("Status", "engineStatus:", "engineStatus"),
     info("Rendering", "renderingStatus:", "renderingStatus"),
-    info("Display Context", "displayContext:", "displayContext"),
     group(None, None, ident="statusDetailGroup"),  # footer filled in at runtime with the status detail
+
+    group("Screen Edge", None, ident="showOnGroup"),  # footer: what each choice does, set at runtime
+    lst("showOn", "Show Halo on", SHOW_ON,
+        staticTextMessage="A display that is fully off can't show a border: every choice hides the border and pauses "
+        "rendering when the screen goes black. HCG Halo has no Always-On display mode. HCG Nexus panel lighting "
+        "follows the panel and is not affected."),
+    button("Chosen App", "openAppPicker:", "openAppPicker"),
 
     group("Border Target", None, ident="targetGroup"),  # footer: HCG Nexus availability, set at runtime
     lst("target", "Draw Border Around", TARGETS),

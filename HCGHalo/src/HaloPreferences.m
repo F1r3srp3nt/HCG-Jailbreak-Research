@@ -44,6 +44,9 @@ NSString *const HaloKeyNexusAppearance = @"nexusAppearance";
 NSString *const HaloKeyNexusOpenTrace = @"nexusOpenTrace";
 NSString *const HaloKeyNexusCloseFade = @"nexusCloseFade";
 NSString *const HaloKeyNexusWorkspacePulse = @"nexusWorkspacePulse";
+NSString *const HaloKeyShowOn = @"showOn";
+NSString *const HaloKeyShowOnApp = @"showOnApp";
+NSString *const HaloKeyShowOnAppName = @"showOnAppName";
 
 NSString *const HaloStatusKeyState = @"state";
 NSString *const HaloStatusKeyDetail = @"detail";
@@ -58,6 +61,10 @@ NSString *const HaloStatusKeySystemVersion = @"systemVersion";
 NSString *const HaloStatusKeyTimestamp = @"timestamp";
 NSString *const HaloStatusKeyUnstableLaunches = @"unstableLaunches";
 NSString *const HaloStatusKeyNexusState = @"nexusState";
+NSString *const HaloStatusKeyShowOn = @"showOn";
+NSString *const HaloStatusKeyFrontApp = @"frontApp";
+NSString *const HaloStatusKeySurfaceHost = @"surfaceHost";
+NSString *const HaloStatusKeyScreenFit = @"screenFit";
 NSString *const HaloStatusKeyNexusDetail = @"nexusDetail";
 NSString *const HaloStatusKeyNexusRendering = @"nexusRendering";
 
@@ -122,6 +129,11 @@ static double HaloRound3(double v) {
         _nexusOpenTrace = [v[HaloKeyNexusOpenTrace] boolValue];
         _nexusCloseFade = [v[HaloKeyNexusCloseFade] boolValue];
         _nexusWorkspacePulse = [v[HaloKeyNexusWorkspacePulse] boolValue];
+        HaloShowOn showOn = HaloShowOnHome;
+        halo_show_on_from_id([v[HaloKeyShowOn] UTF8String], &showOn);
+        _showOn = showOn;
+        _showOnApp = [HaloPreferences sanitizedBundleIdentifier:v[HaloKeyShowOnApp]];
+        _showOnAppName = [v[HaloKeyShowOnAppName] isKindOfClass:[NSString class]] ? [v[HaloKeyShowOnAppName] copy] : @"";
     }
     return self;
 }
@@ -141,10 +153,12 @@ static double HaloRound3(double v) {
 - (NSString *)description {
     HaloAppearance a = self.appearance;
     return [NSString stringWithFormat:@"<HaloSettings enabled=%d mode=%s style=%s colours=%d brightness=%.2f thickness=%.1f "
-                                      @"glow=%.2f inset=%.1f speed=%.2f cw=%d repeat=%d segments=%d len=%.2f profile=%@>",
+                                      @"glow=%.2f inset=%.1f speed=%.2f cw=%d repeat=%d segments=%d len=%.2f profile=%@ "
+                                      @"showOn=%s app=%@>",
                                       self.enabled, halo_mode_id(a.mode), halo_colour_style_id(a.colourStyle),
                                       a.colourCount, a.brightness, a.thickness, a.glow, a.inset, a.speed, a.clockwise,
-                                      a.colourRepeat, a.segments, a.segmentLength, self.profileIdentifier];
+                                      a.colourRepeat, a.segments, a.segmentLength, self.profileIdentifier,
+                                      halo_show_on_id(self.showOn), self.showOnApp];
 }
 
 @end
@@ -187,6 +201,9 @@ static double HaloRound3(double v) {
             HaloKeyNexusOpenTrace : @YES,
             HaloKeyNexusCloseFade : @YES,
             HaloKeyNexusWorkspacePulse : @YES,
+            HaloKeyShowOn : @"home", // existing users keep Home Screen Only
+            HaloKeyShowOnApp : @"",
+            HaloKeyShowOnAppName : @"",
         }];
         defaults = [m copy];
     });
@@ -211,6 +228,27 @@ static double HaloRound3(double v) {
 
 + (NSArray<NSString *> *)validTargets {
     return @[ @"screen", @"nexus", @"both" ];
+}
+
++ (NSArray<NSString *> *)validShowOn {
+    NSMutableArray *a = [NSMutableArray array];
+    for (int i = 0; i < HaloShowOnCount; i++) [a addObject:HaloString(halo_show_on_id((HaloShowOn)i))];
+    return a;
+}
+
++ (NSString *)sanitizedBundleIdentifier:(id)value {
+    if (![value isKindOfClass:[NSString class]]) return @"";
+    NSString *s = value;
+    if (!s.length || s.length > 255) return @"";
+    static NSCharacterSet *invalid;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        invalid = [[NSCharacterSet characterSetWithCharactersInString:
+                                       @"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.-_"] invertedSet];
+    });
+    if ([s rangeOfCharacterFromSet:invalid].location != NSNotFound) return @"";
+    if ([s hasPrefix:@"."] || [s hasSuffix:@"."] || [s containsString:@".."]) return @"";
+    return [s copy];
 }
 
 // Built from a struct, never through the validator, so +defaultValues can use
@@ -328,6 +366,7 @@ static NSString *HaloNormaliseHex(id value) {
         HaloKeyCutoutMode : [self validCutoutModes],
         HaloKeyProfile : [self validProfiles], // "automatic" is never valid until implemented
         HaloKeyTarget : [self validTargets],
+        HaloKeyShowOn : [self validShowOn],
     };
     if (enums[key]) {
         return ([value isKindOfClass:[NSString class]] && [enums[key] containsObject:value]) ? value : fallback;
@@ -346,6 +385,12 @@ static NSString *HaloNormaliseHex(id value) {
     if ([key isEqualToString:HaloKeySegmentLength])
         return HaloClampNumber(value, HALO_SEGMENT_LENGTH_MIN, HALO_SEGMENT_LENGTH_MAX, fallback, NO);
     if ([key isEqualToString:HaloKeyPulse]) return HaloClampNumber(value, HALO_PULSE_MIN, HALO_PULSE_MAX, fallback, NO);
+    if ([key isEqualToString:HaloKeyShowOnApp]) return [self sanitizedBundleIdentifier:value];
+    if ([key isEqualToString:HaloKeyShowOnAppName]) {
+        if (![value isKindOfClass:[NSString class]]) return fallback;
+        NSString *name = [value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        return name.length > 80 ? [name substringToIndex:80] : name;
+    }
     if ([key isEqualToString:HaloKeyNexusAppearance]) {
         if (![value isKindOfClass:[NSDictionary class]]) return fallback;
         return [self dictionaryFromAppearance:[self appearanceFromDictionary:value]];

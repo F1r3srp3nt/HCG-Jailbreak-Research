@@ -42,6 +42,8 @@ HCGHalo_FILES = \
 	src/Tweak.x \
 	src/HaloController.m \
 	src/HaloOverlayView.m \
+	src/HaloEdgeWindow.m \
+	src/HaloScreen.m \
 	src/HaloRenderer.m \
 	src/HaloNexusDefinition.m \
 	src/HaloNexusLink.m \

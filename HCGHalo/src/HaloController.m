@@ -11,11 +11,20 @@
 //             start system observers, install the front-display hook once)
 //             disabled → deactivate (remove overlay, stop every observer)
 //
-//  Visibility: the overlay draws only while the screen is on, the device is
-//  unlocked, no app is in front and the Home Screen window is visible. When
-//  any of these is false it is hidden AND its layer clock is frozen, so it
-//  costs nothing. Reduce Motion and Low Power Mode change the render plan
-//  (HaloConfig.c, halo_render_plan).
+//  Visibility ("Show Halo on", 0.3.0~beta1; HaloConfig.c, halo_surface_block):
+//    Home Screen Only (default) — the 0.2.0 rules, in the Home Screen window:
+//      screen on, unlocked, no app in front, Home Screen window visible.
+//    Selected App Only — screen on, unlocked, the chosen app in front.
+//    Always / Always Except When Screen Is Off — screen on (lit Lock Screen,
+//      Home Screen and apps).
+//    Always Except Lock Screen — screen on and unlocked.
+//  Every policy but Home Screen Only draws in HCG Halo's own non-interactive
+//  overlay window (HaloEdgeWindow), above apps and the Lock Screen. Whenever
+//  the border is hidden the overlay is hidden AND its layer clock is frozen
+//  (and the overlay window is hidden), so it costs nothing; a dark display
+//  always hides it. Reduce Motion and Low Power Mode change the render plan
+//  (halo_render_plan) under every policy. The policy never affects the HCG
+//  Nexus panel border, which follows the panel's own visibility.
 //
 //  Targets (0.2.0~beta1): the screen edge (default), the HCG Nexus panel, or
 //  both. The panel border is owned by HaloNexusLink, which attaches to the
@@ -29,10 +38,12 @@
 //
 
 #import "HaloController.h"
+#import "HaloEdgeWindow.h"
 #import "HaloLog.h"
 #import "HaloNexusLink.h"
 #import "HaloOverlayView.h"
 #import "HaloPreferences.h"
+#import "HaloScreen.h"
 #import "HaloSpringBoard.h"
 
 #import <UIKit/UIKit.h>
@@ -40,8 +51,17 @@
 #include <dlfcn.h>
 #include <notify.h>
 
-static NSString *const kBlankedNotification = @"com.apple.springboard.hasBlankedScreen";
-static NSString *const kLockStateNotification = @"com.apple.springboard.lockstate";
+// SpringBoard's display and lock notifications. The Simulator preview
+// (preview/HaloSurfacesPreview.m) builds this file with its own names so it
+// never touches the Simulator's real SpringBoard state.
+#ifndef HALO_BLANKED_NOTIFICATION
+#define HALO_BLANKED_NOTIFICATION "com.apple.springboard.hasBlankedScreen"
+#endif
+#ifndef HALO_LOCKSTATE_NOTIFICATION
+#define HALO_LOCKSTATE_NOTIFICATION "com.apple.springboard.lockstate"
+#endif
+static NSString *const kBlankedNotification = @HALO_BLANKED_NOTIFICATION;
+static NSString *const kLockStateNotification = @HALO_LOCKSTATE_NOTIFICATION;
 
 static const NSInteger kAttachAttempts = 15;
 static const NSTimeInterval kAttachInterval = 2.0;
@@ -67,6 +87,8 @@ static const NSTimeInterval kAttachInterval = 2.0;
     // Overlay
     HaloOverlayView *_overlay;
     __weak UIWindow *_host;
+    HaloEdgeWindow *_edgeWindow; // owned; only for the policies beyond the Home Screen
+    BOOL _hostIsEdge;
     NSString *_hostDescription;
     NSUInteger _attachGeneration;
     NSInteger _attachAttempts;
@@ -75,6 +97,10 @@ static const NSTimeInterval kAttachInterval = 2.0;
     BOOL _screenOn;
     BOOL _unlocked;
     BOOL _homeInFront;
+    NSString *_frontApp;   // bundle identifier of the app in front, "" if none
+    BOOL _frontHookActive; // app changes are reported (frontDisplayDidChange: hook installed)
+    HaloScreenFit _screenFit;
+    double _lengthScale;
     int _blankToken;
     int _lockToken;
     NSMutableArray<id> *_observerTokens;
@@ -102,6 +128,8 @@ static const NSTimeInterval kAttachInterval = 2.0;
         _screenOn = YES;
         _unlocked = YES;
         _homeInFront = YES;
+        _frontApp = @"";
+        _lengthScale = 1;
         _blankToken = NOTIFY_TOKEN_INVALID;
         _lockToken = NOTIFY_TOKEN_INVALID;
         _observerTokens = [NSMutableArray array];
@@ -285,11 +313,19 @@ static void HaloStatusRequested(CFNotificationCenterRef center, void *observer, 
     }
     if (_settings.targetsScreen) {
         [self installFrontDisplayHookOnce]; // only the screen edge needs app-in-front detection
+        BOOL wantEdge = halo_show_on_uses_overlay_window(_settings.showOn);
+        if (_overlay.window && wantEdge != _hostIsEdge) {
+            // "Show Halo on" moved between the Home Screen window and the overlay window: re-host at once.
+            HaloLogInfo("show-on %{public}s: moving the border to the %{public}s", halo_show_on_id(_settings.showOn),
+                        wantEdge ? "overlay window" : "Home Screen window");
+            [self removeOverlay];
+        }
         if (!_overlay.window) {
             [self attachWithRetry];
         } else {
             [self configureOverlay];
             [self updateVisibility];
+            [self setState:HaloEngineStateActive detail:[self compatibilityNotes]];
         }
     } else {
         [self removeOverlay];
@@ -306,7 +342,12 @@ static void HaloStatusRequested(CFNotificationCenterRef center, void *observer, 
         [_overlay removeFromSuperview];
         _overlay = nil;
     }
+    if (_edgeWindow) {
+        _edgeWindow.hidden = YES;
+        _edgeWindow = nil; // released: UIKit drops the window
+    }
     _host = nil;
+    _hostIsEdge = NO;
     _rendering = @"Not drawing";
 }
 
@@ -348,8 +389,9 @@ static void HaloStatusRequested(CFNotificationCenterRef center, void *observer, 
     IMP before = method_getImplementation(method);
     _hookInstaller();
     IMP after = method_getImplementation(class_getInstanceMethod(springBoard, selector));
-    _frontDetection = before != after ? @"active (frontDisplayDidChange: hook)"
-                                      : @"unavailable: the hook did not install; the border keeps running behind apps";
+    _frontHookActive = before != after;
+    _frontDetection = _frontHookActive ? @"active (frontDisplayDidChange: hook)"
+                                       : @"unavailable: the hook did not install; the border keeps running behind apps";
 }
 
 #pragma mark Home Screen window
@@ -395,21 +437,47 @@ static UIWindow *HaloFindHomeScreenWindow(NSString **how) {
     return nil;
 }
 
+/// SpringBoard's main-display window scene (for the overlay window).
+static UIWindowScene *HaloFindMainWindowScene(void) {
+    NSString *how = nil;
+    UIWindow *home = HaloFindHomeScreenWindow(&how);
+    if (home.windowScene) return home.windowScene;
+    UIWindowScene *fallback = nil;
+    for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+        if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+        UIWindowScene *windowScene = (UIWindowScene *)scene;
+        if (windowScene.screen != UIScreen.mainScreen) continue;
+        if (windowScene.activationState == UISceneActivationStateForegroundActive) return windowScene;
+        if (!fallback) fallback = windowScene;
+    }
+    return fallback;
+}
+
 - (void)attachWithRetry {
     NSUInteger generation = ++_attachGeneration;
     _attachAttempts = 0;
-    [self setState:HaloEngineStateWaiting detail:@"Looking for the Home Screen window."];
+    [self setState:HaloEngineStateWaiting
+            detail:halo_show_on_uses_overlay_window(_settings.showOn) ? @"Looking for SpringBoard's window scene."
+                                                                      : @"Looking for the Home Screen window."];
     [self tryAttach:generation];
 }
 
 - (void)tryAttach:(NSUInteger)generation {
     if (generation != _attachGeneration || !_active || !_settings.targetsScreen) return;
     @try {
-        NSString *how = nil;
-        UIWindow *window = HaloFindHomeScreenWindow(&how);
-        if (window) {
-            [self attachToWindow:window how:how];
-            return;
+        if (halo_show_on_uses_overlay_window(_settings.showOn)) {
+            UIWindowScene *scene = HaloFindMainWindowScene();
+            if (scene) {
+                [self attachToEdgeWindowOnScene:scene];
+                return;
+            }
+        } else {
+            NSString *how = nil;
+            UIWindow *window = HaloFindHomeScreenWindow(&how);
+            if (window) {
+                [self attachToWindow:window how:how];
+                return;
+            }
         }
     } @catch (NSException *exception) {
         [self fault:[NSString stringWithFormat:@"attach: %@", exception.reason]];
@@ -417,7 +485,10 @@ static UIWindow *HaloFindHomeScreenWindow(NSString **how) {
     }
     if (++_attachAttempts >= kAttachAttempts) {
         [self setState:HaloEngineStateIncompatible
-                detail:[NSString stringWithFormat:@"The Home Screen window was not found after %.0f s. Nothing is drawn.",
+                detail:[NSString stringWithFormat:@"%@ was not found after %.0f s. Nothing is drawn.",
+                                                  halo_show_on_uses_overlay_window(_settings.showOn)
+                                                      ? @"SpringBoard's window scene"
+                                                      : @"The Home Screen window",
                                                   kAttachAttempts * kAttachInterval]];
         [self writeStatus];
         return;
@@ -435,6 +506,7 @@ static UIWindow *HaloFindHomeScreenWindow(NSString **how) {
     }
     _overlay.frame = window.bounds;
     _host = window;
+    _hostIsEdge = NO;
     _hostDescription = how ?: @"";
     _overlay.hidden = YES; // configured hidden; updateVisibility decides
     [window addSubview:_overlay];
@@ -444,10 +516,29 @@ static UIWindow *HaloFindHomeScreenWindow(NSString **how) {
     [self writeStatus];
 }
 
+- (void)attachToEdgeWindowOnScene:(UIWindowScene *)scene {
+    if (!_edgeWindow) _edgeWindow = [[HaloEdgeWindow alloc] initForScene:scene];
+    UIView *content = _edgeWindow.contentView;
+    if (!_overlay) {
+        _overlay = [[HaloOverlayView alloc] initWithFrame:content.bounds];
+        _overlay.delegate = self;
+    }
+    _overlay.frame = content.bounds;
+    _host = _edgeWindow;
+    _hostIsEdge = YES;
+    _hostDescription = [NSString stringWithFormat:@"HCG Halo overlay window (level %.0f)", HALO_EDGE_WINDOW_LEVEL];
+    _overlay.hidden = YES;
+    [content addSubview:_overlay];
+    [self configureOverlay];
+    [self updateVisibility];
+    [self setState:HaloEngineStateActive detail:[self compatibilityNotes]];
+    [self writeStatus];
+}
+
 - (void)haloOverlayViewDidChangeWindow:(HaloOverlayView *)view {
     if (view != _overlay) return;
     if (!view.window && _active && _settings.targetsScreen) {
-        // The Home Screen window went away (SpringBoard rebuilt it): find it again.
+        // The host window went away (SpringBoard rebuilt it): find it again.
         HaloLogInfo("overlay lost its window; re-attaching");
         _host = nil;
         [self attachWithRetry];
@@ -464,9 +555,23 @@ static UIWindow *HaloFindHomeScreenWindow(NSString **how) {
     return halo_render_plan(_settings.appearance.mode, reduceMotion, lowPower, _settings.lowPowerPolicy);
 }
 
+/// The profile for THIS screen: under Display Zoom the corners and notch are
+/// scaled to the zoomed point size (halo_profile_geometry_for_screen).
+- (HaloDisplayGeometry)screenGeometry {
+    HaloScreenFit fit = HaloScreenFitUnknown;
+    double k = 1;
+    HaloDisplayGeometry g = halo_profile_geometry_for_screen(_settings.profile, _settings.calibration,
+                                                             HaloCurrentScreenMeasure(), &fit, &k);
+    if (fit != _screenFit || k != _lengthScale)
+        HaloLogInfo("screen fit %s, corner/notch scale %.4f", halo_screen_fit_id(fit), k);
+    _screenFit = fit;
+    _lengthScale = k;
+    return g;
+}
+
 - (void)configureOverlay {
     if (!_overlay) return;
-    [_overlay setDisplayGeometry:_settings.geometry traceCutout:_settings.cutoutMode == HaloCutoutTrace];
+    [_overlay setDisplayGeometry:[self screenGeometry] traceCutout:_settings.cutoutMode == HaloCutoutTrace];
     [_overlay setAppearance:_settings.appearance plan:[self currentPlan]];
 }
 
@@ -477,20 +582,32 @@ static UIWindow *HaloFindHomeScreenWindow(NSString **how) {
         return;
     }
     UIWindow *host = _host;
-    HaloVisibilityInputs inputs = {
-        .enabled = _settings.enabled && !_faulted,
-        .attached = _overlay.window != nil,
-        .screenOn = _screenOn,
-        .unlocked = _unlocked,
-        .homeInFront = _homeInFront,
-        .hostVisible = host && !host.hidden && host.alpha > 0.01,
+    HaloSurfaceInputs inputs = {
+        .base =
+            {
+                .enabled = _settings.enabled && !_faulted,
+                .attached = _overlay.window != nil,
+                .screenOn = _screenOn,
+                .unlocked = _unlocked,
+                .homeInFront = _homeInFront,
+                // HCG Halo shows and hides its own overlay window itself.
+                .hostVisible = _hostIsEdge ? host != nil : (host && !host.hidden && host.alpha > 0.01),
+            },
+        .showOn = _settings.showOn,
+        .appChosen = _settings.showOnApp.length > 0,
+        .frontAppKnown = _frontHookActive,
+        .chosenAppInFront = _settings.showOnApp.length > 0 && [_frontApp isEqualToString:_settings.showOnApp],
     };
-    const char *block = halo_visibility_block(&inputs);
+    const char *block = halo_surface_block(&inputs);
     HaloRenderPlan plan = [self currentPlan];
     BOOL visible = !block && !plan.hidden;
     BOOL wasHidden = _overlay.hidden;
     [_overlay setVisible:visible animating:plan.animated];
-    if (visible && wasHidden) [host bringSubviewToFront:_overlay];
+    if (_hostIsEdge) {
+        if (_edgeWindow.hidden == visible) _edgeWindow.hidden = !visible; // no window, no compositing, while hidden
+    } else if (visible && wasHidden) {
+        [host bringSubviewToFront:_overlay];
+    }
 
     NSString *mode = @(halo_mode_title(plan.mode));
     if (block) {
@@ -512,10 +629,17 @@ static UIWindow *HaloFindHomeScreenWindow(NSString **how) {
         Class applicationClass = objc_getClass(HALO_SB_APPLICATION_CLASS);
         BOOL app = display && applicationClass && [display isKindOfClass:applicationClass];
         _homeInFront = !app;
+        _frontApp = app ? HaloBundleIdentifier(display) : @"";
         [self updateVisibility];
     } @catch (NSException *exception) {
         [self fault:[NSString stringWithFormat:@"front display: %@", exception.reason]];
     }
+}
+
+static NSString *HaloBundleIdentifier(id application) {
+    if (![application respondsToSelector:@selector(bundleIdentifier)]) return @"";
+    id identifier = [application bundleIdentifier];
+    return [identifier isKindOfClass:[NSString class]] ? identifier : @"";
 }
 
 #pragma mark System observers
@@ -557,9 +681,12 @@ static BOOL HaloReadNotifyState(int token, uint64_t *state) {
 
     // Initial app-in-front state, if SpringBoard can tell us.
     _homeInFront = YES;
+    _frontApp = @"";
     UIApplication *app = [UIApplication sharedApplication];
     if ([app respondsToSelector:@selector(_accessibilityFrontMostApplication)]) {
-        _homeInFront = [(SpringBoard *)app _accessibilityFrontMostApplication] == nil;
+        id front = [(SpringBoard *)app _accessibilityFrontMostApplication];
+        _homeInFront = front == nil;
+        _frontApp = front ? HaloBundleIdentifier(front) : @"";
     }
 
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
@@ -606,7 +733,9 @@ static BOOL HaloReadNotifyState(int token, uint64_t *state) {
 
 - (NSString *)compatibilityNotes {
     NSMutableArray *notes = [NSMutableArray array];
-    [notes addObject:[NSString stringWithFormat:@"Home Screen window: %@.", _hostDescription]];
+    [notes addObject:[NSString stringWithFormat:@"Show Halo on: %s.", halo_show_on_title(_settings.showOn)]];
+    [notes addObject:[NSString stringWithFormat:@"%@: %@.", _hostIsEdge ? @"Drawn in" : @"Home Screen window",
+                                                _hostDescription]];
     [notes addObject:[NSString stringWithFormat:@"App detection: %@.", _frontDetection]];
     NSOperatingSystemVersion v = [NSProcessInfo processInfo].operatingSystemVersion;
     if (v.majorVersion < 15 || v.majorVersion > 17)
@@ -618,8 +747,7 @@ static BOOL HaloReadNotifyState(int token, uint64_t *state) {
 
 - (NSString *)screenDescription {
     UIScreen *screen = UIScreen.mainScreen;
-    CGSize size = screen.fixedCoordinateSpace.bounds.size;
-    NSMutableString *text = [NSMutableString stringWithFormat:@"%.0f × %.0f pt @%.0fx", size.width, size.height, screen.scale];
+    NSMutableString *text = [NSMutableString stringWithFormat:@"%@ · %@", HaloScreenSummary(), HaloMachineIdentifier()];
     @try {
         if ([screen respondsToSelector:NSSelectorFromString(@"_displayCornerRadius")]) {
             id radius = [screen valueForKey:@"_displayCornerRadius"];
@@ -635,12 +763,7 @@ static BOOL HaloReadNotifyState(int token, uint64_t *state) {
 - (NSString *)profileMatch {
     const HaloProfile *profile = _settings.profile;
     if (!profile) return @"No implemented profile selected.";
-    CGSize size = UIScreen.mainScreen.fixedCoordinateSpace.bounds.size;
-    if (halo_profile_matches_screen(profile, size.width, size.height))
-        return [NSString stringWithFormat:@"Screen size matches %s.", profile->name];
-    return [NSString stringWithFormat:@"MISMATCH: this screen is %.0f × %.0f pt but %s is %.0f × %.0f pt. The border is "
-                                      @"stretched to fit and the corners/notch will be misaligned.",
-                                      size.width, size.height, profile->name, profile->screenWidth, profile->screenHeight];
+    return HaloScreenFitSentence(profile, HaloCurrentScreenMeasure());
 }
 
 - (void)writeStatus {
@@ -660,6 +783,12 @@ static BOOL HaloReadNotifyState(int token, uint64_t *state) {
             HaloStatusKeyNexusState : _link.state ?: @"",
             HaloStatusKeyNexusDetail : _link.detail ?: @"",
             HaloStatusKeyNexusRendering : _link.rendering ?: @"",
+            HaloStatusKeyShowOn : @(halo_show_on_id(_settings.showOn)),
+            HaloStatusKeyFrontApp : _frontHookActive ? (_frontApp ?: @"") : @"(not detected)",
+            HaloStatusKeySurfaceHost : !_overlay ? @"" : (_hostIsEdge ? @"HCG Halo overlay window" : @"Home Screen window"),
+            HaloStatusKeyScreenFit : @(halo_screen_fit_id(_overlay ? _screenFit
+                                                                   : halo_profile_fit(_settings.profile,
+                                                                                      HaloCurrentScreenMeasure(), NULL))),
         };
         [HaloPreferences writeStatus:status];
     } @catch (NSException *exception) {
@@ -673,7 +802,9 @@ static BOOL HaloReadNotifyState(int token, uint64_t *state) {
 
 void HaloControllerBootstrap(HaloHookInstaller installFrontDisplayHook) {
     @autoreleasepool {
+#ifndef HALO_PREVIEW_HOST
         if (![[NSBundle mainBundle].bundleIdentifier isEqualToString:@"com.apple.springboard"]) return;
+#endif
         @try {
             [[HaloController shared] bootstrapWithHookInstaller:installFrontDisplayHook];
         } @catch (NSException *exception) {

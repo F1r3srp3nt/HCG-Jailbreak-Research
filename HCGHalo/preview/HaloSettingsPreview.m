@@ -92,6 +92,9 @@ static NSString *FooterText(UITableViewController *controller) {
     UILabel *_caption;
     NSString *_bundles;
     NSString *_stage;
+    UIViewController *_haloRoot;
+    NSString *_chosenApp;
+    NSString *_chosenName;
     NSMutableArray<void (^)(void)> *_steps;
     UIViewController *_nexusRoot;
 }
@@ -361,6 +364,78 @@ static NSString *FooterText(UITableViewController *controller) {
         Check([page valueForKey:@"definition"] == nil && [FooterText((UITableViewController *)page) containsString:@"Requires compatible HCG Nexus"],
               @"Nexus removed: Requires compatible HCG Nexus; screen edge unaffected");
         [self state:@"D2-nexus-absent" caption:@"HCG Nexus not installed → Requires compatible HCG Nexus"];
+    });
+    // E. Show Halo on (screen edge) and the installed-app picker.
+    STEP(1.0, {
+        UIViewController *haloRoot = [self principalOf:@"HCGHaloPrefs.bundle"];
+        [self show:haloRoot];
+        self->_haloRoot = haloRoot;
+        id spec = ((id (*)(id, SEL, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"specifierForID:"), @"showOn");
+        id value = spec ? ((id (*)(id, SEL, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"readPreferenceValue:"), spec) : nil;
+        Check(spec && [value isEqualToString:@"home"], [NSString stringWithFormat:@"Show Halo on row, default %@", value]);
+        Check(((id (*)(id, SEL, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"specifierForID:"), @"displayContext") == nil,
+              @"the read-only Display Context row is replaced");
+        NSString *footer = FooterText((UITableViewController *)haloRoot);
+        Check([footer containsString:@"Home Screen Only (default)"] && [footer containsString:@"fully off can't show a border"] &&
+                  [footer containsString:@"Always and Always Except When Screen Is Off"],
+              @"Show Halo on footer: current choice, dark display, Always vs Except Screen Off");
+        Check([footer containsString:@"HCG Nexus panel border follows the panel"], @"footer: Nexus panel lighting not affected");
+        id picker = ((id (*)(id, SEL, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"specifierForID:"), @"openAppPicker");
+        NSString *pickerName = picker ? ((id (*)(id, SEL))objc_msgSend)(picker, NSSelectorFromString(@"name")) : nil;
+        Check([pickerName isEqualToString:@"Choose App…"], [NSString stringWithFormat:@"app row: %@", pickerName]);
+        UITableView *table = ((UITableViewController *)haloRoot).tableView;
+        id indexPath = ((id (*)(id, SEL, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"indexPathForSpecifier:"), spec);
+        if (indexPath) [table scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionTop animated:NO];
+        [self state:@"E1-show-halo-on-default" caption:@"Settings › HCG Halo › Show Halo on (default)"];
+        [self send:@"openAppPicker:" to:haloRoot];
+    });
+    STEP(2.5, {
+        UITableViewController *top = (UITableViewController *)self->_nav.topViewController;
+        Check([NSStringFromClass([top class]) isEqualToString:@"HaloAppPickerController"], @"Choose App opens the app picker");
+        NSArray *apps = ((id (*)(id, SEL))objc_msgSend)(NSClassFromString(@"HaloAppPickerController"), NSSelectorFromString(@"installedApps"));
+        Say(@"HALO-SETTINGS-INFO installed apps listed: %lu", (unsigned long)apps.count);
+        NSInteger safari = -1;
+        for (NSUInteger i = 0; i < apps.count; i++)
+            if ([apps[i][@"id"] isEqualToString:@"com.apple.mobilesafari"]) safari = (NSInteger)i;
+        Check(apps.count > 0 || [FooterText(top) containsString:@"Enter Bundle ID"],
+              [NSString stringWithFormat:@"picker lists the installed apps (%lu) or offers manual entry", (unsigned long)apps.count]);
+        if (apps.count) {
+            NSInteger row = safari >= 0 ? safari : 0;
+            [top.tableView.delegate tableView:top.tableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:1]];
+            self->_chosenApp = apps[row][@"id"];
+            self->_chosenName = apps[row][@"name"];
+        } else {
+            // Manual fallback, as a user would type it.
+            ((void (*)(id, SEL, id, id))objc_msgSend)(top, NSSelectorFromString(@"choose:name:"), @"com.apple.mobilesafari", @"Safari");
+            self->_chosenApp = @"com.apple.mobilesafari";
+            self->_chosenName = @"Safari";
+        }
+        Check([PrefValue(@"showOn") isEqualToString:@"app"] && [PrefValue(@"showOnApp") isEqualToString:self->_chosenApp],
+              [NSString stringWithFormat:@"choosing %@ stores it and selects Selected App Only", self->_chosenApp]);
+        [top.tableView reloadData];
+        [self state:@"E2-app-picker" caption:[NSString stringWithFormat:@"Chosen App: %@", self->_chosenName]];
+    });
+    STEP(2.5, {
+        [self->_nav popToRootViewControllerAnimated:NO];
+        UIViewController *haloRoot = self->_haloRoot;
+        ((void (*)(id, SEL))objc_msgSend)(haloRoot, NSSelectorFromString(@"reloadSpecifiers"));
+        id picker = ((id (*)(id, SEL, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"specifierForID:"), @"openAppPicker");
+        NSString *pickerName = picker ? ((id (*)(id, SEL))objc_msgSend)(picker, NSSelectorFromString(@"name")) : nil;
+        Check([pickerName hasPrefix:@"Chosen App: "], [NSString stringWithFormat:@"app row now: %@", pickerName]);
+        Check([FooterText((UITableViewController *)haloRoot) containsString:@"Selected App Only: the border shows only while"],
+              @"footer explains Selected App Only with the chosen app");
+        id spec = ((id (*)(id, SEL, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"specifierForID:"), @"showOn");
+        ((void (*)(id, SEL, id, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"setPreferenceValue:specifier:"), @"always", spec);
+        Check([PrefValue(@"showOn") isEqualToString:@"always"] &&
+                  [FooterText((UITableViewController *)haloRoot) containsString:@"Always: the border shows on every lit screen"],
+              @"Always written, footer updated at once");
+        ((void (*)(id, SEL, id, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"setPreferenceValue:specifier:"), @"lockscreen", spec);
+        Check([PrefValue(@"showOn") isEqualToString:@"home"], @"an unknown Show Halo on value is stored as Home Screen Only");
+        ((void (*)(id, SEL, id, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"setPreferenceValue:specifier:"), @"exceptLock", spec);
+        UITableView *table = ((UITableViewController *)haloRoot).tableView;
+        id indexPath = ((id (*)(id, SEL, id))objc_msgSend)(haloRoot, NSSelectorFromString(@"indexPathForSpecifier:"), spec);
+        if (indexPath) [table scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionTop animated:NO];
+        [self state:@"E3-show-halo-on-except-lock" caption:@"Show Halo on: Always Except Lock Screen"];
     });
     STEP(2.5, {
         Say(@"HALO-SETTINGS-DONE failures=%d", gFailures);

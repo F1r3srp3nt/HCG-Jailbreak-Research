@@ -27,23 +27,24 @@ static UIColor *PortalColor(PortalRGB c, CGFloat alpha) {
 }
 
 static CGImageRef PortalMoteImage(void) {
+    // Plain Core Graphics (no UIKit image renderer): works in SpringBoard,
+    // Settings and headless test processes alike.
     static CGImageRef image;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
-        UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
-        format.scale = 2;
-        format.opaque = NO;
-        UIGraphicsImageRenderer *r = [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(8, 8) format:format];
-        UIImage *img = [r imageWithActions:^(UIGraphicsImageRendererContext *ctx) {
-            CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+        const size_t n = 16;
+        CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+        CGContextRef ctx = CGBitmapContextCreate(NULL, n, n, 8, n * 4, space, (CGBitmapInfo)kCGImageAlphaPremultipliedLast);
+        if (ctx) {
             CGFloat comps[] = {1, 1, 1, 1, 1, 1, 1, 0};
             CGFloat locs[] = {0, 1};
             CGGradientRef g = CGGradientCreateWithColorComponents(space, comps, locs, 2);
-            CGContextDrawRadialGradient(ctx.CGContext, g, CGPointMake(4, 4), 0, CGPointMake(4, 4), 4, 0);
+            CGContextDrawRadialGradient(ctx, g, CGPointMake(n / 2.0, n / 2.0), 0, CGPointMake(n / 2.0, n / 2.0), n / 2.0, 0);
             CGGradientRelease(g);
-            CGColorSpaceRelease(space);
-        }];
-        image = CGImageRetain(img.CGImage);
+            image = CGBitmapContextCreateImage(ctx);
+            CGContextRelease(ctx);
+        }
+        CGColorSpaceRelease(space);
     });
     return image;
 }
@@ -155,7 +156,7 @@ static CGImageRef PortalMoteImage(void) {
     _mote.velocity = 7;
     _mote.velocityRange = 5;
     _mote.emissionRange = (CGFloat)(2 * M_PI);
-    _mote.scale = 0.45;
+    _mote.scale = 0.22;
     _mote.scaleRange = 0.2;
     _mote.scaleSpeed = -0.12;
     _mote.alphaSpeed = -0.38;
@@ -217,9 +218,17 @@ static CGImageRef PortalMoteImage(void) {
     [super layoutSubviews];
     CGFloat d = MIN(self.bounds.size.width, self.bounds.size.height);
     if (d < 1) return;
-    if (fabs(d - _builtDiameter) < 0.5 && CGRectEqualToRect(_stage.frame, self.bounds)) return;
+    if (fabs(d - _builtDiameter) < 0.5 && CGSizeEqualToSize(_stage.bounds.size, self.bounds.size)) return;
     _builtDiameter = d;
     [self rebuild:d];
+}
+
+// Sets a layer's geometry through bounds and position, never .frame: these
+// layers carry rotation and scale transforms, and .frame is undefined on a
+// transformed layer (it would move the rings off the core's centre).
+static void Place(CALayer *layer, CGRect rect) {
+    layer.bounds = CGRectMake(0, 0, rect.size.width, rect.size.height);
+    layer.position = CGPointMake(CGRectGetMidX(rect), CGRectGetMidY(rect));
 }
 
 static UIBezierPath *Circle(CGPoint c, CGFloat r) {
@@ -237,16 +246,16 @@ static UIBezierPath *Circle(CGPoint c, CGFloat r) {
     CGPoint c = CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds));
     BOOL compact = d < PORTAL_SIZE_MIN;
 
-    _stage.frame = bounds;
+    Place(_stage, bounds);
 
     CGFloat shadowD = d * 1.25;
-    _shadow.frame = CGRectMake(c.x - shadowD / 2, c.y - shadowD / 2 + d * 0.08, shadowD, shadowD);
+    Place(_shadow, CGRectMake(c.x - shadowD / 2, c.y - shadowD / 2 + d * 0.08, shadowD, shadowD));
 
-    _energy.frame = bounds;
+    Place(_energy, bounds);
     _energy.opacity = (float)_appearance.brightness;
 
     CGFloat glowD = d * (compact ? 1.45 : 1.6);
-    _glow.frame = CGRectMake(c.x - glowD / 2, c.y - glowD / 2, glowD, glowD);
+    Place(_glow, CGRectMake(c.x - glowD / 2, c.y - glowD / 2, glowD, glowD));
     CGFloat g = (CGFloat)(0.10 + 0.30 * intensity) * (_plan.glowLayers > 0 ? 1 : 0);
     _glow.colors = @[
         (id)PortalColor(primary, g).CGColor, (id)PortalColor(secondary, g * 0.55).CGColor,
@@ -255,18 +264,18 @@ static UIBezierPath *Circle(CGPoint c, CGFloat r) {
     _glow.locations = @[ @0.42, @0.62, @1 ];
     _glow.opacity = _expanded ? 1.0f : 0.8f;
 
-    _rings.frame = bounds;
+    Place(_rings, bounds);
     CGFloat glowRadius = (CGFloat)(_plan.glowLayers <= 0 ? 0 : 2.0 + 2.5 * _plan.glowLayers);
 
     CGFloat outerR = d * 0.46;
-    _outer.frame = bounds;
-    _outerGradient.frame = bounds;
+    Place(_outer, bounds);
+    Place(_outerGradient, bounds);
     _outerGradient.colors = @[
         (id)PortalColor(primary, 1).CGColor, (id)PortalColor(secondary, 1).CGColor,
         (id)PortalColor(primary, 0.25).CGColor, (id)PortalColor(secondary, 0.9).CGColor,
         (id)PortalColor(primary, 1).CGColor
     ];
-    _outerMask.frame = bounds;
+    Place(_outerMask, bounds);
     _outerMask.path = Circle(c, outerR).CGPath;
     _outerMask.lineWidth = compact ? 2.0 : 2.6;
     _outer.shadowColor = PortalColor(primary, 1).CGColor;
@@ -274,7 +283,7 @@ static UIBezierPath *Circle(CGPoint c, CGFloat r) {
     _outer.shadowOpacity = glowRadius > 0 ? 0.9f : 0;
 
     CGFloat middleR = d * 0.415;
-    _middle.frame = bounds;
+    Place(_middle, bounds);
     _middle.path = Circle(c, middleR).CGPath;
     _middle.lineWidth = compact ? 1.0 : 1.5;
     _middle.strokeColor = PortalColor(secondary, 0.9).CGColor;
@@ -285,7 +294,7 @@ static UIBezierPath *Circle(CGPoint c, CGFloat r) {
     _middle.shadowOpacity = glowRadius > 0 ? 0.85f : 0;
 
     CGFloat innerR = d * 0.365;
-    _inner.frame = bounds;
+    Place(_inner, bounds);
     _inner.path = Circle(c, innerR).CGPath;
     _inner.lineWidth = compact ? 0.8 : 1.1;
     _inner.strokeColor = PortalColor(primary, 0.7).CGColor;
@@ -294,17 +303,17 @@ static UIBezierPath *Circle(CGPoint c, CGFloat r) {
     _inner.shadowOpacity = glowRadius > 0 ? 0.7f : 0;
 
     CGFloat coreD = d * 0.70;
-    _core.frame = CGRectMake(c.x - coreD / 2, c.y - coreD / 2, coreD, coreD);
+    Place(_core, CGRectMake(c.x - coreD / 2, c.y - coreD / 2, coreD, coreD));
     _core.cornerRadius = coreD / 2;
-    _coreGlow.frame = _core.bounds;
+    Place(_coreGlow, _core.bounds);
     _coreGlow.colors = @[
         (id)PortalColor(primary, 0.10 + 0.14 * intensity).CGColor, (id)PortalColor(secondary, 0.05).CGColor,
         (id)PortalColor(secondary, 0).CGColor
     ];
     _coreGlow.locations = @[ @0, @0.55, @1 ];
-    _rim.frame = bounds;
+    Place(_rim, bounds);
     _rim.path = Circle(c, coreD / 2).CGPath;
-    _highlight.frame = bounds;
+    Place(_highlight, bounds);
     _highlight.path = [UIBezierPath bezierPathWithArcCenter:c
                                                      radius:coreD / 2 - 2
                                                  startAngle:(CGFloat)(-M_PI * 0.85)
@@ -312,7 +321,7 @@ static UIBezierPath *Circle(CGPoint c, CGFloat r) {
                                                   clockwise:YES]
                           .CGPath;
 
-    _emitter.frame = bounds;
+    Place(_emitter, bounds);
     _emitter.emitterPosition = c;
     _emitter.emitterSize = CGSizeMake(outerR * 2, outerR * 2);
     _mote.color = PortalColor(primary, 0.85).CGColor;

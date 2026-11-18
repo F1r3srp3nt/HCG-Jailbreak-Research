@@ -8,11 +8,24 @@
 #include <notify.h>
 
 void PSIPostState(const char *name, uint64_t value) {
+    // Keep one registration per name open for the life of the process: notifyd
+    // drops a name's state when its last registration is cancelled, and
+    // SpringBoard (the real publisher) keeps its registration too.
+    static NSMutableDictionary<NSString *, NSNumber *> *tokens;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        tokens = [NSMutableDictionary dictionary];
+    });
+    NSString *key = @(name);
     int token = 0;
-    if (notify_register_check(name, &token) != NOTIFY_STATUS_OK) return;
+    if (tokens[key]) {
+        token = tokens[key].intValue;
+    } else {
+        if (notify_register_check(name, &token) != NOTIFY_STATUS_OK) return;
+        tokens[key] = @(token);
+    }
     notify_set_state(token, value);
     notify_post(name);
-    notify_cancel(token);
 }
 
 @implementation SBLockScreenUnlockRequest

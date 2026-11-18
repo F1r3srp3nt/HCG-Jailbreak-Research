@@ -327,11 +327,17 @@ static void TestCompanions(void) {
 
 int main(int argc, char *argv[]) {
     @autoreleasepool {
+        setvbuf(stdout, NULL, _IONBF, 0);
         printf("HCG Portal %s runtime tests (iOS Simulator %s)\n", PORTAL_VERSION, UIDevice.currentDevice.systemVersion.UTF8String);
+        printf("-- TestPortalView\n");
         TestPortalView();
+        printf("-- TestOverlay\n");
         TestOverlay();
+        printf("-- TestAuth\n");
         TestAuth();
+        printf("-- TestLauncherAndPreferences\n");
         TestLauncherAndPreferences();
+        printf("-- TestCompanions\n");
         TestCompanions();
         printf("%d checks, %d failures\n", gChecks, gFailures);
         return gFailures ? 1 : 0;

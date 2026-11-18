@@ -1,0 +1,20 @@
+# HCG Vortex 0.2.0~beta1, rootless. Free public demo for the candidate channel; adds the Tornado effect.
+# Not yet installed or tested on a device.
+# Pinned to F1r3srp3nt/HCG-Jailbreak-Research commit d8ceacd (branch claude/vortex-tornado), macOS CI run
+# 44204965738 (Xcode 16.4, Theos 8167f59), artifact hcg-vortex-rootless-deb (ID 14384020297). The SHA-256 is
+# recomputed from a fresh download by the handoff workflow; Prepare packages refuses any other bytes.
+# Earlier builds (0.1.0~beta1 bb0af727..., 0.1.0~beta2 a326759a...) are different, unchanged builds.
+
+[request]
+package = "com.hakmicapitalgroup.vortex"
+version = "0.2.0~beta1"
+architecture = "iphoneos-arm64"
+channel = "candidate"
+
+[source]
+kind = "github-artifact"
+repository = "F1r3srp3nt/HCG-Jailbreak-Research"
+run_id = 44204965738
+commit = "d8ceacdaa0e378e11f85117703dcf8d7b2a108e8"
+artifact = "hcg-vortex-rootless-deb"
+sha256 = "c379266d9033261ffb3ab5064884dc04f30fe99f21ac50ca5b91862ea47a1c43"

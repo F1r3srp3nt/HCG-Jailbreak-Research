@@ -4,9 +4,10 @@ CFLAGS ?= -std=c11 -O1 -Wall -Wextra -Werror
 SANITIZE ?= -fsanitize=address,undefined
 BUILD := build
 
-.PHONY: test compat compat-gnustep compat-lint deb-format clean
-test: $(BUILD)/test_math
+.PHONY: test compat compat-gnustep compat-lint deb-format tornado-frames clean
+test: $(BUILD)/test_math $(BUILD)/test_tornado
 	$(abspath $(BUILD))/test_math
+	$(abspath $(BUILD))/test_tornado
 
 # Packaging regression check (gzip-only .deb members). Python standard library.
 deb-format:
@@ -37,6 +38,16 @@ compat-lint: test_compat.m ../src/VortexCompatibility.m ../src/VortexCompatibili
 	clang -fsyntax-only -std=gnu11 -I$(GCC_OBJC_INCLUDE) $(GNUSTEP_OBJC_FLAGS) -fobjc-runtime=gcc \
 		-Wall -Wextra -Werror -Wno-unused-parameter -Wno-expansion-to-defined -Wno-cast-function-type \
 		-Wno-unused-command-line-argument test_compat.m ../src/VortexCompatibility.m
+
+# Real Tornado geometry as JSON (for scripts/render_tornado_preview.py).
+tornado-frames: $(BUILD)/tornado_frames
+$(BUILD)/tornado_frames: tornado_frames.c ../src/VortexTornado.c ../src/VortexTornado.h ../src/VortexMath.c
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -o $@ tornado_frames.c ../src/VortexTornado.c ../src/VortexMath.c -lm
+
+$(BUILD)/test_tornado: test_tornado.c ../src/VortexTornado.c ../src/VortexTornado.h ../src/VortexMath.c ../src/VortexMath.h ../src/VortexTypes.h
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) $(SANITIZE) -o $@ test_tornado.c ../src/VortexTornado.c ../src/VortexMath.c -lm
 
 $(BUILD)/test_math: test_math.c ../src/VortexMath.c ../src/VortexMath.h ../src/VortexTypes.h
 	@mkdir -p $(BUILD)

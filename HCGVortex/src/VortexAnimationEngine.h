@@ -7,6 +7,13 @@
 //  What it touches — and only this:
 //    SBIconListView.layer.sublayerTransform   (translation; 3D reserved)
 //    SBIconListView.layer.opacity             (only when an effect fades)
+//  and, only for per-icon effects (VortexIconEffect, e.g. Tornado), on the
+//  SBIconView subviews of the outgoing / incoming pages:
+//    SBIconView.layer.sublayerTransform       (offset, scale, rotation)
+//    SBIconView.layer.zPosition               (depth ordering among siblings)
+//    SBIconView.layer.opacity
+//  None of these change frames, centres, subview order, icon order or the
+//  persisted layout, and none affect UIKit hit-testing.
 //
 //  Why sublayerTransform and not view.transform: SpringBoard assigns frames
 //  to icon list views during layout, and UIView.frame is undefined while
@@ -16,7 +23,12 @@
 //
 //  Every modified layer's original state is recorded and restored when the
 //  transition settles, is cancelled, leaves the window, enters edit mode,
-//  the configuration changes, the tweak is disabled, or a fault occurs.
+//  the configuration changes, the tweak is disabled, or a fault occurs. Icon
+//  layers not updated in a frame (their page left the transition, the icon
+//  was removed) are restored at the end of that frame.
+//
+//  Reduce Motion: while it is on, per-icon effects resolve to the stock
+//  animation (page effects are unchanged).
 //
 
 #import <UIKit/UIKit.h>

@@ -96,6 +96,22 @@ For each one, check:
 
 The full list is in `docs/TESTING.md` (F1–F11, R1–R13).
 
+Then **Tornado** (0.2.0), with the defaults first, then with Spin Icons on, then with Depth & Scale off:
+- at mid-swipe the icons form a recognisable funnel (wide top, narrow tip, several turns) that moves with your finger;
+- pause mid-swipe: the formation holds; drag back: it unwinds; release back on the start page: every icon is exactly in
+  its grid position, with full opacity and the right size;
+- complete a swipe: the destination icons settle exactly in place;
+- flick quickly across two or three pages, and grab a moving page mid-flight: nothing is left displaced or faded;
+- tap an icon right after a completed swipe **and** right after a cancelled swipe: the icon under your finger opens;
+- a page with widgets: the widgets fade in place and do not fly;
+- a partly filled page (a few icons): the funnel still forms and the icons return;
+- turn on Settings › Accessibility › Motion › Reduce Motion: swipes use the stock animation; turn it off: Tornado
+  returns;
+- turn Enable Vortex off mid-session: every icon is in place;
+- record the frame rate impression (smooth / occasional hitches / laggy). Don't claim smoothness without this.
+
+If HCG Halo or HCG Nexus is installed, note it in the report. They are untested together.
+
 ### D. Preferences persistence
 
 1. Set non-default values: preset **Vertical Fall**, Duration **0.4**, Easing **Ease In-Out**.

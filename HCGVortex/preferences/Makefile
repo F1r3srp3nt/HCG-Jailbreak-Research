@@ -11,13 +11,15 @@ BUNDLE_NAME = HCGVortexPrefs
 # Same version source as the tweak: ../control.
 VORTEX_VERSION := $(subst ~,-,$(shell sed -n 's/^Version: *//p' $(CURDIR)/../control))
 
-# VortexPreferences.m + VortexMath.c are shared with the tweak so validation
+# VortexPreferences.m + VortexMath.c + VortexTornado.c are shared with the tweak so validation
 # and defaults are identical in SpringBoard and in Settings.
 HCGVortexPrefs_FILES = \
 	VortexRootListController.m \
 	VortexHeaderView.m \
+	VortexTornadoPreviewCell.m \
 	../src/VortexPreferences.m \
-	../src/VortexMath.c
+	../src/VortexMath.c \
+	../src/VortexTornado.c
 HCGVortexPrefs_FRAMEWORKS = UIKit QuartzCore
 HCGVortexPrefs_PRIVATE_FRAMEWORKS = Preferences
 HCGVortexPrefs_INSTALL_PATH = /Library/PreferenceBundles

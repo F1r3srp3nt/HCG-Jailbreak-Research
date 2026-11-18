@@ -13,6 +13,7 @@
 
 #import <Foundation/Foundation.h>
 #import "../src/VortexTypes.h"
+#import "../src/VortexTornado.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -36,6 +37,39 @@ NS_ASSUME_NONNULL_BEGIN
                        navigation:(VortexNavigationDirection)navigation
                        parameters:(const VortexEffectParameters *)parameters;
 
+@end
+
+/// Optional: effects that move individual ICONS, not just whole pages
+/// (v0.2.0+, Tornado). The engine still applies the page visual from
+/// -visualForRole:..., then asks for one visual per icon view of each
+/// outgoing / incoming page. Same contract as pages: at progress 0 the
+/// outgoing icons are identity and the incoming icons invisible; at progress 1
+/// the reverse. Pure functions of progress, so pausing, reversing and
+/// cancelling need no extra state.
+@protocol VortexIconEffect <VortexEffect>
+/// slot: the icon's grid position relative to its page centre, and its rank.
+/// pageWidth / pageHeight: the icon list view's bounds, points.
+- (VortexIconVisual)iconVisualForRole:(VortexPageRole)role
+                             progress:(double)progress
+                           navigation:(VortexNavigationDirection)navigation
+                                 slot:(VortexIconSlot)slot
+                            pageWidth:(double)pageWidth
+                           pageHeight:(double)pageHeight
+                           parameters:(const VortexEffectParameters *)parameters;
+/// Explicit fallback for icon views that are not ordinary app icons
+/// (widgets and other oversized views): they must not be thrown around.
+- (VortexIconVisual)fallbackVisualForRole:(VortexPageRole)role
+                                 progress:(double)progress
+                               parameters:(const VortexEffectParameters *)parameters;
+@end
+
+/// Tornado: the icons lift out of the grid into a tapered helical funnel that
+/// travels with the swipe; the incoming icons unwind out of it into place.
+/// Built per configuration (it carries the user's Tornado settings).
+@interface VortexTornadoEffect : NSObject <VortexIconEffect>
+- (instancetype)initWithParameters:(VortexTornadoParameters)parameters NS_DESIGNATED_INITIALIZER;
+- (instancetype)init NS_UNAVAILABLE;
+@property (nonatomic, readonly) VortexTornadoParameters tornadoParameters;
 @end
 
 /// Base for every effect that is a pair of directions (incoming-from /

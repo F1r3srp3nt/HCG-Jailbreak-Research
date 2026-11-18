@@ -43,8 +43,10 @@ def info(label, getter, ident):
 
 
 EFFECTS = [("Reverse Slide", "reverse-slide"), ("Vertical Rise", "vertical-rise"),
-           ("Vertical Fall", "vertical-fall"), ("Custom Directions", "custom"), ("iOS Default", "stock")]
-PRESETS = EFFECTS[:4] + [("Per-Swipe Effects", "per-direction")] + EFFECTS[4:]
+           ("Vertical Fall", "vertical-fall"), ("Tornado", "tornado"), ("Custom Directions", "custom"),
+           ("iOS Default", "stock")]
+PRESETS = EFFECTS[:5] + [("Per-Swipe Effects", "per-direction")] + EFFECTS[5:]
+SPIN = [("Follow Swipe", "follow-swipe"), ("Clockwise", "clockwise"), ("Counterclockwise", "counterclockwise")]
 DIRECTIONS = [("Left", "left"), ("Right", "right"), ("Top", "up"), ("Bottom", "down"),
               ("Top Left", "up-left"), ("Top Right", "up-right"), ("Bottom Left", "down-left"),
               ("Bottom Right", "down-right")]
@@ -68,6 +70,23 @@ ITEMS = [
     lst("incomingDirection", "Incoming Page From", DIRECTIONS),
     lst("outgoingDirection", "Outgoing Page To", DIRECTIONS),
     pref("PSSwitchCell", "reverseAnimation", "Reverse Animation"),
+    group("Tornado", "Used when the Tornado effect is selected (as the preset or for a swipe direction). The icons "
+          "lift out of the grid into a spiral funnel that travels with your swipe, and the next page's icons unwind "
+          "into place. It follows your finger: pause, reverse or let go and the icons return to the grid. Icons keep "
+          "facing you unless Spin Icons is on. Widgets fade in place instead of joining the funnel. With Reduce "
+          "Motion on, Tornado uses the stock animation."),
+    {"cell": "PSDefaultCell", "cellClass": "VortexTornadoPreviewCell", "height": 300, "id": "tornadoPreview"},
+    group("Tornado Intensity", "How large the funnel is and how fast it turns as you swipe."),
+    slider("tornadoIntensity", 0.1, 1.0),
+    group("Spiral Radius", "Width of the funnel's upper opening, as a fraction of the screen width. The tip is "
+          "always narrow."),
+    slider("tornadoRadius", 0.15, 0.6),
+    group("Spiral Turns", "How many times the funnel winds from its opening to its tip."),
+    slider("tornadoRotations", 1.0, 4.0),
+    group("Tornado Options"),
+    lst("tornadoDirection", "Spin Direction", SPIN),
+    pref("PSSwitchCell", "tornadoDepth", "Depth & Scale"),
+    pref("PSSwitchCell", "tornadoIconSpin", "Spin Icons"),
     group("Duration", "0 = visuals track your finger exactly. Higher values let the visual transition trail the "
           "gesture and glide to completion over the chosen time (seconds)."),
     slider("duration", 0.0, 1.0),

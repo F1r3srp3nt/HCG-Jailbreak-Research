@@ -47,10 +47,11 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
 # ---------------------------------------------------------------------------
-section "1. Math core unit tests"
+section "1. Math core and Tornado geometry unit tests"
 if command -v cc >/dev/null 2>&1; then
 	if out=$(make -s -C tests BUILD="$WORK/tests" test 2>&1); then
-		pass "$(echo "$out" | tail -1)"
+		echo "$out" | grep -E "^[0-9]+ checks" | sed 's/^/  PASS /' | sed '$d'
+		pass "$(echo "$out" | grep -E "^[0-9]+ checks" | tail -1)"
 	else
 		echo "$out" | tail -20
 		fail "unit tests failed"
@@ -71,9 +72,11 @@ effects = {ids[k] for k in ids if k.startswith("VortexEffectIdentifier")}
 presets = effects | {ids["VortexPresetPerDirection"]}
 easings = set(re.search(r'validEasings \{\s*return @\[([^\]]+)\]', src).group(1).replace('@"', '"').replace('"', '').replace(' ', '').split(','))
 directions = set(re.findall(r'\{ VortexDirection\w+,\s+"([a-z-]+)"', math_c))
+spins = set(re.search(r'validTornadoDirections \{[^@]*return @\[([^\]]+)\]', src).group(1).replace('@"', '"').replace('"', '').replace(' ', '').split(','))
 plist = plistlib.load(open(os.path.join(root, "preferences/Resources/Root.plist"), "rb"))
 expect = {"preset": presets, "swipeLeftEffect": effects, "swipeRightEffect": effects,
-          "incomingDirection": directions, "outgoingDirection": directions, "easing": easings}
+          "incomingDirection": directions, "outgoingDirection": directions, "easing": easings,
+          "tornadoDirection": spins}
 keys_in_code = set(re.findall(r'NSString \*const VortexKey\w+ = @"([^"]+)"', src))
 ok = True
 for item in plist["items"]:
@@ -296,7 +299,7 @@ for path in sys.argv[1:]:
 DYLIB="$JB/Library/MobileSubstrate/DynamicLibraries/HCGVortex.dylib"
 PREFS="$JB/Library/PreferenceBundles/HCGVortexPrefs.bundle/HCGVortexPrefs"
 printable_runs "$DYLIB" > "$WORK/dylib.strings"
-for s in SBFolderView SBRootFolderView SBIconListView 'scrollViewDidScroll:' layoutSubviews setSublayerTransform: _MSHookMessageEx; do
+for s in SBFolderView SBRootFolderView SBIconListView SBIconView 'scrollViewDidScroll:' layoutSubviews setSublayerTransform: setZPosition: _MSHookMessageEx; do
 	grep -qx -- "$s" "$WORK/dylib.strings" && pass "binary references $s" || fail "binary lacks $s"
 done
 

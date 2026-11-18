@@ -27,6 +27,12 @@ NSString *const VortexKeyIntensity = @"intensity";
 NSString *const VortexKeyEasing = @"easing";
 NSString *const VortexKeyFadePages = @"fadePages";
 NSString *const VortexKeyDiagnosticLogging = @"diagnosticLogging";
+NSString *const VortexKeyTornadoIntensity = @"tornadoIntensity";
+NSString *const VortexKeyTornadoRadius = @"tornadoRadius";
+NSString *const VortexKeyTornadoRotations = @"tornadoRotations";
+NSString *const VortexKeyTornadoDirection = @"tornadoDirection";
+NSString *const VortexKeyTornadoDepth = @"tornadoDepth";
+NSString *const VortexKeyTornadoIconSpin = @"tornadoIconSpin";
 
 NSString *const VortexStatusKeyState = @"state";
 NSString *const VortexStatusKeyDetail = @"detail";
@@ -39,6 +45,7 @@ NSString *const VortexEffectIdentifierStock = @"stock";
 NSString *const VortexEffectIdentifierReverseSlide = @"reverse-slide";
 NSString *const VortexEffectIdentifierVerticalRise = @"vertical-rise";
 NSString *const VortexEffectIdentifierVerticalFall = @"vertical-fall";
+NSString *const VortexEffectIdentifierTornado = @"tornado";
 NSString *const VortexEffectIdentifierCustom = @"custom";
 NSString *const VortexPresetPerDirection = @"per-direction";
 
@@ -68,6 +75,16 @@ NSString *const VortexPresetPerDirection = @"per-direction";
         p.fadePages = [values[VortexKeyFadePages] boolValue] ? 1 : 0;
         p.reverse = [values[VortexKeyReverseAnimation] boolValue] ? 1 : 0;
         _parameters = vortex_sanitize_parameters(p);
+
+        VortexTornadoParameters t = vortex_tornado_defaults();
+        t.intensity = [values[VortexKeyTornadoIntensity] doubleValue];
+        t.radius = [values[VortexKeyTornadoRadius] doubleValue];
+        t.rotations = [values[VortexKeyTornadoRotations] doubleValue];
+        NSUInteger dir = [[VortexPreferences validTornadoDirections] indexOfObject:values[VortexKeyTornadoDirection] ?: @""];
+        t.direction = dir == NSNotFound ? VortexSpinFollowSwipe : (VortexSpinDirection)dir;
+        t.depth = [values[VortexKeyTornadoDepth] boolValue] ? 1 : 0;
+        t.iconSpin = [values[VortexKeyTornadoIconSpin] boolValue] ? 1 : 0;
+        _tornadoParameters = vortex_tornado_sanitize(t);
     }
     return self;
 }
@@ -90,11 +107,15 @@ NSString *const VortexPresetPerDirection = @"per-direction";
 - (NSString *)description {
     VortexEffectParameters p = self.parameters;
     return [NSString stringWithFormat:@"<VortexConfiguration enabled=%d preset=%@ left=%@ right=%@ in=%s out=%s "
-                                      @"duration=%.2f speed=%.2f intensity=%.2f easing=%d fade=%d reverse=%d>",
+                                      @"duration=%.2f speed=%.2f intensity=%.2f easing=%d fade=%d reverse=%d "
+                                      @"tornado=(%.2f %.2f %.2f dir=%d depth=%d spin=%d)>",
                                       self.enabled, self.preset, self.swipeLeftEffect, self.swipeRightEffect,
                                       vortex_direction_to_string(self.incomingDirection),
                                       vortex_direction_to_string(self.outgoingDirection), self.duration, p.speed,
-                                      p.intensity, (int)p.easing, p.fadePages, p.reverse];
+                                      p.intensity, (int)p.easing, p.fadePages, p.reverse, self.tornadoParameters.intensity,
+                                      self.tornadoParameters.radius, self.tornadoParameters.rotations,
+                                      (int)self.tornadoParameters.direction, self.tornadoParameters.depth,
+                                      self.tornadoParameters.iconSpin];
 }
 
 @end
@@ -120,12 +141,18 @@ NSString *const VortexPresetPerDirection = @"per-direction";
         VortexKeyEasing : @"linear",
         VortexKeyFadePages : @NO,
         VortexKeyDiagnosticLogging : @NO,
+        VortexKeyTornadoIntensity : @0.7,
+        VortexKeyTornadoRadius : @0.36,
+        VortexKeyTornadoRotations : @2.5,
+        VortexKeyTornadoDirection : @"follow-swipe",
+        VortexKeyTornadoDepth : @YES,
+        VortexKeyTornadoIconSpin : @NO,
     };
 }
 
 + (BOOL)isBooleanKey:(NSString *)key {
-    return [@[ VortexKeyEnabled, VortexKeyReverseAnimation, VortexKeyFadePages, VortexKeyDiagnosticLogging ]
-        containsObject:key];
+    return [@[ VortexKeyEnabled, VortexKeyReverseAnimation, VortexKeyFadePages, VortexKeyDiagnosticLogging,
+               VortexKeyTornadoDepth, VortexKeyTornadoIconSpin ] containsObject:key];
 }
 
 + (NSArray<NSString *> *)allKeys {
@@ -134,7 +161,7 @@ NSString *const VortexPresetPerDirection = @"per-direction";
 
 + (NSArray<NSString *> *)validEffectIdentifiers {
     return @[ VortexEffectIdentifierReverseSlide, VortexEffectIdentifierVerticalRise, VortexEffectIdentifierVerticalFall,
-              VortexEffectIdentifierCustom, VortexEffectIdentifierStock ];
+              VortexEffectIdentifierTornado, VortexEffectIdentifierCustom, VortexEffectIdentifierStock ];
 }
 
 + (NSArray<NSString *> *)validPresets {
@@ -151,6 +178,11 @@ NSString *const VortexPresetPerDirection = @"per-direction";
 
 + (NSArray<NSString *> *)validEasings {
     return @[ @"linear", @"ease-in", @"ease-out", @"ease-in-out", @"sine" ];
+}
+
++ (NSArray<NSString *> *)validTornadoDirections {
+    // Order matches VortexSpinDirection.
+    return @[ @"follow-swipe", @"clockwise", @"counterclockwise" ];
 }
 
 + (VortexEasing)easingFromString:(NSString *)string {
@@ -175,6 +207,9 @@ NSString *const VortexPresetPerDirection = @"per-direction";
     if ([key isEqualToString:VortexKeyDuration]) return [self clampedNumber:value min:0.0 max:1.0] ?: fallback;
     if ([key isEqualToString:VortexKeySpeed]) return [self clampedNumber:value min:0.25 max:4.0] ?: fallback;
     if ([key isEqualToString:VortexKeyIntensity]) return [self clampedNumber:value min:0.1 max:1.0] ?: fallback;
+    if ([key isEqualToString:VortexKeyTornadoIntensity]) return [self clampedNumber:value min:0.1 max:1.0] ?: fallback;
+    if ([key isEqualToString:VortexKeyTornadoRadius]) return [self clampedNumber:value min:0.15 max:0.6] ?: fallback;
+    if ([key isEqualToString:VortexKeyTornadoRotations]) return [self clampedNumber:value min:1.0 max:4.0] ?: fallback;
 
     if (![value isKindOfClass:[NSString class]]) return fallback;
     NSArray *allowed = nil;
@@ -184,6 +219,7 @@ NSString *const VortexPresetPerDirection = @"per-direction";
     else if ([key isEqualToString:VortexKeyIncomingDirection] || [key isEqualToString:VortexKeyOutgoingDirection])
         allowed = [self validDirections];
     else if ([key isEqualToString:VortexKeyEasing]) allowed = [self validEasings];
+    else if ([key isEqualToString:VortexKeyTornadoDirection]) allowed = [self validTornadoDirections];
     return [allowed containsObject:value] ? value : fallback;
 }
 

@@ -11,7 +11,7 @@
 # It publishes nothing and changes no repository.
 #
 # Handoff text comes from HCGVortex/distribution/handoff/<display version>/
-# on this branch (0.1.0~beta2 -> 0.1.0-beta2).
+# on this branch (0.2.0~beta1 -> 0.2.0-beta1).
 name: HCG Vortex handoff archive
 
 on:
@@ -36,6 +36,8 @@ on:
         description: "Build run of the baseline package to compare against"
       baseline_sha256:
         description: "Expected SHA-256 of the baseline package"
+      compare_strict:
+        description: "true: fail unless every difference from the baseline is packaging/version only (rebuilds). false: report differences (new code)"
 
 permissions:
   contents: read
@@ -48,15 +50,18 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      # Pinned fallbacks (used by the push run): 0.1.0~beta2.
-      RUN_ID: ${{ inputs.run_id || '44012915117' }}
-      ARTIFACT_ID: ${{ inputs.artifact_id || '14297382250' }}
-      EXPECTED_COMMIT: ${{ inputs.commit || 'b212cdbdcda98fdda0d7a924cb8acd388a2183ed' }}
-      EXPECTED_SHA256: ${{ inputs.sha256 || 'a326759a697899ee938b3db3ccc62521994c01084880b43802c0769f90179395' }}
-      EXPECTED_VERSION: ${{ inputs.version || '0.1.0~beta2' }}
-      # Baseline: 0.1.0~beta1, kept unchanged.
-      BASELINE_RUN_ID: ${{ inputs.baseline_run_id || '43970942708' }}
-      BASELINE_SHA256: ${{ inputs.baseline_sha256 || 'bb0af72745a36158d4022c1b97ebc9800847cf4b1fb42ca14d05b9fc07673eea' }}
+      # Pinned fallbacks (used by the push run): 0.2.0~beta1.
+      RUN_ID: ${{ inputs.run_id || '44204965738' }}
+      ARTIFACT_ID: ${{ inputs.artifact_id || '14384020297' }}
+      EXPECTED_COMMIT: ${{ inputs.commit || 'd8ceacdaa0e378e11f85117703dcf8d7b2a108e8' }}
+      EXPECTED_SHA256: ${{ inputs.sha256 || 'c379266d9033261ffb3ab5064884dc04f30fe99f21ac50ca5b91862ea47a1c43' }}
+      EXPECTED_VERSION: ${{ inputs.version || '0.2.0~beta1' }}
+      # Baseline: 0.1.0~beta2 (the previous candidate), kept unchanged.
+      BASELINE_RUN_ID: ${{ inputs.baseline_run_id || '44012915117' }}
+      BASELINE_SHA256: ${{ inputs.baseline_sha256 || 'a326759a697899ee938b3db3ccc62521994c01084880b43802c0769f90179395' }}
+      # 0.2.0~beta1 adds code (Tornado), so the comparison reports rather than gates.
+      COMPARE_STRICT: ${{ inputs.compare_strict || 'false' }}
+      HANDOFF_LABEL: "Free public demo for the candidate channel: not yet installed or tested on a device."
       ARTIFACT_NAME: hcg-vortex-rootless-deb
       PACKAGE: com.hakmicapitalgroup.vortex
     steps:
@@ -172,7 +177,12 @@ jobs:
       - name: Compare with the baseline and account for every difference
         run: |
           set -euo pipefail
-          python3 -I handoff-src/HCGVortex/scripts/compare_debs.py "$BASE" "$DEB" --markdown comparison.md
+          rc=0
+          python3 -I handoff-src/HCGVortex/scripts/compare_debs.py "$BASE" "$DEB" --markdown comparison.md || rc=$?
+          if [ "$rc" -ne 0 ]; then
+            if [ "$COMPARE_STRICT" = "true" ]; then echo "strict comparison failed"; exit 1; fi
+            { echo; echo "_Report mode: this version adds code, so differences beyond packaging and version are expected and listed above, not gated._"; } >> comparison.md
+          fi
 
       - name: Assemble the handoff
         run: |
@@ -201,7 +211,7 @@ jobs:
           import json, os, sys
           out, file, size = sys.argv[1], sys.argv[2], int(sys.argv[3])
           run = json.load(open("run.json")); art = json.load(open("artifact.json"))
-          label = "Packaging compatibility candidate — installation fix not yet device-verified."
+          label = os.environ.get("HANDOFF_LABEL", "")
           prov = {
               "package": os.environ["PACKAGE"], "version": os.environ["EXPECTED_VERSION"],
               "architecture": "iphoneos-arm64", "file": file, "size_bytes": size,
@@ -234,7 +244,7 @@ jobs:
               ("Build", f"`{prov['build']['workflow']}` run [{run['id']}]({run['html_url']}), conclusion `{run['conclusion']}`. macOS 15, Xcode, Theos `8167f59` (pinned)"),
               ("Artifact", f"`{art['name']}`, ID {art['id']}, expires {art['expires_at']}"),
               ("Re-validation", f"`validate.sh --require-new-abi` from the source commit, in the handoff run: {prov['verification']['handoff_run_url']}"),
-              ("Compared with", f"baseline run {os.environ['BASELINE_RUN_ID']}, SHA-256 `{os.environ['BASELINE_SHA256']}` (unchanged). See COMPARISON.md"),
+              ("Compared with", f"baseline run {os.environ['BASELINE_RUN_ID']}, SHA-256 `{os.environ['BASELINE_SHA256']}` (unchanged); strict = {os.environ['COMPARE_STRICT']}. See COMPARISON.md"),
               ("Device testing", "**None for this build.** Installation not yet attempted; runtime untested. See DEVICE-TESTING.md"),
               ("Licence", "Proprietary freeware. See LICENSE"),
           ]

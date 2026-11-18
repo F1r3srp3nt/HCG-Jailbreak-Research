@@ -1,5 +1,26 @@
 # Changelog — HCG Vortex
 
+## 0.2.0-beta1 (Debian version `0.2.0~beta1`)
+
+Free experimental beta. **Not yet installed or tested on a device.**
+
+### Added
+- **Tornado** effect, selectable as the preset or per swipe direction. The icons lift out of the grid into a tapered
+  3-D helical funnel that travels with the swipe and turns as you drag; the next page's icons unwind out of it into
+  their exact grid positions. Driven directly by the gesture: pause holds, reverse unwinds, cancel restores.
+  Controls: intensity, spiral radius, spiral turns, spin direction (follow swipe / clockwise / counterclockwise),
+  depth & scale, optional icon spin (off by default so icons stay readable). Live preview in Settings.
+  See `docs/EFFECTS.md`.
+- Engine: optional per-icon effect interface (`VortexIconEffect`). Icon layer state (sublayerTransform, zPosition,
+  opacity) is recorded and restored on every exit path; icons not updated in a frame are restored that frame.
+- Reduce Motion: per-icon effects use the stock animation while it is on.
+- Tests: `tests/test_tornado.c`. Preview tooling: `tests/tornado_frames.c`, `scripts/render_tornado_preview.py`.
+- `validate.sh` requires the binary to reference `SBIconView` and `setZPosition:`.
+
+### Unchanged
+- Reverse Slide, Vertical Rise, Vertical Fall, Custom Directions and iOS Default.
+- Packaging: gzip members (`data.tar.gz`, `control.tar.gz`), Theos pinned to `8167f59`.
+
 ## 0.1.0-beta2 (Debian version `0.1.0~beta2`)
 
 **Packaging compatibility candidate — installation fix not yet device-verified.**

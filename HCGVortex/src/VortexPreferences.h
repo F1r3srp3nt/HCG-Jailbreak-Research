@@ -13,6 +13,7 @@
 
 #import <Foundation/Foundation.h>
 #import "VortexTypes.h"
+#import "VortexTornado.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -40,6 +41,13 @@ extern NSString *const VortexKeyIntensity;
 extern NSString *const VortexKeyEasing;
 extern NSString *const VortexKeyFadePages;
 extern NSString *const VortexKeyDiagnosticLogging;
+// Tornado effect (v0.2.0)
+extern NSString *const VortexKeyTornadoIntensity;   // 0.1 .. 1.0
+extern NSString *const VortexKeyTornadoRadius;      // 0.15 .. 0.60 (fraction of page width)
+extern NSString *const VortexKeyTornadoRotations;   // 1.0 .. 4.0 spiral turns
+extern NSString *const VortexKeyTornadoDirection;   // "follow-swipe" | "clockwise" | "counterclockwise"
+extern NSString *const VortexKeyTornadoDepth;       // bool
+extern NSString *const VortexKeyTornadoIconSpin;    // bool
 
 // Status keys (domain VortexStatusDomain)
 extern NSString *const VortexStatusKeyState;      // "active" | "disabled" | "incompatible" | "kill-switch" | "auto-disabled" | "fault"
@@ -54,6 +62,7 @@ extern NSString *const VortexEffectIdentifierStock;
 extern NSString *const VortexEffectIdentifierReverseSlide;
 extern NSString *const VortexEffectIdentifierVerticalRise;
 extern NSString *const VortexEffectIdentifierVerticalFall;
+extern NSString *const VortexEffectIdentifierTornado;    // per-icon effect (VortexIconEffect)
 extern NSString *const VortexEffectIdentifierCustom;      // uses incoming/outgoing direction keys
 extern NSString *const VortexPresetPerDirection;          // use swipe-left / swipe-right effect keys
 
@@ -68,6 +77,7 @@ extern NSString *const VortexPresetPerDirection;          // use swipe-left / sw
 @property (nonatomic, readonly) NSTimeInterval duration;
 @property (nonatomic, readonly) VortexEffectParameters parameters;
 @property (nonatomic, readonly) BOOL diagnosticLogging;
+@property (nonatomic, readonly) VortexTornadoParameters tornadoParameters;
 
 /// True when the configuration would produce stock iOS behaviour: the engine
 /// then installs no transforms at all.
@@ -87,6 +97,7 @@ extern NSString *const VortexPresetPerDirection;          // use swipe-left / sw
 + (NSArray<NSString *> *)validEffectIdentifiers;
 + (NSArray<NSString *> *)validDirections;
 + (NSArray<NSString *> *)validEasings;
++ (NSArray<NSString *> *)validTornadoDirections;
 + (VortexEasing)easingFromString:(NSString *)string;
 
 /// Returns `value` if valid for `key` (numbers are clamped), otherwise the default.

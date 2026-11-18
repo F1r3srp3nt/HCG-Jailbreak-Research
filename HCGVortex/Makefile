@@ -43,10 +43,12 @@ HCGVortex_FILES = \
 	src/VortexAnimationEngine.m \
 	src/VortexPreferences.m \
 	src/VortexMath.c \
+	src/VortexTornado.c \
 	effects/VortexDirectionalEffect.m \
 	effects/ReverseSlide.m \
 	effects/VerticalRise.m \
 	effects/VerticalFall.m \
+	effects/Tornado.m \
 	effects/VortexEffectRegistry.m
 
 HCGVortex_CFLAGS = -fobjc-arc -fobjc-arc-exceptions $(VORTEX_WARNINGS) -DVORTEX_VERSION=\"$(VORTEX_VERSION)\"

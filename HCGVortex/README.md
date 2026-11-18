@@ -24,6 +24,7 @@ See [docs/TESTING.md](docs/TESTING.md) for the device test plan.
 ## Features (v0.1.0)
 
 - **Reverse Slide**, **Vertical Rise**, **Vertical Fall**, iOS Default, **Custom Directions**
+- **Tornado** (0.2.0): the icons form a travelling 3-D tornado funnel; see [docs/EFFECTS.md](docs/EFFECTS.md)
 - Separate effects for swipe-left / swipe-right; reverse toggle
 - Duration (presentation smoothing), speed multiplier, intensity, 5 easing modes, page fade
 - Live settings (no respring), engine status & diagnostics in Settings
@@ -64,7 +65,7 @@ HCGVortex/
 ├── Makefile, control, HCGVortex.plist (filter: SpringBoard)
 ├── src/          Tweak.x · VortexCore · VortexNavigation · VortexAnimationEngine
 │                 VortexPreferences (shared) · VortexMath.c (pure C core)
-├── effects/      VortexEffect.h · ReverseSlide · VerticalRise · VerticalFall · registry
+├── effects/      VortexEffect.h · ReverseSlide · VerticalRise · VerticalFall · Tornado · registry
 ├── preferences/  Settings bundle (PreferenceLoader)
 ├── layout/       DEBIAN/postrm (purge-only cleanup)
 ├── tests/        host unit tests for the math core

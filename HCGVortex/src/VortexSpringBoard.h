@@ -31,5 +31,8 @@ NS_ASSUME_NONNULL_BEGIN
 #define VORTEX_SB_ROOT_FOLDER_VIEW_CLASS "SBRootFolderView"
 #define VORTEX_SB_ICON_LIST_VIEW_CLASS "SBIconListView"
 #define VORTEX_SB_ICON_SCROLL_VIEW_CLASS "SBIconScrollView"
+// Icon views on a page (per-icon effects only; optional: if it is missing,
+// per-icon effects leave icons alone and only the page visual applies).
+#define VORTEX_SB_ICON_VIEW_CLASS "SBIconView"
 
 NS_ASSUME_NONNULL_END

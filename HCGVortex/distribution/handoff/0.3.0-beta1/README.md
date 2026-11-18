@@ -34,7 +34,7 @@ cd hcg-vortex-0.3.0-beta1-handoff
 shasum -a 256 -c SHA256SUMS          # Linux: sha256sum -c SHA256SUMS
 ```
 
-The `.deb` line must match the `sha256` in the import request: `@@SHA256@@`.
+The `.deb` line must match the `sha256` in the import request: `0711465af25edbeff302baa7dbedfc5725bb0f0ca77b1b15133a82f7fc5e55d6`.
 
 ## Not claimed
 

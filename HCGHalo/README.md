@@ -15,7 +15,7 @@ corners and the notch. It sits in its own view inside the Home Screen window, ne
 from accessibility. It is separate from HCG Vortex and shares none of its code at runtime.
 
 **Border target** (0.2.0~beta1): *Screen Edge* (the default, unchanged for existing users), *HCG Nexus Panel*
-or *Both*. With HCG Nexus 0.2.2~beta1 or a later build with its border interface installed, Halo reads the border definition that Nexus installs on
+or *Both*. With HCG Nexus 0.3.1~beta1 (or another build with its border interface) installed, Halo reads the border definition that Nexus installs on
 the phone. It then draws its border around the live Nexus panel, following its real shape, movement and size;
 see [`docs/NEXUS.md`](docs/NEXUS.md). Without a compatible Nexus, the panel targets show *Requires compatible HCG
 Nexus* and the screen edge works as before.

@@ -19,14 +19,14 @@ The same contract is documented from Nexus's side in HCG-Nexus `docs/HALO-BORDER
 
 ## Compatibility and install order
 
-> The Nexus build with this interface is **0.2.2~beta1**: the 0.2.1~beta1 candidate code plus the interface.
-> 0.3.0~beta1 is already used by a separate Nexus line without it. Halo checks for the interface and the
-> definition, not for a version number, so any later Nexus build that includes them works.
+> **Install HCG Nexus 0.3.1~beta1 with HCG Halo 0.2.0~beta1.** Nexus 0.3.1~beta1 is the combined Nexus release: the
+> redesign, Command Mode and this border interface. 0.2.2~beta1, the interface on the 0.2.1 code, also works but is
+> superseded. 0.3.0~beta1 never shipped. Halo checks for the interface and the definition, not for a version number.
 
 | HCG Halo | HCG Nexus | Panel border |
 |---|---|---|
-| 0.2.0~beta1 | 0.2.2~beta1, or a later build that includes border interface 1 and the definition | Available |
-| 0.2.0~beta1 | 0.3.0~beta1 from the separate `claude/hcg-nexus-tweak-yb1ii2` line (no border interface) | Off: *Requires compatible HCG Nexus* |
+| 0.2.0~beta1 | **0.3.1~beta1** (recommended), 0.2.2~beta1, or a later build that includes border interface 1 and the definition | Available |
+| 0.2.0~beta1 | a build without the border interface (0.2.1~beta1 and earlier; the unshipped 0.3.0~beta1) | Off: *Requires compatible HCG Nexus* |
 | 0.2.0~beta1 | absent, disabled, or 0.2.1~beta1 and earlier | Off: *Requires compatible HCG Nexus* + reason. Screen edge unaffected |
 | 0.1.0~beta1 | any | No panel border (screen edge only) |
 
@@ -144,7 +144,8 @@ Changes appear in the preview at once. SpringBoard applies them immediately; sli
 | Canonical macOS/Xcode build + `validate.sh --require-new-abi` (Nexus contract constants, interface strings, no bundled definition) | CI run [44216299888](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44216299888), commit `778c21a`. Re-validated locally from that commit on the downloaded artifact | **Pass**, 0 failures, 0 warnings, native arm64e ABI |
 | Simulator runtime tests, **415 checks**, including **105 Nexus panel border checks**. Covered: definition fixtures; the panel view (geometry, mask, touches, effects, cleanup); the link with Nexus absent, incompatible, missing / malformed / outdated definition, waiting, version mismatch, attached, forged / malformed events, reversal, close-fade off, Reduce Motion, screen off, disable, 60 repeated cycles, Nexus update and removal | `scripts/run-simulator-tests.sh`, CI. The link is driven by a test double registered under the interface's class name | **Pass** (runs 44214405128 and 44216299888) |
 | **Preview evidence**: HCG Nexus 0.2.2~beta1's real panel code and real `HaloBorder.plist` (HCG-Nexus `b68768f`) plus Halo's real link and renderer. The scripted run covers open with trace, workspace pulse, the three panel presets, all five modes, close, reversed opening, Halo off/on, Nexus off, and 30 rapid cycles | `scripts/nexus-preview.sh`, workflow *HCG Halo × Nexus preview*, run [44216300027](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44216300027) (artifact `halo-nexus-preview-evidence`: 176 s video + console log) | **14/14 structural checks pass**. Stills: [`preview/halo-nexus-preview-sheet.jpg`](preview/halo-nexus-preview-sheet.jpg). **Simulator only** |
-| On the phone, with HCG Nexus 0.2.2~beta1 | manual: [DEVICE_TEST_CHECKLIST.md](DEVICE_TEST_CHECKLIST.md#hcg-nexus-panel-border-020beta1) | **pending** |
+| **Against the final HCG Nexus 0.3.1~beta1** (HCG-Nexus `82412dd`, run 44225979728, SHA-256 `b6750cf1…41c3`): the panel preview with Command Mode steps, plus both Settings entry points built from both packages' real Settings bundles | workflow *HCG Halo × Nexus preview*, run [44227065710](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44227065710) and its successor | **Panel 17/17.** **Settings: 24/25**; the remaining failure was a harness lookup, fixed. Covered: Nexus › Appearance › Halo border opens Halo's page (*0.3.1~beta1 · compatible*), and Halo › Nexus Panel Border (target, Reactor, reset confirmation); a malformed or missing definition shows *Requires compatible HCG Nexus*. **Simulator only** |
+| On the phone, with HCG Nexus 0.3.1~beta1 | manual: [DEVICE_TEST_CHECKLIST.md](DEVICE_TEST_CHECKLIST.md#hcg-nexus-panel-border-020beta1) | **pending** |
 
 The preview runs as an ordinary app in the simulator. It shows the panel border's look and its lifecycle against
 Nexus's real code. Each state line in its log also records Nexus's own `panelState` and whether the panel and

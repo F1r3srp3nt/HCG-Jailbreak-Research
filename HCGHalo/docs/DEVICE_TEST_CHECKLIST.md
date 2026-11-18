@@ -101,15 +101,15 @@ Nothing in this checklist has been done yet.
 
 ## HCG Nexus panel border (0.2.0~beta1)
 
-This is for 0.2.0~beta1 with HCG Nexus 0.2.2~beta1, both from HCG Repo Candidate. Install them in either order,
+This is for 0.2.0~beta1 with HCG Nexus **0.3.1~beta1**, both from HCG Repo Candidate. Install them in either order,
 then respring once. Nothing is installed automatically. Keep section G at hand. The 0.1.0~beta1 package is the
 known-good baseline: reinstall it to go back.
 
 | # | Step | Expected | Result |
 |---|---|---|---|
 | N0 | Halo 0.2.0~beta1 alone (no Nexus), target unchanged | Screen edge exactly as on 0.1.0~beta1; Border Target footer: *Requires compatible HCG Nexus* | |
-| N1 | Nexus 0.2.2~beta1 alone (Halo removed) | Normal Nexus panel; Settings › HCG Nexus › Appearance › Halo border explains HCG Halo 0.2.0~beta1+ is needed | |
-| N2 | Both installed, respring. Settings › HCG Halo › Nexus Panel Border | *HCG Nexus 0.2.2~beta1 · compatible*; preview shows the panel outline; *Replay Opening* traces it | |
+| N1 | Nexus 0.3.1~beta1 alone (Halo removed) | Normal Nexus panel; Settings › HCG Nexus › Appearance › Halo border explains HCG Halo 0.2.0~beta1+ is needed | |
+| N2 | Both installed, respring. Settings › HCG Halo › Nexus Panel Border | *HCG Nexus 0.3.1~beta1 · compatible*; preview shows the panel outline; *Replay Opening* traces it | |
 | N3 | Same page from Settings › HCG Nexus › Appearance › Halo border | The same page and the same values | |
 | N4 | Enable both; Border Target **HCG Nexus Panel**; open the panel | Light trace once around the panel, then Nexus Signature; no border on the screen edge; panel controls all respond | |
 | N5 | Close by outside tap, then by the close button | The border fades with the panel; nothing is left on screen | |

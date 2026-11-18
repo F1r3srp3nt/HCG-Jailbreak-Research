@@ -1,4 +1,14 @@
-# HCG Halo 0.2.0~beta1 handoff (with HCG Nexus 0.2.2~beta1)
+# HCG Halo 0.2.0~beta1 handoff
+
+> **Final pair (18 Nov 2026): HCG Halo 0.2.0~beta1 + HCG Nexus 0.3.1~beta1.** Nexus 0.3.1~beta1 is the combined Nexus
+> release: the redesign, Command Mode and the border interface. HCG-Nexus `82412dd`, run 44225979728, SHA-256
+> `b6750cf12d7ab4ebcf5542cef0496945211d8226152a4c45e57e40adaf6741c3`, 1,143,570 bytes. Its HCG-repo request is PR #9,
+> `candidate/hcg-nexus-0.3.1-beta1-combined`. Halo 0.2.0~beta1 is unchanged (below).
+>
+> The rest of this file records the first pairing, with Nexus 0.2.2~beta1. That build is published in Candidate but
+> superseded, and it still works with Halo.
+
+## First pairing (HCG Nexus 0.2.2~beta1)
 
 **Free public beta demos, candidate channel only. Not device-tested. Nothing is published.**
 

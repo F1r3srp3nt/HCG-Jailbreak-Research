@@ -36,6 +36,182 @@
     return hypot(point.x - c.x, point.y - c.y) <= r;
 }
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    if (self.hidden || self.alpha < 0.02 || !self.userInteractionEnabled) return nil;
+    return [self pointInside:point withEvent:event] ? self : nil;
+}
+@end
+
+@interface PortalItemControl : PortalCircleControl
+@property (nonatomic, strong) PortalMenuItem *item;
+@property (nonatomic, strong) UIImageView *icon;
+@property (nonatomic, strong) UILabel *label;
+@property (nonatomic, strong) UILabel *badge;
+@end
+
+@implementation PortalItemControl
+
+- (instancetype)initWithItem:(PortalMenuItem *)item palette:(int)palette {
+    CGFloat s = PORTAL_MENU_ITEM_SIZE;
+    if ((self = [super initWithFrame:CGRectMake(0, 0, s, s)])) {
+        _item = item;
+        BOOL available = item.availability == PORTAL_AVAIL_AVAILABLE;
+        PortalRGB primary, secondary;
+        portal_palette_colours(palette, &primary, &secondary);
+        UIColor *accent = [UIColor colorWithRed:primary.r green:primary.g blue:primary.b alpha:1];
+        self.layer.cornerRadius = s / 2;
+        self.backgroundColor = [UIColor colorWithRed:0.03 green:0.05 blue:0.12 alpha:0.86];
+        self.layer.borderWidth = 1.5;
+        self.layer.borderColor = (available ? [accent colorWithAlphaComponent:0.9] : [UIColor colorWithWhite:0.6 alpha:0.45]).CGColor;
+        self.layer.shadowColor = accent.CGColor;
+        self.layer.shadowRadius = available ? 8 : 0;
+        self.layer.shadowOpacity = available ? 0.55f : 0;
+        self.layer.shadowOffset = CGSizeZero;
+
+        _icon = [[UIImageView alloc] initWithFrame:CGRectInset(self.bounds, 17, 17)];
+        _icon.contentMode = UIViewContentModeScaleAspectFit;
+        _icon.userInteractionEnabled = NO;
+        if (item.image) {
+            _icon.frame = CGRectInset(self.bounds, 12, 12);
+            _icon.image = item.image;
+            _icon.layer.cornerRadius = 9;
+            _icon.clipsToBounds = YES;
+            _icon.alpha = available ? 1 : 0.45;
+        } else {
+            UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:22
+                                                                                                 weight:UIImageSymbolWeightSemibold];
+            _icon.image = [UIImage systemImageNamed:item.symbolName withConfiguration:config];
+            _icon.tintColor = available ? UIColor.whiteColor : [UIColor colorWithWhite:0.75 alpha:0.7];
+        }
+        [self addSubview:_icon];
+
+        _label = [[UILabel alloc] initWithFrame:CGRectMake(-24, s + 4, s + 48, 16)];
+        _label.text = item.title;
+        _label.textAlignment = NSTextAlignmentCenter;
+        _label.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
+        _label.textColor = available ? UIColor.whiteColor : [UIColor colorWithWhite:0.85 alpha:0.8];
+        _label.adjustsFontSizeToFitWidth = YES;
+        _label.minimumScaleFactor = 0.75;
+        _label.layer.shadowColor = UIColor.blackColor.CGColor;
+        _label.layer.shadowRadius = 3;
+        _label.layer.shadowOpacity = 0.9f;
+        _label.layer.shadowOffset = CGSizeZero;
+        _label.userInteractionEnabled = NO;
+        [self addSubview:_label];
+
+        if (!available && item.statusText.length) {
+            _badge = [[UILabel alloc] initWithFrame:CGRectMake(-24, s + 20, s + 48, 13)];
+            _badge.text = item.statusText;
+            _badge.textAlignment = NSTextAlignmentCenter;
+            _badge.font = [UIFont systemFontOfSize:10 weight:UIFontWeightMedium];
+            _badge.textColor = [UIColor colorWithWhite:0.8 alpha:0.85];
+            _badge.adjustsFontSizeToFitWidth = YES;
+            _badge.minimumScaleFactor = 0.7;
+            _badge.layer.shadowColor = UIColor.blackColor.CGColor;
+            _badge.layer.shadowRadius = 3;
+            _badge.layer.shadowOpacity = 0.9f;
+            _badge.layer.shadowOffset = CGSizeZero;
+            _badge.userInteractionEnabled = NO;
+            [self addSubview:_badge];
+        }
+
+        self.isAccessibilityElement = YES;
+        self.accessibilityTraits = UIAccessibilityTraitButton | (available ? 0 : UIAccessibilityTraitNotEnabled);
+        self.accessibilityLabel = item.title;
+        self.accessibilityValue = available ? nil : item.statusText;
+    }
+    return self;
+}
+
+- (void)setHighlighted:(BOOL)highlighted {
+    [super setHighlighted:highlighted];
+    self.transform = highlighted ? CGAffineTransformMakeScale(0.92, 0.92) : CGAffineTransformIdentity;
+}
+
+@end
+
+#pragma mark - Overlay
+
+@implementation PortalOverlayView {
+    PortalView *_portalView;
+    PortalCircleControl *_orb;
+    NSMutableArray<PortalItemControl *> *_controls;
+    NSArray<PortalMenuItem *> *_mainItems;
+    NSArray<PortalMenuItem *> *_items;
+    UILabel *_message;
+    PortalLayout _layout;
+    PortalRect _safe;
+    NSTimeInterval _lastOutsideEvent;
+    NSUInteger _messageGeneration;
+    NSUInteger _idleGeneration;
+}
+
+- (instancetype)initWithFrame:(CGRect)frame {
+    if ((self = [super initWithFrame:frame])) {
+        self.backgroundColor = UIColor.clearColor;
+        self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        self.isAccessibilityElement = NO;
+        _animationsAllowed = YES;
+        _ringName = @"main";
+        _controls = [NSMutableArray array];
+        _mainItems = @[];
+        _items = @[];
+
+        _orb = [[PortalCircleControl alloc] initWithFrame:CGRectMake(0, 0, PORTAL_SIZE_DEFAULT, PORTAL_SIZE_DEFAULT)];
+        _orb.backgroundColor = UIColor.clearColor;
+        _orb.isAccessibilityElement = YES;
+        _orb.accessibilityLabel = @"HCG Portal";
+        _orb.accessibilityHint = @"Shows Portal destinations.";
+        _orb.accessibilityTraits = UIAccessibilityTraitButton;
+        [_orb addTarget:self action:@selector(orbTapped) forControlEvents:UIControlEventTouchUpInside];
+        [self addSubview:_orb];
+
+        _portalView = [[PortalView alloc] initWithFrame:_orb.bounds];
+        _portalView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [_orb addSubview:_portalView];
+
+        _message = [[UILabel alloc] initWithFrame:CGRectZero];
+        _message.numberOfLines = 2;
+        _message.textAlignment = NSTextAlignmentCenter;
+        _message.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+        _message.textColor = UIColor.whiteColor;
+        _message.backgroundColor = [UIColor colorWithRed:0.03 green:0.05 blue:0.12 alpha:0.88];
+        _message.layer.cornerRadius = 12;
+        _message.layer.masksToBounds = YES;
+        _message.alpha = 0;
+        _message.userInteractionEnabled = NO;
+        _message.isAccessibilityElement = NO;
+        [self addSubview:_message];
+    }
+    return self;
+}
+
+- (PortalView *)portalView {
+    return _portalView;
+}
+
+- (PortalLayout)layout {
+    return _layout;
+}
+
+- (CGRect)orbFrame {
+    return _orb.frame;
+}
+
+- (NSArray<UIControl *> *)itemControls {
+    return [_controls copy];
+}
+
+- (NSArray<PortalMenuItem *> *)currentItems {
+    return _items;
+}
+
+- (NSString *)visibleMessage {
+    return _message.alpha > 0.01 ? _message.text : nil;
+}
+
+#pragma mark Touches
+
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     BOOL touch = event != nil && event.type == UIEventTypeTouches;
     return [self portalHitTest:point touch:touch timestamp:touch ? event.timestamp : 0];
 }

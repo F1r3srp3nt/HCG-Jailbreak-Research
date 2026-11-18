@@ -89,6 +89,10 @@ NSString *VortexVerifyHooksInstalled(VortexHookIMPs before, VortexHookIMPs after
     return [NSString stringWithFormat:@"hook engine did not replace %@", [missing componentsJoinedByString:@" and "]];
 }
 
+BOOL VortexClassImplementsSelector(Class cls, SEL sel) {
+    return cls ? VortexClassOwnsMethod(cls, sel) : NO;
+}
+
 BOOL VortexLaunchGuardShouldDisable(NSInteger consecutiveUnstableLaunches) {
     return consecutiveUnstableLaunches >= VORTEX_UNSTABLE_LAUNCH_LIMIT;
 }

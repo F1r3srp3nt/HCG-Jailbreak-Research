@@ -59,6 +59,10 @@ VortexHookIMPs VortexCurrentHookIMPs(Class _Nullable folderView);
 /// before installation (i.e. the hook engine really swapped them).
 NSString *_Nullable VortexVerifyHooksInstalled(VortexHookIMPs before, VortexHookIMPs after);
 
+/// YES when `cls` implements `sel` itself (not merely inherited). Optional
+/// hooks are installed only when this is YES. Nil-safe.
+BOOL VortexClassImplementsSelector(Class _Nullable cls, SEL sel);
+
 /// Crash-loop guard. Each SpringBoard launch that installs hooks counts as
 /// "unstable" until it has run for VORTEX_STABLE_AFTER_SECONDS. When the count
 /// of consecutive unstable launches reaches VORTEX_UNSTABLE_LAUNCH_LIMIT, the

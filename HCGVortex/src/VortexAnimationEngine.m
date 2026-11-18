@@ -11,6 +11,7 @@
 #import "../effects/VortexEffect.h"
 
 #import <QuartzCore/QuartzCore.h>
+#import <objc/message.h>
 #import <objc/runtime.h>
 #include <math.h>
 
@@ -27,6 +28,8 @@
 
 /// What an icon layer looked like before a per-icon effect touched it.
 @interface VortexIconRecord : NSObject
+@property (nonatomic, weak) UIView *view;              ///< for the label (SBIconView labelHidden)
+@property (nonatomic) BOOL hidLabel;                    ///< YES while Vortex has hidden the label
 @property (nonatomic) CGFloat originalZPosition;
 @property (nonatomic) float originalOpacity;
 @property (nonatomic) float lastAppliedOpacity;
@@ -170,6 +173,16 @@
     [self updateAdvancingPresentation:NO deltaTime:0.0];
 }
 
+- (void)iconListViewDidLayout:(UIView *)listView {
+    // SpringBoard laid out an icon page (it may have just added or revealed icon
+    // views). During a transition, re-apply in the same frame so nothing renders
+    // untransformed. Inert when no transition is active.
+    if (_applying || ![self isActive] || !(_records.count || _iconRecords.count)) return;
+    UIView *folderView = _folderView;
+    if (!folderView || ![listView isDescendantOfView:folderView]) return;
+    [self updateAdvancingPresentation:NO deltaTime:0.0];
+}
+
 - (void)folderViewDidLayout:(UIView *)folderView {
     if (folderView != _folderView) return;
     if (![self isActive]) {
@@ -257,13 +270,23 @@ static VortexPageVisual VortexEffectTrampoline(void *context, VortexPageRole rol
             VortexPageVisual visual = vortex_compose_page(&snapshot, geometry.positions[i], _presented,
                                                           geometry.actual, VortexEffectTrampoline,
                                                           (__bridge void *)self, &params);
+            VortexPageRole role = snapshot.active ? vortex_nav_role(&snapshot, geometry.positions[i]) : VortexPageRoleNone;
+            // First-frame guard (0.3.0~beta1 device recording): on the first frame
+            // a page joins a pinned icon effect as the incoming page, SpringBoard
+            // may add or reveal its icon views AFTER this pass in the same frame,
+            // and they rendered untransformed at their grid positions for that
+            // frame. Hold the page invisible for that one frame; by the next
+            // frame every icon view is transformed (and hidden in the formation).
+            if (iconEffect && role == VortexPageRoleIncoming && [iconEffect respondsToSelector:@selector(pinsPages)] &&
+                [(id<VortexIconEffect>)iconEffect pinsPages] && ![_records objectForKey:page.layer]) {
+                visual.opacity = 0.0;
+            }
             BOOL pageFollows = YES;
             if (vortex_visual_is_identity(visual)) {
                 [self restoreLayer:page.layer];
             } else {
                 pageFollows = [self applyVisual:visual toLayer:page.layer geometry:&geometry];
             }
-            VortexPageRole role = snapshot.active ? vortex_nav_role(&snapshot, geometry.positions[i]) : VortexPageRoleNone;
             // Icons move only if their page is under Vortex's control too.
             if (iconEffect && pageFollows && (role == VortexPageRoleOutgoing || role == VortexPageRoleIncoming)) {
                 [self applyIconEffect:iconEffect toPage:page role:role snapshot:&snapshot parameters:&params];
@@ -351,7 +374,9 @@ static VortexPageVisual VortexEffectTrampoline(void *context, VortexPageRole rol
     int n = 0, m = 0;
     for (UIView *view in page.subviews) {
         if (n >= VORTEX_TORNADO_MAX_ICONS) break;
-        if (![view isKindOfClass:iconClass] || view.hidden || view.alpha <= 0.01) continue;
+        // Hidden icon views are transformed too: SpringBoard may reveal them later
+        // in the frame, and they must already be in the formation when it does.
+        if (![view isKindOfClass:iconClass]) continue;
         CGRect b = view.bounds;
         CGPoint c = view.center; // in the page's bounds coordinates
         if (!isfinite(c.x) || !isfinite(c.y)) continue;
@@ -399,7 +424,7 @@ static VortexPageVisual VortexEffectTrampoline(void *context, VortexPageRole rol
                               pageWidth:width
                              pageHeight:height
                              parameters:params];
-        [self applyIconVisual:v toLayer:views[i].layer];
+        [self applyIconVisual:v toView:views[i]];
     }
     if (traces) {
         [self drawTraces:paths onPage:page]; // keeps the overlay for the whole transition (no churn)
@@ -457,7 +482,34 @@ static VortexPageVisual VortexEffectTrampoline(void *context, VortexPageRole rol
     [_overlays removeObjectForKey:pageLayer];
 }
 
-- (void)applyIconVisual:(VortexIconVisual)visual toLayer:(CALayer *)layer {
+/// SBIconView label visibility, only through selectors this SpringBoard has.
+static BOOL VortexCanToggleLabel(UIView *view) {
+    return [view respondsToSelector:@selector(isLabelHidden)] && [view respondsToSelector:@selector(setLabelHidden:)];
+}
+
+- (void)setLabelHiddenForRecord:(VortexIconRecord *)record hidden:(BOOL)hidden {
+    UIView *view = record.view;
+    if (!view || !VortexCanToggleLabel(view) || hidden == record.hidLabel) return;
+    @try {
+        id<NSObject> icon = (id<NSObject>)view;
+        BOOL current = ((BOOL (*)(id, SEL))objc_msgSend)(icon, @selector(isLabelHidden));
+        if (hidden) {
+            if (current) return; // already hidden by SpringBoard: not ours to manage
+            ((void (*)(id, SEL, BOOL))objc_msgSend)(icon, @selector(setLabelHidden:), YES);
+            record.hidLabel = YES;
+        } else {
+            // Only undo our own change: if SpringBoard re-showed it meanwhile, leave it.
+            if (current) ((void (*)(id, SEL, BOOL))objc_msgSend)(icon, @selector(setLabelHidden:), NO);
+            record.hidLabel = NO;
+        }
+    } @catch (NSException *exception) {
+        record.hidLabel = NO;
+        VortexLogDebug("label toggle failed: %{public}@", exception.reason);
+    }
+}
+
+- (void)applyIconVisual:(VortexIconVisual)visual toView:(UIView *)view {
+    CALayer *layer = view.layer;
     if (!layer) return;
     VortexIconRecord *record = [_iconRecords objectForKey:layer];
     if (vortex_icon_is_identity(visual)) {
@@ -467,6 +519,7 @@ static VortexPageVisual VortexEffectTrampoline(void *context, VortexPageRole rol
     if (!record) {
         if (!CATransform3DIsIdentity(layer.sublayerTransform)) return; // someone else owns it: leave the icon alone
         record = [[VortexIconRecord alloc] init];
+        record.view = view;
         record.originalZPosition = layer.zPosition;
         record.originalOpacity = layer.opacity;
         record.lastAppliedOpacity = layer.opacity;
@@ -488,11 +541,14 @@ static VortexPageVisual VortexEffectTrampoline(void *context, VortexPageRole rol
     float target = (float)(record.originalOpacity * vortex_clamp01(isnan(visual.opacity) ? 1.0 : visual.opacity));
     if (fabsf(layer.opacity - target) > 0.0005f) layer.opacity = target;
     record.lastAppliedOpacity = layer.opacity;
+    // Labels hidden while the icon is shrunk into a formation (clutter on device).
+    [self setLabelHiddenForRecord:record hidden:vortex_icon_hides_label(visual) ? YES : NO];
 }
 
 - (void)restoreIconLayer:(CALayer *)layer {
     VortexIconRecord *record = layer ? [_iconRecords objectForKey:layer] : nil;
     if (!record) return;
+    [self setLabelHiddenForRecord:record hidden:NO];
     layer.sublayerTransform = CATransform3DIdentity;
     layer.zPosition = record.originalZPosition;
     if (fabsf(layer.opacity - record.lastAppliedOpacity) <= 0.001f) layer.opacity = record.originalOpacity;

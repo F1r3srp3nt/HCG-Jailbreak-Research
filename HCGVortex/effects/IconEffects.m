@@ -60,6 +60,10 @@
     return vortex_icon_effect_fallback(_kind, role, progress, parameters);
 }
 
+- (BOOL)pinsPages {
+    return vortex_icon_effect_pins_pages(_kind) ? YES : NO;
+}
+
 - (VortexTrace)traceForRole:(VortexPageRole)role
                    progress:(double)progress
                  navigation:(VortexNavigationDirection)navigation

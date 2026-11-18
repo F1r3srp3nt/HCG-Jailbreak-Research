@@ -45,9 +45,9 @@ static double exit_sign(VortexNavigationDirection navigation, const VortexEffect
 VortexIconEffectSettings vortex_icon_settings_defaults(void) {
     VortexIconEffectSettings s;
     s.tornado = vortex_tornado_defaults();
-    s.orbital.radius = 0.44;
+    s.orbital.radius = 0.46;
     s.orbital.rings = 3;
-    s.orbital.tilt = 0.35;
+    s.orbital.tilt = 0.25;
     s.orbital.speed = 0.75;
     s.orbital.direction = VortexSpinFollowSwipe;
     s.warp.intensity = 0.6;
@@ -88,6 +88,10 @@ VortexIconEffectSettings vortex_icon_settings_sanitize(VortexIconEffectSettings 
     return s;
 }
 
+int vortex_icon_hides_label(VortexIconVisual v) {
+    return v.scale < 0.85 ? 1 : 0;
+}
+
 int vortex_icon_effect_pins_pages(VortexIconEffectKind kind) {
     return kind != VortexIconEffectMagnetic;
 }
@@ -115,22 +119,41 @@ VortexIconVisual vortex_icon_effect_fallback(VortexIconEffectKind kind, VortexPa
 
 /* ---- Orbital: concentric rings around a shared centre --------------------- */
 
-/// Ring for an icon: rings get icons in proportion to their circumference.
-static void orbital_ring(int index, int count, int rings, int *ring, double *localFraction, double *ringShare) {
-    double total = 0.0;
-    for (int j = 0; j < rings; j++) total += 0.35 + 0.65 * (double)j / (double)(rings - 1);
-    double f = ((double)index + 0.5) / (double)(count > 0 ? count : 1);
-    double cum = 0.0;
+/// Ring radius as a fraction of the outer radius.
+static double orbital_ring_radius(int ring, int rings) {
+    return 0.30 + 0.70 * (double)ring / (double)(rings - 1);
+}
+
+/// Shared ring slots (seen on device, 0.3.0~beta1: assigning each page's icons
+/// to rings on its own scattered a 10-icon and a 24-icon page into a disc).
+/// Every ring has a fixed capacity proportional to its circumference; icons
+/// fill the rings by weighted round-robin in rank order, so even a partial
+/// page occupies every ring, and each page's icons are spread evenly around
+/// each ring. Outputs the ring, the icon's position on it and how many of this
+/// page's icons share that ring.
+static void orbital_slot(int index, int count, int rings, double rMax, double W, int *ring, int *position, int *onRing,
+                         int *capacity) {
+    int cap[5], filled[5] = { 0, 0, 0, 0, 0 };
+    double spacing = 0.13 * W;                                         /* about one shrunken icon plus a gap */
     for (int j = 0; j < rings; j++) {
-        double share = (0.35 + 0.65 * (double)j / (double)(rings - 1)) / total;
-        if (f < cum + share || j == rings - 1) {
-            *ring = j;
-            *localFraction = clampd((f - cum) / share, 0.0, 1.0);
-            *ringShare = share;
-            return;
-        }
-        cum += share;
+        int c = (int)(2.0 * PI * rMax * orbital_ring_radius(j, rings) / (spacing > 1.0 ? spacing : 1.0));
+        cap[j] = c < 3 ? 3 : c;
     }
+    if (count < 1) count = 1;
+    if (index < 0) index = 0;
+    for (int k = 0; k < count; k++) {
+        int best = rings - 1;
+        double bestLoad = 1e9;
+        for (int j = rings - 1; j >= 0; j--) {                          /* ties go to the outer ring */
+            double load = ((double)filled[j] + 0.5) / (double)cap[j];
+            if (load < bestLoad - 1e-12) { bestLoad = load; best = j; }
+        }
+        if (k == index) { *ring = best; *position = filled[best]; }
+        filled[best]++;
+    }
+    if (index >= count) { *ring = rings - 1; *position = 0; }
+    *onRing = filled[*ring] > 0 ? filled[*ring] : 1;
+    *capacity = cap[*ring];
 }
 
 static VortexIconVisual orbital_icon(VortexPageRole role, double pp, VortexNavigationDirection navigation,
@@ -139,24 +162,28 @@ static VortexIconVisual orbital_icon(VortexPageRole role, double pp, VortexNavig
     VortexIconVisual v = vortex_icon_identity();
     double u = travel_u(role, pp);
     int count = slot.count > 0 ? slot.count : 1;
-    int ring = 0;
-    double local = 0.0, share = 1.0;
-    orbital_ring(slot.index, count, op->rings, &ring, &local, &share);
-    double ringFrac = (double)ring / (double)(op->rings - 1);           /* 0 inner .. 1 outer */
     double rMax = op->radius * W;
-    double r = rMax * (0.24 + 0.76 * ringFrac);
+    int ring = 0, position = 0, onRing = 1, capacity = 3;
+    orbital_slot(slot.index, count, op->rings, rMax, W, &ring, &position, &onRing, &capacity);
+    double ringFrac = (double)ring / (double)(op->rings - 1);           /* 0 inner .. 1 outer */
+    double r = rMax * orbital_ring_radius(ring, op->rings);
 
     /* Outer rings gather first; every icon is in orbit by u = 0.45. */
     double start = 0.12 * (1.0 - ringFrac);
     double gather = smoothstep(start, start + 0.33, u);
-    double a = clampd((u - start) / (1.0 - start), 0.0, 1.0);
 
     double spin = vortex_tornado_spin_sign(op->direction, navigation);
-    double perRing = share * count;                                     /* icons on this ring (approx.) */
-    double spacing = 2.0 * PI / (perRing > 1.0 ? perRing : 1.0);
-    double theta0 = 2.0 * PI * local + (role == VortexPageRoleIncoming ? 0.5 * spacing : 0.0) + 0.7 * ring;
+    /* Interleaved lattice: each ring has 2 x capacity angular positions; a page's
+       icons take evenly spaced EVEN positions (outgoing) or ODD ones (incoming),
+       so the two pages never land on the same spot whatever their icon counts. */
+    int lattice = 2 * capacity;
+    int pick = (int)((double)position * (double)capacity / (double)onRing);  /* distinct for position < onRing <= capacity */
+    int latticeIndex = 2 * pick + (role == VortexPageRoleIncoming ? 1 : 0);
+    double theta0 = 2.0 * PI * (double)latticeIndex / (double)lattice + 0.7 * ring;
     double kepler = sqrt(rMax / r);                                     /* inner rings travel faster */
-    double theta = theta0 + spin * 2.0 * PI * op->speed * kepler * pp + spin * 0.25 * PI * a;
+    /* Both pages rotate together, driven by the shared progress only: a
+       per-page swirl term made the two pages drift into each other's slots. */
+    double theta = theta0 + spin * 2.0 * PI * op->speed * kepler * pp;
 
     double tiltAngle = op->tilt * 70.0 * PI / 180.0;
     double X = r * cos(theta);
@@ -169,7 +196,7 @@ static VortexIconVisual orbital_icon(VortexPageRole role, double pp, VortexNavig
     double cy = -0.04 * H;
     v.tx = (cx + X * persp - slot.homeX) * gather;
     v.ty = (cy + Y * persp - slot.homeY) * gather;
-    v.scale = 1.0 + (0.50 * persp - 1.0) * gather;
+    v.scale = 1.0 + (0.42 * persp - 1.0) * gather;
     v.z = Z * gather;
     double fade = 1.0 - smoothstep(0.72, 0.97, u);
     double back = r > 1e-9 ? 0.5 * (1.0 - Z / (r * (sin(tiltAngle) > 1e-9 ? sin(tiltAngle) : 1.0))) : 0.0;

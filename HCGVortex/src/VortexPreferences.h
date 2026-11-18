@@ -47,7 +47,7 @@ extern NSString *const VortexKeyTornadoIntensity;   // 0.1 .. 1.0
 extern NSString *const VortexKeyTornadoRadius;      // 0.15 .. 0.60 upper radius (fraction of page width)
 extern NSString *const VortexKeyTornadoTipRadius;   // 0.02 .. 0.25 lower radius
 extern NSString *const VortexKeyTornadoHeight;      // 0.35 .. 0.85 (fraction of page height)
-extern NSString *const VortexKeyTornadoRotations;   // 1.0 .. 4.0 spiral turns
+extern NSString *const VortexKeyTornadoRotations;   // 0.5 .. 3.0 turns per spiral strand
 extern NSString *const VortexKeyTornadoDirection;   // "follow-swipe" | "clockwise" | "counterclockwise"
 extern NSString *const VortexKeyTornadoTravel;      // "follow-swipe" | "against-swipe" | "centred"
 extern NSString *const VortexKeyTornadoDepth;       // 0 .. 1

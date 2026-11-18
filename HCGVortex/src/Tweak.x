@@ -2,9 +2,9 @@
 //  Tweak.x
 //  HCG Vortex — Hakmi Capital Group
 //
-//  The only Logos file. Two hooks, both on methods SBFolderView implements
-//  itself (verified at runtime by VortexCoreCompatibilityFailure before
-//  %init runs). Each hook calls %orig FIRST, so SpringBoard's own scrolling,
+//  The only Logos file. Two required hooks, both on methods SBFolderView
+//  implements itself (verified at runtime by VortexCoreCompatibilityFailure
+//  before %init runs), plus one optional hook on SBIconListView (below). Each hook calls %orig FIRST, so SpringBoard's own scrolling,
 //  page-index bookkeeping and layout always complete before Vortex looks at
 //  the result. Vortex never changes arguments or return values.
 //
@@ -34,8 +34,28 @@
 
 %end
 
+// Optional (0.3.1): re-apply icon visuals right after SpringBoard lays out an
+// icon page, so icon views it adds or reveals mid-frame are never drawn
+// untransformed. Installed only if SBIconListView implements -layoutSubviews
+// itself; calls %orig first and changes nothing when no transition is active.
+%group VortexListHooks
+
+%hook SBIconListView
+
+- (void)layoutSubviews {
+    %orig;
+    VortexCoreHandleListLayout((UIView *)self);
+}
+
+%end
+
+%end
+
 static void VortexInstallHooks(void) {
     %init(VortexHooks);
+    BOOL list = VortexCoreListLayoutHookAvailable();
+    if (list) %init(VortexListHooks);
+    VortexCoreNoteListLayoutHookInstalled(list);
 }
 
 %ctor {

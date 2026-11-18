@@ -65,6 +65,8 @@ NS_ASSUME_NONNULL_BEGIN
                                  progress:(double)progress
                                parameters:(const VortexEffectParameters *)parameters;
 @optional
+/// YES when both pages stay pinned to the screen centre (icons do the moving).
+- (BOOL)pinsPages;
 /// Illuminated trace behind an icon (Circuit Flow). count == 0: nothing to draw.
 - (VortexTrace)traceForRole:(VortexPageRole)role
                    progress:(double)progress

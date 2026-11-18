@@ -335,7 +335,7 @@ NSString *const VortexPresetPerDirection = @"per-direction";
         VortexKeyIntensity : @[ @0.1, @1.0, @NO ],
         VortexKeyTornadoIntensity : @[ @0.1, @1.0, @NO ], VortexKeyTornadoRadius : @[ @0.15, @0.6, @NO ],
         VortexKeyTornadoTipRadius : @[ @0.02, @0.25, @NO ], VortexKeyTornadoHeight : @[ @0.35, @0.85, @NO ],
-        VortexKeyTornadoRotations : @[ @1.0, @4.0, @NO ], VortexKeyTornadoDepth : @[ @0.0, @1.0, @NO ],
+        VortexKeyTornadoRotations : @[ @0.5, @3.0, @NO ], VortexKeyTornadoDepth : @[ @0.0, @1.0, @NO ],
         VortexKeyOrbitalRadius : @[ @0.2, @0.48, @NO ], VortexKeyOrbitalRings : @[ @2, @5, @YES ],
         VortexKeyOrbitalTilt : @[ @0.0, @1.0, @NO ], VortexKeyOrbitalSpeed : @[ @0.25, @2.0, @NO ],
         VortexKeyWarpIntensity : @[ @0.1, @1.0, @NO ], VortexKeyWarpPerspective : @[ @0.2, @1.0, @NO ],

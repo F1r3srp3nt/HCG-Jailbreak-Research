@@ -28,6 +28,13 @@ NSString *_Nullable VortexCoreCompatibilityFailure(void);
 /// Hook entry points (called AFTER %orig). Never throw.
 void VortexCoreHandleScroll(UIView *folderView, UIScrollView *scrollView);
 void VortexCoreHandleLayout(UIView *folderView);
+void VortexCoreHandleListLayout(UIView *iconListView);
+
+/// Optional SBIconListView -layoutSubviews hook: YES only when that class
+/// implements the method itself. Called by the installer.
+BOOL VortexCoreListLayoutHookAvailable(void);
+/// Records whether the optional hook was installed (shown in Engine Detail).
+void VortexCoreNoteListLayoutHookInstalled(BOOL installed);
 
 #ifdef __cplusplus
 }

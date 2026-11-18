@@ -178,6 +178,19 @@ static void testLaunchGuard(void) {
     CHECK(VortexLaunchGuardShouldDisable(VORTEX_UNSTABLE_LAUNCH_LIMIT + 5), "above limit disables");
 }
 
+/// The optional SBIconListView -layoutSubviews hook is installed only when the
+/// class implements the method itself (an inherited one is not enough).
+static void testOptionalHookCheck(void) {
+    Class base = makeClass("TListBase", gFakeView);
+    addLayout(base);
+    Class owns = makeClass("TListOwns", base);
+    addLayout(owns);
+    Class inherits = makeClass("TListInherits", base);
+    CHECK(VortexClassImplementsSelector(owns, @selector(layoutSubviews)), "own -layoutSubviews: optional hook allowed");
+    CHECK(!VortexClassImplementsSelector(inherits, @selector(layoutSubviews)), "inherited only: optional hook skipped");
+    CHECK(!VortexClassImplementsSelector(Nil, @selector(layoutSubviews)), "missing class: optional hook skipped");
+}
+
 static void testDefaultNames(void) {
     CHECK(strcmp(VortexDefaultSpringBoardClassNames.folderView, "SBFolderView") == 0, "default folder class");
     CHECK(strcmp(VortexDefaultSpringBoardClassNames.rootFolderView, "SBRootFolderView") == 0, "default root class");
@@ -193,6 +206,7 @@ int main(void) {
     testHookVerification();
     testLaunchGuard();
     testDefaultNames();
+    testOptionalHookCheck();
     printf("%d checks, %d failures\n", g_checks, g_failures);
     [pool drain];
     return g_failures ? 1 : 0;

@@ -1,8 +1,8 @@
 Package: com.hakmicapitalgroup.vortex
 Name: HCG Vortex (Beta)
-Version: 0.3.0~beta1
+Version: 0.3.1~beta1
 Architecture: iphoneos-arm64
-Description: Free experimental beta: Tornado, Orbital, Warp, Holographic Layers, Circuit Flow and Magnetic Grid icon effects. Not yet tested on a device. HCG Vortex is an advanced Home Screen animation engine featuring directional overrides, customizable transitions, and modular animation effects.
+Description: Free experimental beta (polish and fixes): Tornado, Orbital, Warp, Holographic Layers, Circuit Flow and Magnetic Grid icon effects. Partially tested on one device. HCG Vortex is an advanced Home Screen animation engine featuring directional overrides, customizable transitions, and modular animation effects.
 Maintainer: Hakmi Capital Group
 Author: Hakmi Capital Group
 Section: Tweaks

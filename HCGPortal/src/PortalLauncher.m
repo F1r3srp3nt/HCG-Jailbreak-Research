@@ -21,6 +21,11 @@ NSString *const PortalSettingsBundleIdentifier = @"com.apple.Preferences";
 - (BOOL)launchApplicationWithIdentifier:(NSString *)identifier suspended:(BOOL)suspended;
 @end
 
+#ifdef PORTAL_PREVIEW_HOST
+static BOOL (^gPreviewLaunch)(NSString *);
+static BOOL (^gPreviewInstalled)(NSString *);
+#endif
+
 @implementation PortalLauncher {
     id _workspace;
     BOOL _canCheckInstalled;
@@ -40,16 +45,41 @@ NSString *const PortalSettingsBundleIdentifier = @"com.apple.Preferences";
                                             _canOpen && _canFallback ? @" + " : @"",
                                             _canFallback ? @"launchApplicationWithIdentifier:suspended:" : @""];
         if (!_available) _route = @"unavailable";
+#ifdef PORTAL_PREVIEW_HOST
+        _available = YES;
+        _route = @"preview handler";
+#endif
     }
     return self;
 }
 
+#ifdef PORTAL_PREVIEW_HOST
++ (void)setPreviewLaunchHandler:(BOOL (^)(NSString *))handler {
+    gPreviewLaunch = [handler copy];
+}
++ (void)setPreviewInstalledHandler:(BOOL (^)(NSString *))handler {
+    gPreviewInstalled = [handler copy];
+}
+#endif
+
 - (BOOL)isApplicationInstalled:(NSString *)bundleIdentifier {
+#ifdef PORTAL_PREVIEW_HOST
+    if (gPreviewInstalled) return gPreviewInstalled(bundleIdentifier);
+#endif
     if (!_canCheckInstalled) return YES; // cannot tell: let the launch report the problem
     return [_workspace applicationIsInstalled:bundleIdentifier];
 }
 
 - (void)openApplication:(NSString *)bundleIdentifier completion:(PortalLaunchCompletion)completion {
+#ifdef PORTAL_PREVIEW_HOST
+    if (gPreviewLaunch) {
+        BOOL launched = gPreviewLaunch(bundleIdentifier);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(launched);
+        });
+        return;
+    }
+#endif
     if (!_available) {
         completion(NO);
         return;

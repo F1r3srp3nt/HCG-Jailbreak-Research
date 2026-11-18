@@ -764,7 +764,7 @@ static NSString *PortalStatusText(PortalAvailability a) {
                             }];
             break;
         }
-        case PORTAL_DEST_BACKGROUNDS:
+        case PORTAL_DEST_BACKGROUNDS: {
             _lastAction = @"Opening Settings (HCG Animation Center) after authentication";
             [_launcher openApplication:PortalSettingsBundleIdentifier
                             completion:^(BOOL launched) {
@@ -772,13 +772,15 @@ static NSString *PortalStatusText(PortalAvailability a) {
                                                               : @"Settings could not be opened"];
                             }];
             break;
-        case PORTAL_DEST_NEXUS:
+        }
+        case PORTAL_DEST_NEXUS: {
             _lastAction = @"Opening HCG Nexus after authentication";
             [PortalCompanions openNexusPanelWithCompletion:^(BOOL opened, NSString *reason) {
                 [weakSelf noteAction:opened ? @"HCG Nexus opened after authentication"
                                             : [NSString stringWithFormat:@"HCG Nexus did not open: %@", reason ?: @"no reason"]];
             }];
             break;
+        }
         default:
             _lastAction = @"Nothing to do";
             break;
@@ -926,5 +928,9 @@ void PortalControllerPreviewSetSystemInputs(int reduceMotion, int lowPower) {
 
 void PortalControllerPreviewRelayout(void) {
     [[PortalController shared] update];
+}
+
+void PortalControllerPreviewInjectFault(void) {
+    [[PortalController shared] fault:@"preview-injected exception"];
 }
 #endif

@@ -24,6 +24,11 @@ typedef void (^PortalLaunchCompletion)(BOOL launched);
 @property (nonatomic, readonly, copy) NSString *route;
 - (BOOL)isApplicationInstalled:(NSString *)bundleIdentifier;
 - (void)openApplication:(NSString *)bundleIdentifier completion:(PortalLaunchCompletion)completion;
+#ifdef PORTAL_PREVIEW_HOST
+/// Preview / tests only (never in the package): records launches instead of opening apps.
++ (void)setPreviewLaunchHandler:(nullable BOOL (^)(NSString *bundleIdentifier))handler;
++ (void)setPreviewInstalledHandler:(nullable BOOL (^)(NSString *bundleIdentifier))handler;
+#endif
 @end
 
 /// The Settings app: the supported route to HCG Animation Center's page.

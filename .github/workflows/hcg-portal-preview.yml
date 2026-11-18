@@ -1,0 +1,64 @@
+# HCG Portal — PREVIEW and integration run in the iOS Simulator.
+#
+# Runs the real tweak code and the real Settings bundle in a stand-in Lock
+# Screen (Cover Sheet, Lock Screen manager with scripted authentication,
+# notifications, media controls, flashlight and camera). Records video and
+# screenshots. Preview evidence, NOT a device result. Publishes nothing.
+name: HCG Portal preview
+
+on:
+  push:
+    paths:
+      - "HCGPortal/**"
+      - "!HCGPortal/distribution/**"
+      - "!HCGPortal/docs/**"
+      - "!HCGPortal/**/*.md"
+      - ".github/workflows/hcg-portal-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: macos-15
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+        working-directory: HCGPortal
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Theos (pinned; Preferences headers only)
+        env:
+          THEOS_COMMIT: 8167f59de02fd32cf45b16bfcb1330dfa5c9974c
+        run: |
+          git init -q "$HOME/theos"
+          git -C "$HOME/theos" fetch -q --depth 1 https://github.com/theos/theos.git "$THEOS_COMMIT"
+          git -C "$HOME/theos" checkout -q FETCH_HEAD
+          git -C "$HOME/theos" submodule update -q --init --recursive --depth 1
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
+      - name: Pillow (contact sheet)
+        run: python3 -m pip install --quiet --break-system-packages pillow || python3 -m pip install --quiet pillow
+
+      - name: Simulator report
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+      - name: Build and run the preview, recording video and screenshots
+        timeout-minutes: 25
+        run: |
+          echo "Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          scripts/preview.sh "$RUNNER_TEMP/portal-preview"
+
+      - name: Upload preview evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hcg-portal-preview
+          path: ${{ runner.temp }}/portal-preview/
+          if-no-files-found: warn
+          retention-days: 90

@@ -57,6 +57,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)collapseAnimated:(BOOL)animated;
 - (void)showMessage:(NSString *)message;
 
+/// The decision -hitTest:withEvent: makes; `touch` is YES for a real touch
+/// event (only those collapse an open menu when they land outside).
+- (nullable UIView *)portalHitTest:(CGPoint)point touch:(BOOL)touch timestamp:(NSTimeInterval)timestamp;
+
 // Introspection for tests and the preview.
 @property (nonatomic, readonly) CGRect orbFrame;
 @property (nonatomic, readonly) NSArray<UIControl *> *itemControls;

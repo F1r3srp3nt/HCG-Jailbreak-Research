@@ -45,6 +45,8 @@ void PortalControllerPreviewReload(void);
 void PortalControllerPreviewSetSystemInputs(int reduceMotion, int lowPower);
 /// Forces an immediate re-measure and layout.
 void PortalControllerPreviewRelayout(void);
+/// Raises the fault fallback, as an Objective-C exception inside SpringBoard would.
+void PortalControllerPreviewInjectFault(void);
 #endif
 
 #ifdef __cplusplus

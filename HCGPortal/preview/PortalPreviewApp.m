@@ -1,0 +1,724 @@
+//
+//  PortalPreviewApp.m
+//  HCG Portal — PREVIEW and integration run (iOS Simulator only).
+//
+//  Built by scripts/preview.sh. One app plays two roles:
+//
+//  1. A stand-in Lock Screen running the REAL tweak code (PortalController,
+//     PortalHost, PortalOverlayView, PortalView, PortalAuth, PortalCompanions)
+//     the way SpringBoard would: a CSCoverSheetViewController stand-in with a
+//     clock, widgets, notifications, a media platter and the flashlight /
+//     camera buttons; an SBLockScreenManager stand-in whose authentication is
+//     scripted (hold / succeed / cancel / refuse); lock and screen state as
+//     Darwin notifications with notify state (preview names). The three
+//     Cover Sheet hooks are called by this harness exactly where Tweak.x calls
+//     them.
+//
+//  2. Settings: loads the REAL HCGPortalPrefs.bundle (compiled for the
+//     Simulator) with Preferences.framework from the Simulator runtime and
+//     shows the root page, Position & Size and HCG Apps.
+//
+//  Touches: the harness asks the real window to hit-test a point (the same
+//  call UIKit makes for a finger) and sends the control's action, or calls the
+//  overlay's own touch decision for a tap outside. Real fingers, gestures and
+//  the system authentication UI are NOT exercised: those are device rows.
+//
+//  Prints "PORTAL-PREVIEW-STATE <name> | …", "PORTAL-PREVIEW-SHOT <name>" (the
+//  script takes a Simulator screenshot), "PORTAL-PREVIEW-CHECK PASS|FAIL
+//  <what>", then "PORTAL-PREVIEW-DONE failures=N".
+//
+
+#import <UIKit/UIKit.h>
+#import <objc/runtime.h>
+
+#import "PortalCompanions.h"
+#import "PortalController.h"
+#import "PortalCore.h"
+#import "PortalLauncher.h"
+#import "PortalOverlayView.h"
+#import "PortalPreferences.h"
+#import "PortalStandIns.h"
+#import "PortalView.h"
+
+#include <dlfcn.h>
+#include <notify.h>
+
+static int gFailures = 0;
+static NSMutableArray<NSString *> *gLaunches;
+
+static void Say(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
+static void Say(NSString *format, ...) {
+    va_list args;
+    va_start(args, format);
+    NSString *line = [[NSString alloc] initWithFormat:format arguments:args];
+    va_end(args);
+    printf("%s\n", line.UTF8String);
+    fflush(stdout);
+}
+
+static void Check(BOOL ok, NSString *what) {
+    if (!ok) gFailures++;
+    Say(@"PORTAL-PREVIEW-CHECK %@ %@", ok ? @"PASS" : @"FAIL", what);
+}
+
+static NSString *Status(NSString *key) {
+    id v = PortalControllerPreviewStatus()[key];
+    return [v isKindOfClass:[NSString class]] ? v : @"";
+}
+
+static BOOL IsInside(UIView *view, UIView *ancestor) {
+    for (UIView *v = view; v; v = v.superview)
+        if (v == ancestor) return YES;
+    return NO;
+}
+
+@interface PortalPreviewController : NSObject
+@property (nonatomic, strong) UIWindow *window;
+@property (nonatomic, strong) UIWindow *settingsWindow;
+@property (nonatomic, strong) UINavigationController *settingsNav;
+@property (nonatomic, strong) CSCoverSheetViewController *coverSheet;
+@property (nonatomic, strong) NSMutableArray *steps;
+@property (nonatomic, copy) NSString *jbroot;
+@end
+
+@implementation PortalPreviewController
+
+- (PortalOverlayView *)overlay {
+    return PortalControllerPreviewOverlay();
+}
+
+- (void)state:(NSString *)name caption:(NSString *)caption {
+    _coverSheet.caption.text = [NSString stringWithFormat:@"PREVIEW · iOS Simulator stand-in, not a device · %@", caption];
+    Say(@"PORTAL-PREVIEW-STATE %@ | visibility=%@ | layout=%@ | plan=%@ | last=%@", name, Status(PortalStatusKeyVisibility),
+        Status(PortalStatusKeyLayout), Status(PortalStatusKeyPlan), Status(PortalStatusKeyLastAction));
+}
+
+- (void)shot:(NSString *)name {
+    [CATransaction flush];
+    NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *ack = [[docs stringByAppendingPathComponent:@"shot-ack"] stringByAppendingPathComponent:name];
+    Say(@"PORTAL-PREVIEW-SHOT %@", name);
+    NSDate *limit = [NSDate dateWithTimeIntervalSinceNow:20];
+    while (![[NSFileManager defaultManager] fileExistsAtPath:ack] && [limit timeIntervalSinceNow] > 0)
+        [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:ack]) Say(@"PORTAL-PREVIEW-NOTE no screenshot ack for %@", name);
+}
+
+- (void)next {
+    if (!_steps.count) return;
+    void (^step)(void) = _steps.firstObject;
+    [_steps removeObjectAtIndex:0];
+    step();
+}
+
+- (void)setPrefs:(NSDictionary *)values {
+    for (NSString *key in values) {
+        id v = values[key];
+        CFPreferencesSetAppValue((__bridge CFStringRef)key, v == [NSNull null] ? NULL : (__bridge CFPropertyListRef)v,
+                                 (__bridge CFStringRef)PortalPreferencesDomain);
+    }
+    CFPreferencesAppSynchronize((__bridge CFStringRef)PortalPreferencesDomain);
+    PortalControllerPreviewReload();
+}
+
+- (void)setLocked:(BOOL)locked {
+    [SBLockScreenManager sharedInstance].uiLocked = locked;
+    PSIPostState(PORTAL_LOCKSTATE_NOTIFICATION, locked ? 1 : 0);
+}
+
+- (void)setScreenOn:(BOOL)on {
+    PSIPostState(PORTAL_BLANKED_NOTIFICATION, on ? 0 : 1);
+}
+
+- (void)showCoverSheet:(BOOL)show {
+    [SBCoverSheetPresentationManager sharedInstance].visible = show;
+    if (show) {
+        _window.hidden = NO;
+        [_coverSheet beginAppearanceTransition:YES animated:NO];
+        [_coverSheet endAppearanceTransition];
+        PortalControllerCoverSheetWillAppear(_coverSheet); // as the viewWillAppear: hook does
+    } else {
+        _window.hidden = YES;
+        PortalControllerCoverSheetDidDisappear(_coverSheet); // as the viewDidDisappear: hook does
+    }
+}
+
+- (void)relayout {
+    [_coverSheet.view layoutIfNeeded];
+    PortalControllerCoverSheetDidLayout(_coverSheet); // as the viewDidLayoutSubviews hook does
+    PortalControllerPreviewRelayout();
+}
+
+/// UIKit's own hit-test for a finger at `point` (window coordinates).
+- (UIView *)hit:(CGPoint)point {
+    return [_window hitTest:point withEvent:nil];
+}
+
+- (CGPoint)orbCentre {
+    PortalOverlayView *o = [self overlay];
+    return [o convertPoint:CGPointMake(CGRectGetMidX(o.orbFrame), CGRectGetMidY(o.orbFrame)) toView:_window];
+}
+
+- (BOOL)tapOrb {
+    UIView *v = [self hit:[self orbCentre]];
+    if (![v isKindOfClass:[UIControl class]] || !IsInside(v, [self overlay])) return NO;
+    [(UIControl *)v sendActionsForControlEvents:UIControlEventTouchUpInside];
+    return YES;
+}
+
+- (BOOL)tapItemTitled:(NSString *)title {
+    PortalOverlayView *o = [self overlay];
+    for (NSUInteger i = 0; i < o.currentItems.count && i < o.itemControls.count; i++) {
+        if (![o.currentItems[i].title isEqualToString:title]) continue;
+        UIControl *c = o.itemControls[i];
+        CGPoint p = [c convertPoint:CGPointMake(CGRectGetMidX(c.bounds), CGRectGetMidY(c.bounds)) toView:_window];
+        UIView *v = [self hit:p];
+        if (v != c) return NO;
+        [c sendActionsForControlEvents:UIControlEventTouchUpInside];
+        return YES;
+    }
+    return NO;
+}
+
+- (NSString *)statusTextOfItem:(NSString *)title {
+    for (PortalMenuItem *i in [self overlay].currentItems)
+        if ([i.title isEqualToString:title]) return i.statusText;
+    return nil;
+}
+
+- (void)installCompanion:(NSString *)relativePath {
+    NSString *path = [_jbroot stringByAppendingPathComponent:relativePath];
+    [[NSFileManager defaultManager] createDirectoryAtPath:path.stringByDeletingLastPathComponent
+                              withIntermediateDirectories:YES
+                                               attributes:nil
+                                                    error:NULL];
+    [@"" writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:NULL];
+}
+
+- (BOOL)orbClearOfObstacles {
+    PortalOverlayView *o = [self overlay];
+    CGRect orb = [o convertRect:o.orbFrame toView:_window];
+    NSMutableArray *views = [NSMutableArray arrayWithArray:_coverSheet.notificationCells];
+    [views addObject:_coverSheet.flashlight];
+    [views addObject:_coverSheet.camera];
+    if (_coverSheet.mediaView) [views addObject:_coverSheet.mediaView];
+    [views addObject:_coverSheet.dateView];
+    [views addObject:_coverSheet.complicationContainerViewController.view];
+    for (UIView *v in views) {
+        if (v.hidden) continue;
+        if (CGRectIntersectsRect(orb, [v convertRect:v.bounds toView:_window])) return NO;
+    }
+    return YES;
+}
+
+- (void)buildScript {
+    __weak PortalPreviewController *weakSelf = self;
+#define STEP(delay, ...)                                                                                   \
+    [_steps addObject:^{                                                                                   \
+        [NSTimer scheduledTimerWithTimeInterval:(delay)                                                    \
+                                        repeats:NO                                                         \
+                                          block:^(NSTimer *timer_) {                                       \
+                                              PortalPreviewController *self = weakSelf;                    \
+                                              if (!self) return;                                           \
+                                              @try {                                                       \
+                                                  __VA_ARGS__;                                             \
+                                              } @catch (NSException * e) {                                 \
+                                                  Check(NO, [NSString stringWithFormat:@"exception: %@ — %@", e.name, e.reason]); \
+                                              }                                                            \
+                                              [self next];                                                 \
+                                          }];                                                              \
+    }]
+#define WAIT_UNTIL(timeout, cond)                                                                          \
+    do {                                                                                                   \
+        NSDate *limit_ = [NSDate dateWithTimeIntervalSinceNow:(timeout)];                                   \
+        while (!(cond) && [limit_ timeIntervalSinceNow] > 0)                                               \
+            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]]; \
+    } while (0)
+
+    // ---- 0. Installed, off -------------------------------------------------------
+    STEP(1.0, {
+        Check([self overlay] == nil, @"off after installation: no portal on the Lock Screen");
+        Check([Status(PortalStatusKeyState) isEqualToString:PortalEngineStateDisabled], @"engine state: disabled");
+        [self state:@"00-off" caption:@"HCG Portal installed, off"];
+        [self shot:@"00-off"];
+    });
+
+    // ---- 1. Enabled: idle portal below the clock --------------------------------
+    STEP(0.5, {
+        [self setPrefs:@{PortalKeyEnabled : @YES}];
+        [self relayout];
+        WAIT_UNTIL(3, [self overlay].superview != nil);
+        PortalOverlayView *o = [self overlay];
+        Check(o.superview == self.coverSheet.mainPageContentViewController.view, @"hosted in the Lock Screen's main page");
+        Check([Status(PortalStatusKeyVisibility) isEqualToString:@"visible"], @"visible on the lit Lock Screen");
+        Check(o.layout.mode == PORTAL_LAYOUT_FULL && o.layout.diameter == PORTAL_SIZE_DEFAULT, @"full size by default (132 pt)");
+        CGRect orb = [o convertRect:o.orbFrame toView:self.window];
+        CGFloat widgetsBottom = CGRectGetMaxY([self.coverSheet.complicationContainerViewController.view
+            convertRect:self.coverSheet.complicationContainerViewController.view.bounds toView:self.window]);
+        Check(CGRectGetMinY(orb) >= widgetsBottom, @"below the clock and widgets");
+        Check(CGRectGetMaxY(orb) <= CGRectGetMinY(self.coverSheet.flashlight.frame), @"above the flashlight and camera");
+        Check([Status(PortalStatusKeyLayout) containsString:@"SBFLockScreenDateView"], @"anchor measured from the date view");
+        Check(o.portalView.runningAnimationCount >= 4 && o.portalView.emitterActive && !o.portalView.isPaused,
+              @"idle: slow rotating rings, restrained particles");
+        Check([Status(PortalStatusKeyAuthRoute) isEqualToString:@"coverSheetContext"], @"authentication route: CoverSheet context");
+        UIView *clockHit = [self hit:CGPointMake(self.window.bounds.size.width / 2, 140)];
+        Check(!IsInside(clockHit, o), @"the clock area is not intercepted");
+        UIView *bottom = [self hit:CGPointMake(self.window.bounds.size.width / 2, self.window.bounds.size.height - 10)];
+        Check(!IsInside(bottom, o), @"the unlock-gesture area is not intercepted");
+        Check([self hit:self.coverSheet.camera.center] == self.coverSheet.camera, @"camera button still takes its touch");
+        Check([self hit:self.coverSheet.flashlight.center] == self.coverSheet.flashlight, @"flashlight button still takes its touch");
+        [self state:@"01-idle" caption:@"Idle: rings turn slowly below the clock"];
+        [self shot:@"01-idle"];
+    });
+
+    // ---- 2. Tap: radial menu; tap outside: collapse ---------------------------------
+    STEP(0.8, {
+        Check([self tapOrb], @"tap on the orb reaches the orb through the window's hit-test");
+        WAIT_UNTIL(1, [self overlay].expanded);
+        PortalOverlayView *o = [self overlay];
+        Check(o.expanded && o.itemControls.count == 4, @"tap: the radial menu expands with four destinations");
+        NSArray *titles = [o.currentItems valueForKey:@"title"];
+        Check([titles isEqualToArray:@[ @"Nexus", @"Backgrounds", @"Devices", @"HCG Apps" ]], @"Nexus, Backgrounds, Devices, HCG Apps");
+        Check([[self statusTextOfItem:@"Nexus"] isEqualToString:@"Not installed"] &&
+                  [[self statusTextOfItem:@"Backgrounds"] isEqualToString:@"Not installed"] &&
+                  [[self statusTextOfItem:@"Devices"] isEqualToString:@"Not connected"],
+              @"missing companions show clear unavailable states");
+        WAIT_UNTIL(0.6, NO);
+        [self state:@"02-expanded" caption:@"Tap: radial menu (companions not installed)"];
+        [self shot:@"02-expanded"];
+    });
+    STEP(0.3, {
+        PortalOverlayView *o = [self overlay];
+        CGPoint outside = CGPointMake(60, 120);
+        UIView *under = [self hit:outside];
+        Check(!IsInside(under, o), @"tap outside: the touch passes through to the Lock Screen");
+        [o portalHitTest:[o convertPoint:outside fromView:self.window] touch:YES timestamp:CACurrentMediaTime()];
+        WAIT_UNTIL(1.5, ![self overlay].expanded);
+        Check(!o.expanded, @"tap outside: the menu collapses");
+        [self state:@"03-collapsed" caption:@"Tap outside: collapsed"];
+        [self shot:@"03-collapsed"];
+    });
+
+    // ---- 3. Unavailable states: nothing launches, no authentication -------------------
+    STEP(0.5, {
+        [self tapOrb];
+        WAIT_UNTIL(1, [self overlay].expanded);
+        NSUInteger requests = [SBLockScreenManager sharedInstance].requestCount;
+        Check([self tapItemTitled:@"Nexus"], @"Nexus item reachable");
+        Check([[self overlay].visibleMessage isEqualToString:@"HCG Nexus isn't installed."], @"Nexus absent: says so");
+        Check([self tapItemTitled:@"Devices"], @"Devices item reachable");
+        Check([[self overlay].visibleMessage hasPrefix:@"Not connected."], @"Devices: Not connected");
+        Check([SBLockScreenManager sharedInstance].requestCount == requests && gLaunches.count == 0,
+              @"unavailable destinations request no authentication and launch nothing");
+        WAIT_UNTIL(0.4, NO);
+        [self state:@"04-not-connected" caption:@"Devices: Not connected (no Connector/Origin integration exists)"];
+        [self shot:@"04-not-connected"];
+        [[self overlay] collapseAnimated:NO];
+    });
+
+    // ---- 4. Companions installed (Nexus 0.3.1~beta1 has no open interface) -------------
+    STEP(0.5, {
+        [self installCompanion:@"Library/PreferenceBundles/HCGAnimationCenterPrefs.bundle/Info.plist"];
+        [self installCompanion:@"Library/PreferenceLoader/Preferences/HCGAnimationCenterPrefs.plist"];
+        [self installCompanion:@"Library/PreferenceBundles/HCGNexusPrefs.bundle/Info.plist"];
+        PortalControllerPreviewRelayout();
+        [self tapOrb];
+        WAIT_UNTIL(1, [self overlay].expanded);
+        Check([[self statusTextOfItem:@"Nexus"] isEqualToString:@"Update needed"], @"Nexus installed without the interface: Update needed");
+        Check([[self statusTextOfItem:@"Backgrounds"] isEqualToString:@""], @"Animation Center installed: Backgrounds available");
+        [self tapItemTitled:@"Nexus"];
+        Check([[self overlay].visibleMessage containsString:@"needs a Nexus update"], @"Nexus: explains the update it needs");
+        WAIT_UNTIL(0.4, NO);
+        [self state:@"05-companions" caption:@"Animation Center installed; HCG Nexus 0.3.1 lacks the open interface"];
+        [self shot:@"05-companions"];
+    });
+
+    // ---- 5. Backgrounds: authentication, then Settings opens ------------------------------
+    STEP(0.5, {
+        SBLockScreenManager *m = [SBLockScreenManager sharedInstance];
+        m.authMode = PSIAuthHold;
+        NSUInteger before = m.requestCount;
+        if (![self overlay].expanded) {
+            [self tapOrb];
+            WAIT_UNTIL(1, [self overlay].expanded);
+        }
+        Check([self tapItemTitled:@"Backgrounds"], @"Backgrounds selected");
+        WAIT_UNTIL(1, [Status(PortalStatusKeyVisibility) isEqualToString:@"authenticating"]);
+        Check(m.requestCount == before + 1 && m.hasPendingRequest, @"protected destination: authentication requested");
+        Check(gLaunches.count == 0, @"nothing opens before authentication succeeds");
+        Check([self overlay].hidden && [self overlay].portalView.isPaused, @"portal hidden and paused while iOS authenticates");
+        [self state:@"06-authenticating" caption:@"Backgrounds: waiting for Face ID / passcode (stand-in sheet)"];
+        [self shot:@"06-authenticating"];
+    });
+    STEP(0.3, {
+        [[SBLockScreenManager sharedInstance] resolvePending:YES];
+        WAIT_UNTIL(2, gLaunches.count > 0);
+        Check(gLaunches.count == 1 && [gLaunches[0] isEqualToString:@"com.apple.Preferences"],
+              @"after success: exactly the selected action ran (Settings opened for Animation Center)");
+        Check([Status(PortalStatusKeyLastAction) containsString:@"Settings opened"], @"last action recorded");
+        [self state:@"07-opened-settings" caption:@"Authenticated: Settings opened for HCG Animation Center"];
+    });
+
+    // ---- 6. HCG Apps ring; cancellation discards ----------------------------------
+    STEP(0.5, {
+        [gLaunches removeAllObjects];
+        [self relayout];
+        WAIT_UNTIL(1, ![self overlay].hidden);
+        [self tapOrb];
+        WAIT_UNTIL(1, [self overlay].expanded);
+        Check([self tapItemTitled:@"HCG Apps"], @"HCG Apps selected");
+        WAIT_UNTIL(1, [[self overlay].ringName isEqualToString:@"apps"]);
+        PortalOverlayView *o = [self overlay];
+        Check([o.ringName isEqualToString:@"apps"] && o.itemControls.count == 3, @"app ring: the three chosen apps");
+        Check([SBLockScreenManager sharedInstance].requestCount > 0 && gLaunches.count == 0, @"showing the ring launches nothing");
+        WAIT_UNTIL(0.6, NO);
+        [self state:@"08-apps-ring" caption:@"HCG Apps: user-selected shortcuts"];
+        [self shot:@"08-apps-ring"];
+    });
+    STEP(0.3, {
+        SBLockScreenManager *m = [SBLockScreenManager sharedInstance];
+        m.authMode = PSIAuthHold;
+        Check([self tapItemTitled:@"HCG News"], @"app 2 selected");
+        WAIT_UNTIL(1, m.hasPendingRequest);
+        void (^replay)(BOOL) = [m resolvePending:NO];
+        WAIT_UNTIL(1, ![self overlay].hidden);
+        Check(gLaunches.count == 0, @"cancelled: the pending action is discarded, nothing opens");
+        Check([Status(PortalStatusKeyLastAction) containsString:@"cancelled"], @"cancellation recorded");
+        if (replay) replay(YES);
+        WAIT_UNTIL(0.5, NO);
+        Check(gLaunches.count == 0, @"a late success for the cancelled request is ignored");
+        Check(![self overlay].hidden, @"portal back after cancellation");
+        [self state:@"09-cancelled" caption:@"Cancelled: nothing opened"];
+        [self shot:@"09-cancelled"];
+    });
+
+    // ---- 7. App launch after success; screen-off discards ----------------------------
+    STEP(0.4, {
+        SBLockScreenManager *m = [SBLockScreenManager sharedInstance];
+        m.authMode = PSIAuthSucceed;
+        [self tapOrb];
+        WAIT_UNTIL(1, [self overlay].expanded);
+        [self tapItemTitled:@"HCG Apps"];
+        Check([self tapItemTitled:@"HCG Terminal"], @"app 1 selected");
+        WAIT_UNTIL(2, gLaunches.count > 0);
+        Check(gLaunches.count == 1 && [gLaunches[0] isEqualToString:@"com.hakmicapitalgroup.hcgterminal"],
+              @"after success: exactly that app opened, once");
+        [gLaunches removeAllObjects];
+
+        m.authMode = PSIAuthHold;
+        [self relayout];
+        [self tapOrb];
+        WAIT_UNTIL(1, [self overlay].expanded);
+        [self tapItemTitled:@"Backgrounds"];
+        WAIT_UNTIL(1, m.hasPendingRequest);
+        [self setScreenOn:NO];
+        WAIT_UNTIL(1, [Status(PortalStatusKeyVisibility) isEqualToString:@"screen-off"]);
+        Check([self overlay].portalView.isPaused, @"screen off: rendering paused");
+        [m resolvePending:YES];
+        WAIT_UNTIL(0.5, NO);
+        Check(gLaunches.count == 0, @"screen turned off during authentication: the action is discarded");
+        [self setScreenOn:YES];
+        WAIT_UNTIL(1, [Status(PortalStatusKeyVisibility) isEqualToString:@"visible"]);
+        Check(![self overlay].portalView.isPaused, @"screen on: rendering resumes");
+
+        m.authMode = PSIAuthRefuse;
+        [self tapOrb];
+        WAIT_UNTIL(1, [self overlay].expanded);
+        [self tapItemTitled:@"Backgrounds"];
+        WAIT_UNTIL(1, [self overlay].visibleMessage != nil);
+        Check(gLaunches.count == 0 && [[self overlay].visibleMessage hasPrefix:@"Couldn't ask"], @"a refused request opens nothing and says so");
+    });
+
+    // ---- 8. Nexus through the proposed interface (test double) -----------------------
+    STEP(0.4, {
+        [HCGNexusPortalInterface setStandInActive:YES];
+        [SBLockScreenManager sharedInstance].authMode = PSIAuthSucceed;
+        PortalControllerPreviewRelayout();
+        [[self overlay] collapseAnimated:NO];
+        [self tapOrb];
+        WAIT_UNTIL(1, [self overlay].expanded);
+        Check([[self statusTextOfItem:@"Nexus"] isEqualToString:@""], @"with HCGNexusPortalInterface v1: Nexus available");
+        [self tapItemTitled:@"Nexus"];
+        WAIT_UNTIL(2, HCGNexusPortalInterface.openCount > 0);
+        Check(HCGNexusPortalInterface.openCount == 1 && [HCGNexusPortalInterface.lastSource isEqualToString:@"hcg-portal"],
+              @"after authentication Nexus is asked once to open its panel (contract double)");
+        [HCGNexusPortalInterface setStandInActive:NO];
+    });
+
+    // ---- 9. Coexistence: notifications and media -------------------------------------
+    STEP(0.5, {
+        [self.coverSheet setNotificationCount:2];
+        [self relayout];
+        PortalOverlayView *o = [self overlay];
+        WAIT_UNTIL(1, NO);
+        Check(o.layout.mode == PORTAL_LAYOUT_FULL && [self orbClearOfObstacles], @"two notifications: full size, nothing covered");
+        NCNotificationListCell *cell = self.coverSheet.notificationCells.firstObject;
+        Check(IsInside([self hit:[cell convertPoint:CGPointMake(100, 30) toView:self.window]], cell), @"notifications keep their touches");
+        Check([Status(PortalStatusKeyLayout) containsString:@"NCNotificationListCell×2"], @"notifications measured as obstacles");
+        [self state:@"10-notifications" caption:@"Two notifications: the portal stays above them"];
+        [self shot:@"10-notifications"];
+    });
+    STEP(0.4, {
+        [self.coverSheet setNotificationCount:4];
+        [self.coverSheet setShowsMedia:YES];
+        [self relayout];
+        WAIT_UNTIL(1, NO);
+        PortalOverlayView *o = [self overlay];
+        Check(o.layout.mode == PORTAL_LAYOUT_COMPACT,
+              [NSString stringWithFormat:@"media + four notifications: compact orb (%s)", portal_layout_mode_name(o.layout.mode)]);
+        Check([self orbClearOfObstacles], @"still clear of notifications and media controls");
+        CSAdjunctItemView *media = self.coverSheet.mediaView;
+        Check(IsInside([self hit:[media convertPoint:CGPointMake(40, 40) toView:self.window]], media), @"media controls keep their touches");
+        [self state:@"11-compact" caption:@"Media + notifications: collapsed to a compact orb"];
+        [self shot:@"11-compact"];
+    });
+    STEP(0.4, {
+        Check([self tapOrb], @"the compact orb still opens the menu");
+        WAIT_UNTIL(1, [self overlay].expanded);
+        [self state:@"12-compact-expanded" caption:@"Compact orb: menu opens over the Lock Screen"];
+        [self shot:@"12-compact-expanded"];
+        [[self overlay] collapseAnimated:NO];
+    });
+    STEP(0.4, {
+        [self.coverSheet setNotificationCount:7];
+        [self relayout];
+        WAIT_UNTIL(1, NO);
+        Check([Status(PortalStatusKeyVisibility) isEqualToString:@"no-room"] && [self overlay].hidden,
+              @"no room left: hidden, nothing intercepted");
+        Check([self overlay].portalView.isPaused, @"hidden: rendering paused");
+        [self state:@"13-no-room" caption:@"Notifications fill the screen: the portal steps aside"];
+        [self shot:@"13-no-room"];
+        [self.coverSheet setNotificationCount:0];
+        [self.coverSheet setShowsMedia:NO];
+        [self relayout];
+    });
+
+    // ---- 10. Reduce Motion / Low Power -------------------------------------------
+    STEP(0.4, {
+        PortalControllerPreviewSetSystemInputs(1, 0);
+        PortalView *v = [self overlay].portalView;
+        Check(v.runningAnimationCount == 0 && !v.emitterActive, @"Reduce Motion: static appearance");
+        [self state:@"14-reduce-motion" caption:@"Reduce Motion: static"];
+        [self shot:@"14-reduce-motion"];
+        PortalControllerPreviewSetSystemInputs(0, 1);
+        Check(v.runningAnimationCount == 0 && !v.emitterActive, @"Low Power (default): static");
+        [self setPrefs:@{PortalKeyLowPower : @"economy"}];
+        Check(v.runningAnimationCount >= 4 && !v.emitterActive, @"Low Power economy: slow rings, no particles");
+        [self setPrefs:@{PortalKeyLowPower : @"hide"}];
+        Check([self overlay].hidden && [Status(PortalStatusKeyVisibility) isEqualToString:@"low-power-hidden"], @"Low Power hide: hidden");
+        [self setPrefs:@{PortalKeyLowPower : [NSNull null]}];
+        PortalControllerPreviewSetSystemInputs(0, 0);
+        Check(v.runningAnimationCount >= 4 && ![self overlay].hidden, @"back to full animation");
+    });
+
+    // ---- 11. Appearance and placement --------------------------------------------
+    NSArray *palettes = @[ @"aurora", @"solar", @"mono" ];
+    for (NSString *palette in palettes) {
+        STEP(0.4, {
+            [self setPrefs:@{PortalKeyPalette : palette, PortalKeyIntensity : @0.9}];
+            WAIT_UNTIL(0.5, NO);
+            [self state:[NSString stringWithFormat:@"15-%@", palette] caption:[NSString stringWithFormat:@"Colour: %@", palette]];
+            [self shot:[NSString stringWithFormat:@"15-palette-%@", palette]];
+        });
+    }
+    STEP(0.4, {
+        [self setPrefs:@{PortalKeyPalette : [NSNull null], PortalKeyIntensity : [NSNull null], PortalKeySize : @170, PortalKeyOffsetY : @70,
+                         PortalKeyOffsetX : @-60}];
+        [self relayout];
+        PortalOverlayView *o = [self overlay];
+        Check(o.layout.diameter == 170 && o.layout.cx < self.window.bounds.size.width / 2, @"size and position follow the settings");
+        WAIT_UNTIL(0.5, NO);
+        [self state:@"16-placement" caption:@"Position & Size: 170 pt, moved left and down"];
+        [self shot:@"16-placement"];
+        [PortalPreferences removeKeys:[PortalPreferences placementKeys]];
+        PortalControllerPreviewReload();
+        [self relayout];
+        Check([self overlay].layout.diameter == PORTAL_SIZE_DEFAULT, @"Reset Position & Size: back to the defaults");
+    });
+
+    // ---- 12. Unlock, Notification Centre, lock again -----------------------------------
+    STEP(0.4, {
+        PortalView *v = [self overlay].portalView;
+        self.window.layer.speed = 0.15f; // slow motion so the screenshot catches the flourish
+        [self setLocked:NO];
+        WAIT_UNTIL(1, v.flourishPlayed);
+        Check(v.flourishPlayed, @"successful unlock: brief opening animation");
+        WAIT_UNTIL(0.25, NO);
+        [self state:@"17-unlock" caption:@"Unlock: brief opening flourish (slowed for the screenshot)"];
+        [self shot:@"17-unlock"];
+        self.window.layer.speed = 1;
+        CFTimeInterval t1 = CACurrentMediaTime();
+        [self showCoverSheet:NO];
+        CFTimeInterval dismissal = CACurrentMediaTime() - t1;
+        Check(dismissal < 0.05, [NSString stringWithFormat:@"dismissal is never delayed (Portal returned in %.1f ms)", dismissal * 1000]);
+        Check([self overlay].hidden && [self overlay].portalView.isPaused, @"after unlock: hidden and paused");
+    });
+    STEP(0.4, {
+        [self showCoverSheet:YES]; // Notification Centre pulled down while unlocked
+        WAIT_UNTIL(1, NO);
+        Check([Status(PortalStatusKeyVisibility) isEqualToString:@"not-lock-screen"] && [self overlay].hidden,
+              @"Notification Centre over an unlocked phone: no portal");
+        [self showCoverSheet:NO];
+        [self setLocked:YES];
+        [self showCoverSheet:YES];
+        WAIT_UNTIL(1, [Status(PortalStatusKeyVisibility) isEqualToString:@"visible"]);
+        Check(![self overlay].hidden, @"locked again: the portal is back");
+    });
+
+    // ---- 13. Recovery ----------------------------------------------------------
+    STEP(0.4, {
+        CGPoint orb = [self orbCentre];
+        [self setPrefs:@{PortalKeyEnabled : @NO}];
+        Check([self overlay] == nil, @"Enable off: the portal is removed from the Lock Screen at once");
+        Check(![[self hit:orb] isKindOfClass:[UIControl class]], @"Enable off: the touch where the orb was reaches the normal Lock Screen");
+        NSUInteger subviews = 0;
+        for (UIView *v in self.coverSheet.mainPageContentViewController.view.subviews)
+            if ([NSStringFromClass([v class]) hasPrefix:@"Portal"]) subviews++;
+        Check(subviews == 0, @"Enable off: no Portal view remains in the hierarchy");
+        [self state:@"18-disabled" caption:@"Enable off: normal Lock Screen"];
+        [self shot:@"18-disabled"];
+        [self setPrefs:@{PortalKeyEnabled : @YES}];
+        [self relayout];
+        WAIT_UNTIL(1, [self overlay].superview != nil);
+        Check([self overlay].superview != nil, @"Enable on: back without a respring");
+        PortalControllerPreviewInjectFault();
+        Check([self overlay] == nil && [Status(PortalStatusKeyState) isEqualToString:PortalEngineStateFault],
+              @"fault fallback: removed, state Fault");
+        [self setPrefs:@{PortalKeyEnabled : @NO}];
+        [self setPrefs:@{PortalKeyEnabled : @YES}];
+        [self relayout];
+        WAIT_UNTIL(1, [self overlay].superview != nil);
+        Check([self overlay].superview != nil && [Status(PortalStatusKeyState) isEqualToString:PortalEngineStateActive],
+              @"Enable off and on after a fault: recovered");
+    });
+
+    // ---- 14. Settings: the real Settings bundle -----------------------------------
+    __block UIViewController *settingsRoot = nil;
+    STEP(0.5, {
+        void *prefs = dlopen("/System/Library/PrivateFrameworks/Preferences.framework/Preferences", RTLD_NOW | RTLD_GLOBAL);
+        Check(prefs != NULL, @"Preferences.framework loaded from the Simulator runtime");
+        NSBundle *bundle = [NSBundle bundleWithPath:[NSBundle.mainBundle pathForResource:@"HCGPortalPrefs" ofType:@"bundle"]];
+        NSError *error = nil;
+        Check([bundle loadAndReturnError:&error], [NSString stringWithFormat:@"Settings bundle loads (%@)", error.localizedDescription ?: @"ok"]);
+        settingsRoot = [[bundle.principalClass alloc] init];
+        Check([NSStringFromClass([settingsRoot class]) isEqualToString:@"PortalRootListController"], @"principal class PortalRootListController");
+        [self.settingsNav setViewControllers:@[ settingsRoot ] animated:NO];
+        self.settingsWindow.hidden = NO;
+        [settingsRoot loadViewIfNeeded];
+        NSArray *specifiers = [settingsRoot valueForKey:@"specifiers"];
+        Check(specifiers.count >= 25, [NSString stringWithFormat:@"root page has its rows (%lu specifiers)", (unsigned long)specifiers.count]);
+        WAIT_UNTIL(0.8, NO);
+        [self state:@"19-settings" caption:@"Settings › HCG Portal"];
+        [self shot:@"19-settings-root"];
+    });
+    STEP(0.5, {
+        UIViewController *placement = [[NSClassFromString(@"PortalPlacementController") alloc] init];
+        [self.settingsNav pushViewController:placement animated:NO];
+        [placement loadViewIfNeeded];
+        UISegmentedControl *sample = [placement valueForKey:@"_sample"];
+        sample.selectedSegmentIndex = 1;
+        [sample sendActionsForControlEvents:UIControlEventValueChanged];
+        WAIT_UNTIL(0.8, NO);
+        [self state:@"20-position" caption:@"Settings › Position & Size (preview with notifications)"];
+        [self shot:@"20-settings-position-size"];
+        [self.settingsNav popViewControllerAnimated:NO];
+    });
+    STEP(0.5, {
+        UIViewController *apps = [[NSClassFromString(@"PortalAppsController") alloc] init];
+        [self.settingsNav pushViewController:apps animated:NO];
+        WAIT_UNTIL(0.8, NO);
+        [self state:@"21-apps" caption:@"Settings › HCG Apps"];
+        [self shot:@"21-settings-hcg-apps"];
+        self.settingsWindow.hidden = YES;
+    });
+
+    STEP(0.5, {
+        Say(@"PORTAL-PREVIEW-STATUS %@", PortalControllerPreviewStatus());
+        Say(@"PORTAL-PREVIEW-DONE failures=%d", gFailures);
+    });
+#undef STEP
+#undef WAIT_UNTIL
+}
+
+@end
+
+@interface PortalPreviewAppDelegate : UIResponder <UIApplicationDelegate>
+@property (nonatomic, strong) UIWindow *window;
+@property (nonatomic, strong) PortalPreviewController *controller;
+@end
+
+@implementation PortalPreviewAppDelegate
+
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)options {
+    PortalPreviewController *c = [[PortalPreviewController alloc] init];
+    self.controller = c;
+    c.jbroot = [NSTemporaryDirectory() stringByAppendingPathComponent:@"jbroot"];
+    [[NSFileManager defaultManager] removeItemAtPath:c.jbroot error:NULL];
+    [[NSFileManager defaultManager] createDirectoryAtPath:c.jbroot withIntermediateDirectories:YES attributes:nil error:NULL];
+    [PortalCompanions setJailbreakRootForTesting:c.jbroot];
+
+    c.coverSheet = [[CSCoverSheetViewController alloc] init];
+    [SBLockScreenManager sharedInstance].coverSheetViewController = c.coverSheet;
+    UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+    window.rootViewController = c.coverSheet;
+    window.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+    c.window = window;
+    self.window = window;
+    [window makeKeyAndVisible];
+
+    c.settingsNav = [[UINavigationController alloc] init];
+    c.settingsNav.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+    c.settingsNav.navigationBar.prefersLargeTitles = NO;
+    c.settingsWindow = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+    c.settingsWindow.rootViewController = c.settingsNav;
+    c.settingsWindow.windowLevel = UIWindowLevelNormal + 10;
+    c.settingsWindow.hidden = YES;
+
+    [c setLocked:YES];
+    [c setScreenOn:YES];
+    [c showCoverSheet:YES];
+    c.steps = [NSMutableArray array];
+    [c buildScript];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [c next];
+    });
+    return YES;
+}
+
+@end
+
+int main(int argc, char *argv[]) {
+    @autoreleasepool {
+        NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+        [[NSFileManager defaultManager] removeItemAtPath:[docs stringByAppendingPathComponent:@"shot-ack"] error:NULL];
+        // Fresh preferences: the package's defaults (off), plus three chosen apps.
+        CFArrayRef keys = CFPreferencesCopyKeyList((__bridge CFStringRef)PortalPreferencesDomain, kCFPreferencesCurrentUser,
+                                                   kCFPreferencesAnyHost);
+        if (keys) {
+            CFPreferencesSetMultiple(NULL, keys, (__bridge CFStringRef)PortalPreferencesDomain, kCFPreferencesCurrentUser,
+                                     kCFPreferencesAnyHost);
+            CFRelease(keys);
+        }
+        NSArray *apps = @[
+            @{@"id" : @"com.hakmicapitalgroup.hcgterminal", @"name" : @"HCG Terminal"},
+            @{@"id" : @"com.hakmicapitalgroup.hcgnews", @"name" : @"HCG News"},
+            @{@"id" : @"com.hakmicapitalgroup.sentinel", @"name" : @"HCG Sentinel"},
+        ];
+        CFPreferencesSetAppValue((__bridge CFStringRef)PortalKeyApps, (__bridge CFPropertyListRef)apps,
+                                 (__bridge CFStringRef)PortalPreferencesDomain);
+        CFPreferencesAppSynchronize((__bridge CFStringRef)PortalPreferencesDomain);
+        [PortalPreferences setConsecutiveUnstableLaunches:0];
+        gLaunches = [NSMutableArray array];
+        [PortalLauncher setPreviewInstalledHandler:^BOOL(NSString *bundle) {
+            return YES;
+        }];
+        [PortalLauncher setPreviewLaunchHandler:^BOOL(NSString *bundle) {
+            [gLaunches addObject:bundle];
+            Say(@"PORTAL-PREVIEW-LAUNCH %@", bundle);
+            return YES;
+        }];
+        Say(@"PORTAL-PREVIEW-START HCG Portal %s", PORTAL_VERSION);
+        PortalControllerBootstrap(NULL); // as the tweak's %ctor does (hooks are called by the harness)
+        return UIApplicationMain(argc, argv, nil, NSStringFromClass([PortalPreviewAppDelegate class]));
+    }
+}

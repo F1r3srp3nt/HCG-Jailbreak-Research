@@ -235,7 +235,8 @@ static NSString *FooterText(UITableViewController *controller) {
         [self state:@"A1-nexus-settings-alone" caption:@"Settings › HCG Nexus (Halo not installed)"];
     });
     STEP(2.0, {
-        UITableView *table = ((UITableViewController *)self->_nexusRoot).tableView;
+        // PSListController exposes its table as -table (not -tableView).
+        UITableView *table = ((id (*)(id, SEL))objc_msgSend)(self->_nexusRoot, NSSelectorFromString(@"table"));
         NSIndexPath *row = nil;
         for (NSInteger s = 0; s < table.numberOfSections && !row; s++)
             for (NSInteger r = 0; r < [table numberOfRowsInSection:s]; r++) {
@@ -339,10 +340,14 @@ static NSString *FooterText(UITableViewController *controller) {
         UIViewController *page = [[NSClassFromString(@"HaloNexusBorderController") alloc] init];
         [self->_nav pushViewController:page animated:NO];
         [page.view layoutIfNeeded];
-        NSString *text = AllText(page);
         Check([page valueForKey:@"definition"] == nil && [FooterText((UITableViewController *)page) containsString:@"Requires compatible HCG Nexus"],
               @"malformed definition: Requires compatible HCG Nexus, panel targets disabled");
-        Check([text containsString:@"Not compatible"], @"status row: Not compatible");
+        UITableView *pageTable = ((UITableViewController *)page).tableView;
+        UITableViewCell *status = [pageTable.dataSource tableView:pageTable cellForRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:0]];
+        Check([status.detailTextLabel.text isEqualToString:@"Not compatible"], [NSString stringWithFormat:@"status row: %@", status.detailTextLabel.text]);
+        // "Both" (section 1, row 2) is not selected, so without a compatible Nexus it must be disabled.
+        UITableViewCell *both = [pageTable.dataSource tableView:pageTable cellForRowAtIndexPath:[NSIndexPath indexPathForRow:2 inSection:1]];
+        Check((both.accessibilityTraits & UIAccessibilityTraitNotEnabled) != 0, @"target \"Both\" is disabled without a compatible Nexus");
         [self state:@"D1-malformed-definition" caption:@"Nexus definition malformed → Requires compatible HCG Nexus"];
     });
     STEP(2.5, {

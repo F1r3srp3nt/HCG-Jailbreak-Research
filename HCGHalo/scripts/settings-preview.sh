@@ -100,10 +100,12 @@ REC=$!
 sleep 4
 LOG="$OUT/console.log"; : > "$LOG"; : > "$OUT/stderr.log"
 # Launch detached with stdout/stderr redirected to files (more robust than a pty on CI), then poll.
-launch_status=0
-limit 60 xcrun simctl launch --terminate-running-process --stdout="$LOG" --stderr="$OUT/stderr.log" \
-	"$UDID" com.hakmicapitalgroup.halo.settings-preview 2>&1 | tee "$OUT/launch.txt" || launch_status=$?
-stamp "launch exit status $launch_status: $(cat "$OUT/launch.txt")"
+# simctl keeps the launch call open while stdout is redirected: run it in the background.
+xcrun simctl launch --terminate-running-process --stdout="$LOG" --stderr="$OUT/stderr.log" \
+	"$UDID" com.hakmicapitalgroup.halo.settings-preview > "$OUT/launch.txt" 2>&1 &
+LAUNCH=$!
+sleep 5
+stamp "launch: $(cat "$OUT/launch.txt")"
 for _ in $(seq 1 90); do
 	grep -q 'HALO-SETTINGS-DONE' "$LOG" 2>/dev/null && break
 	sleep 2
@@ -118,6 +120,7 @@ xcrun simctl spawn "$UDID" log show --last 10m --style compact \
 echo "--- system log (last 80 lines)"; tail -80 "$OUT/system.log" || true
 for f in ~/Library/Logs/DiagnosticReports/HaloSettingsPreview*; do [ -f "$f" ] && { echo "--- crash report $f"; head -120 "$f"; cp "$f" "$OUT/"; }; done
 xcrun simctl terminate "$UDID" com.hakmicapitalgroup.halo.settings-preview 2>/dev/null || true
+kill "$LAUNCH" 2>/dev/null || true
 xcrun simctl shutdown "$UDID" 2>/dev/null || true
 
 status=0

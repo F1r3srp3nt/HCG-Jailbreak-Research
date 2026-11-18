@@ -161,9 +161,14 @@ static void Check(BOOL ok, NSString *what) {
     return count;
 }
 
+/// Really on screen: in a window, and neither it nor any ancestor hidden or transparent.
 - (BOOL)borderVisible {
     HaloPanelBorderView *border = _link.borderView;
-    return border && border.superview && !border.hidden && border.window != nil;
+    if (!border || !border.window) return NO;
+    for (UIView *v = border; v; v = v.superview) {
+        if (v.hidden || v.alpha < 0.01) return NO;
+    }
+    return YES;
 }
 
 - (void)switchWorkspace {
@@ -183,7 +188,9 @@ static void Check(BOOL ok, NSString *what) {
 
 - (void)state:(NSString *)name caption:(NSString *)caption {
     _caption.text = caption;
-    Say(@"HALO-PREVIEW-STATE %@ | link=%@ | %@", name, _link.state, _link.rendering);
+    HCGNexusBorderInterface *nexus = [HCGNexusBorderInterface activeInterface];
+    Say(@"HALO-PREVIEW-STATE %@ | link=%@ | %@ | nexus panelState=%@ onScreen=%d | border visible=%d",
+        name, _link.state, _link.rendering, nexus.panelState ?: @"-", [_overlay isPanelOnScreen], [self borderVisible]);
 }
 
 - (void)after:(NSTimeInterval)delay do:(void (^)(void))block {
@@ -313,7 +320,7 @@ static void Check(BOOL ok, NSString *what) {
         [self->_overlay simulateHandleActivation];
     });
     STEP(2.0, {
-        Check([self borderVisible], @"opens normally after the cycles");
+        Check([self->_overlay isPanelOnScreen] && [self borderVisible], @"opens normally after the cycles");
         [self state:@"14-after-cycles" caption:@"After 30 open/close cycles"];
     });
     STEP(2.5, {

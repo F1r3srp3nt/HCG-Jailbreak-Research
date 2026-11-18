@@ -1,0 +1,84 @@
+# HCG Halo × HCG Nexus — PREVIEW evidence (iOS Simulator).
+#
+# Builds a simulator app from HCG Nexus's real panel code and real border
+# definition (fetched from the public HCG-Nexus repository at `nexus_ref`)
+# plus HCG Halo's real link and renderer, runs a fixed open / workspace /
+# preset / close / reverse / disable script, and uploads a video, screenshots
+# and the console log with its structural checks.
+#
+# This is preview evidence only: no SpringBoard, no device, no package is
+# built or published. It never installs anything on a phone.
+name: HCG Halo × Nexus preview
+
+on:
+  push:
+    paths:
+      - "HCGHalo/preview/**"
+      - "HCGHalo/scripts/nexus-preview.sh"
+      - "HCGHalo/src/HaloNexus*"
+      - "HCGHalo/src/HaloPanelBorderView.*"
+      - ".github/workflows/hcg-halo-nexus-preview.yml"
+  workflow_dispatch:
+    inputs:
+      nexus_ref:
+        description: "HCG-Nexus branch, tag or commit to preview against"
+        default: "claude/nexus-halo-border"
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        working-directory: HCGHalo
+    env:
+      NEXUS_REF: ${{ inputs.nexus_ref || 'claude/nexus-halo-border' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch HCG Nexus (public repository, read-only)
+        run: |
+          git init -q "$RUNNER_TEMP/hcg-nexus"
+          git -C "$RUNNER_TEMP/hcg-nexus" fetch -q --depth 1 https://github.com/F1r3srp3nt/HCG-Nexus.git "$NEXUS_REF"
+          git -C "$RUNNER_TEMP/hcg-nexus" checkout -q FETCH_HEAD
+          echo "HCG Nexus $NEXUS_REF = $(git -C "$RUNNER_TEMP/hcg-nexus" rev-parse HEAD)"
+          echo "NEXUS_DIR=$RUNNER_TEMP/hcg-nexus" >> "$GITHUB_ENV"
+
+      - name: Simulator report
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+      - name: Build and run the preview, recording video and screenshots
+        timeout-minutes: 20
+        run: |
+          {
+            echo "PREVIEW EVIDENCE — iOS Simulator, not a device result."
+            echo "HCG Halo commit:  $(git rev-parse HEAD)"
+            echo "HCG Nexus ref:    $NEXUS_REF"
+            echo "HCG Nexus commit: $(git -C "$NEXUS_DIR" rev-parse HEAD)"
+            echo "Workflow run:     $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/PROVENANCE.txt"
+          status=0
+          scripts/nexus-preview.sh "$RUNNER_TEMP/halo-nexus-preview" || status=$?
+          cp "$RUNNER_TEMP/PROVENANCE.txt" "$RUNNER_TEMP/halo-nexus-preview/" || true
+          exit "$status"
+
+      - name: Upload preview evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: halo-nexus-preview-evidence
+          path: |
+            ${{ runner.temp }}/halo-nexus-preview/screenshots
+            ${{ runner.temp }}/halo-nexus-preview/*.mp4
+            ${{ runner.temp }}/halo-nexus-preview/console.log
+            ${{ runner.temp }}/halo-nexus-preview/inputs.sha256
+            ${{ runner.temp }}/halo-nexus-preview/simulator.txt
+            ${{ runner.temp }}/halo-nexus-preview/PROVENANCE.txt
+          retention-days: 30
+          if-no-files-found: warn

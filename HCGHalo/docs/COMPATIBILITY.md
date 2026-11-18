@@ -68,10 +68,22 @@ The first test device is an **iPhone 11 Pro Max**. Its iOS version, build and ja
 for HCG Halo, and nothing is assumed from other projects' tests. Before installation, record the real values with
 the checklist in `DEVICE_TEST_CHECKLIST.md`, step 0.
 
+## Private interfaces added in 0.3.0~beta1
+
+Each is optional and guarded; when one is missing Halo degrades as stated, never guesses.
+
+| Interface | Where | Used for | If missing |
+|---|---|---|---|
+| `-[SBApplication bundleIdentifier]` (via `frontDisplayDidChange:`) | SpringBoard | Selected App Only | Selected App Only draws nothing |
+| `UIWindow` overrides `_shouldCreateContextAsSecure`, `_isSecure`, `_canAffectStatusBarAppearance`, `_canBecomeKeyWindow`, `_ignoresHitTest` | SpringBoard (`HaloEdgeWindow`) | show over the Lock Screen; never key, never hit, no status-bar influence | overrides are simply not called: the window stays under the Lock Screen; the public `canBecomeKeyWindow`, `hitTest:` and `userInteractionEnabled` still keep it inert |
+| `LSApplicationWorkspace` `allInstalledApplications`, `LSApplicationRecord` enumeration, `LSApplicationProxy` | Settings (app picker) | list installed apps (read-only) | the picker says so and offers *Enter Bundle ID* |
+| `+[UIImage _applicationIconImageForBundleIdentifier:format:scale:]` | Settings (app picker) | app icons | rows without icons |
+
 ## Coexistence
 
 | With | Expectation |
 |---|---|
 | HCG Vortex | Independent: separate package, preferences and hook. Vortex hooks `SBFolderView` and Halo adds an overlay. Not tested together |
 | Other Home Screen or edge-light tweaks | Untested. Two overlays may stack |
+| Tweaks that add SpringBoard windows above apps or the Lock Screen | Untested. Halo's overlay window (level 2050) never takes touches, so stacking is visual only |
 | Tweaks that hook `-[SpringBoard frontDisplayDidChange:]` | Hook chains are designed for this; Halo calls `%orig` first. Untested |

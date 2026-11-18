@@ -99,7 +99,7 @@ Nothing in this checklist has been done yet.
 | G3 | Remove the package, respring | Home Screen stock; Settings entry gone; settings file kept | |
 | G4 | Reinstall, then purge | settings restored after reinstall; purge deletes only Halo's own preference files | |
 
-## HCG Nexus panel border (0.2.0~beta1)
+## HCG Nexus panel border (0.2.0~beta1; unchanged in 0.3.0~beta1)
 
 This is for 0.2.0~beta1 with HCG Nexus **0.3.1~beta1**, both from HCG Repo Candidate. Install them in either order,
 then respring once. Nothing is installed automatically. Keep section G at hand. The 0.1.0~beta1 package is the
@@ -125,6 +125,32 @@ known-good baseline: reinstall it to go back.
 | N15 | Turn Enable HCG Halo off with the panel open | The border disappears at once; the panel is unaffected | |
 | N16 | Turn Enable HCG Nexus off | Panel and border gone; screen edge (if targeted) unaffected | |
 | N17 | Halo's kill switch (G2) with target Both | No border anywhere | |
+
+## Show Halo on and screen geometry (0.3.0~beta1)
+
+Halo 0.3.0~beta1 from HCG Repo Candidate, alone or with HCG Nexus 0.3.1~beta1. Respring once after installing.
+Every change below applies **without** a respring. Section G still applies: the overlay window is removed at once by
+turning Enable off, and the kill switch stops everything.
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| S0 | Update from 0.2.0~beta1, respring; open Settings › HCG Halo | **Show Halo on: Home Screen Only**; the border behaves exactly as before | |
+| S1 | Home Screen Only: open an app, return; lock, wake, unlock | Hidden in the app and while locked; back on the Home Screen | |
+| S2 | **Always**: open several apps; Control Center; App Switcher | Border over apps; touches, gestures, keyboard and the status bar unchanged; note what it does over Control Center and the App Switcher | |
+| S3 | Always: lock (side button), wake with the screen on the Lock Screen | Border on the lit Lock Screen; the Lock Screen still works (notifications, torch, camera, Face ID) | |
+| S4 | Always: let the screen go black (lock and wait) | Nothing visible; on wake it returns without a flash or delay | |
+| S5 | **Always Except When Screen Is Off**: repeat S3–S4 | The same as Always (Settings says they behave identically on this iPhone) | |
+| S6 | **Always Except Lock Screen**: apps, then lock and wake | Border on the Home Screen and in apps; hidden on the Lock Screen and while dark | |
+| S7 | Always Except Lock Screen: Notification Centre pulled down while unlocked | Record what happens (the phone isn't locked, so the border may stay) | |
+| S8 | Always Except Lock Screen: Face ID unlock, but stay on the Lock Screen | Record whether the border appears before you swipe up | |
+| S9 | **Selected App Only** › Choose App: the list shows the installed apps with icons; choose one | Choice applies at once; border only while that app is in front | |
+| S10 | Selected App Only: switch apps with the home bar gesture, the App Switcher, and a notification banner; lock in the app | Border only while the chosen app is in front and unlocked; gone on switching or locking | |
+| S11 | Low Power Mode and Reduce Motion under Always | The Animation settings apply as on the Home Screen (static or hidden) | |
+| S12 | Settings › HCG Halo › Device Profile › This device; Status detail | Screen line shows points, pixels, native scale and `iPhone12,5`; the fit sentence matches the Display Zoom setting | |
+| S13 | Display Zoom **Standard** (414 × 896 pt): Static, Thickness 1–2, Glow 0, Inset 0 | Corners and notch line up; record any calibration needed | |
+| S14 | Display Zoom **Larger Text** (375 × 812 pt), same settings, respring after the zoom change | *Display Zoom … scales … by 0.906*; corners and notch line up as in S13 (no calibration change needed) | |
+| S15 | Screenshot with Always on | Record whether the border is in the screenshot | |
+| S16 | Border Target **HCG Nexus Panel** with Show Halo on Always | No screen-edge border anywhere; the panel border follows the panel only | |
 
 ## Recording
 

@@ -26,6 +26,41 @@ into `src/HaloProfiles.generated.c`, and `validate.sh` fails if the generated fi
 Settings also shows what iOS itself reports (`_displayCornerRadius`, when available) and the screen size, as
 calibration aids. Halo never uses them to choose a profile.
 
+### "375 × 812 pt" on an iPhone 11 Pro Max: Display Zoom (0.3.0~beta1)
+
+**What Halo measures.** `UIScreen.mainScreen.fixedCoordinateSpace.bounds`: the screen in **points**, portrait,
+whatever the orientation. That is the coordinate space the border is drawn in. Since 0.3.0~beta1 the status also
+shows `nativeBounds` (pixels), the native scale and the model identifier, e.g.
+*375 × 812 pt @3x · 1242 × 2688 px (native scale 3.31) · iPhone12,5*.
+
+**Why 375 × 812.** It is either:
+
+| Pixels (`nativeBounds`) | Model identifier | Meaning |
+|---|---|---|
+| 1242 × 2688 px | `iPhone12,5` | **iPhone 11 Pro Max with Display Zoom** (Settings › Display & Brightness › Display Zoom › *Larger Text*). The same panel is drawn with fewer, larger points: 414 → 375 pt wide, a factor of 375 / 414 = 0.906 (native scale 3.31 instead of 3) |
+| 1125 × 2436 px | `iPhone12,3`, `iPhone11,2`, `iPhone10,3/6` | a different phone: iPhone 11 Pro, XS or X. This profile does not apply |
+
+**What 0.2.0~beta1 drew in that case.** `HaloOverlayView` replaced the profile's width and height with the measured
+375 × 812, but kept the corner radius and notch in the profile's 414-pt units: corner 39 pt, notch 209 × 30 pt in
+zoomed points. On the glass that is a corner of about 43 pt and a notch of about 231 × 33 pt in standard points:
+**roughly 10% too large**, the notch about 22 pt too wide. Settings called it a *MISMATCH* and said the border was
+"stretched", which was wrong: the frame fitted, the corners and notch didn't.
+
+**What 0.3.0~beta1 does.** `halo_profile_fit()` (`src/HaloProfiles.c`) compares the pixels:
+
+- same points → **match**: the profile applies as is;
+- same pixels, fewer points, the same factor on both axes → **Display Zoom**: corners and notch are scaled by
+  points ÷ profile points (0.906), so they stay the same size on the glass;
+- anything else → **mismatch**: the frame still fits the screen, the profile's corners and notch are left unscaled,
+  and Settings says *a different display, not Display Zoom* and asks for the right profile.
+
+Calibration deltas are screen points added **after** the scaling. If you calibrated under Display Zoom on
+0.2.0~beta1, those deltas were compensating for the bug: **Reset Calibration** after updating.
+
+**Device verification: pending.** The host tests check the arithmetic (the zoomed outline has the same proportions
+as the standard one), and the Simulator runs on an iPhone 11 Pro Max at standard zoom. Display Zoom itself, and
+whether the corners and notch now line up on the glass, can only be checked on the phone (checklist rows S12–S14).
+
 ## Calibration
 
 These are applied on top of the selected profile, in points:

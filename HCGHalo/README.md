@@ -1,18 +1,21 @@
 # HCG Halo
 
-**Animated neon edge lighting for the iPhone Home Screen.** A rootless jailbreak tweak by Hakmi Capital Group.
+**Animated neon edge lighting for the iPhone screen.** A rootless jailbreak tweak by Hakmi Capital Group.
 
-> **0.2.0~beta1 (this branch): free public beta demo.** It adds an optional border around the HCG Nexus panel.
-> It builds, packages and passes validation, with preview evidence in the iOS Simulator. It is **not yet
-> device-tested.**
+> **0.3.0~beta1 (this branch): free public beta demo.** It adds **Show Halo on** (Home Screen only, one chosen
+> app, everywhere, everywhere except the Lock Screen, or everywhere while the display is lit) and corrects the
+> corner and notch size under Display Zoom. Simulator-tested; **real-device testing pending.**
+>
+> **0.2.0~beta1** (with HCG Nexus 0.3.1~beta1) is the current published candidate and stays unchanged.
 >
 > **Baseline: 0.1.0~beta1** (SHA-256 `c0a3301c…24c9af`). The owner reports it runs on their phone. That is not
 > proof that every mode, device or compatibility case has passed. Its package is preserved unchanged. See
 > [Status](#status).
 
 HCG Halo draws a precise, glowing light border around the screen edge. The border follows the display's rounded
-corners and the notch. It sits in its own view inside the Home Screen window, never receives touches and is hidden
-from accessibility. It is separate from HCG Vortex and shares none of its code at runtime.
+corners and the notch. By default it sits in its own view inside the Home Screen window; the
+other *Show Halo on* choices draw it in HCG Halo's own overlay window. Either way it never receives touches and is
+hidden from accessibility. It is separate from HCG Vortex and shares none of its code at runtime.
 
 **Border target** (0.2.0~beta1): *Screen Edge* (the default, unchanged for existing users), *HCG Nexus Panel*
 or *Both*. With HCG Nexus 0.3.1~beta1 (or another build with its border interface) installed, Halo reads the border definition that Nexus installs on
@@ -31,11 +34,12 @@ Nexus* and the screen edge works as before.
 | **Presets** | Nine built-ins, including the panel looks *Nexus Signature*, *Reactor* and *Hologram* (visual styles only). Save, rename, duplicate and delete your own; apply with a confirmation |
 | **Soft Pulse** | Optional gentle brightness swell on top of any mode except Breathing |
 | **HCG Nexus panel** | Separate look or *Match Screen Edge*; its own presets, colours, thickness, glow, speed, direction and pulse; opening trace, fade with the panel and workspace pulse effects; *Reset Nexus Lighting*. Also reachable from Settings › HCG Nexus › Appearance › Halo border |
+| **Show Halo on** (0.3.0~beta1) | Screen edge only: *Home Screen Only* (default, unchanged for existing users), *Selected App Only* (installed-app picker), *Always* (lit Lock Screen, Home Screen and apps), *Always Except Lock Screen*, *Always Except When Screen Is Off*. A fully off display can't show a border: every choice hides it and pauses rendering then. No Always-On display mode, so *Always* and *Always Except When Screen Is Off* behave identically. The HCG Nexus panel border is unaffected |
 | **Device profile** | Manual selector. **iPhone 11 Pro Max** is implemented, but not yet device-tested. Other models are listed as *planned* and cannot be selected. *Automatic — Coming soon* is shown disabled |
 | **Calibration** | Corner radius, notch width, notch depth and notch position. The notch is traced, or you can choose a straight edge |
 | **Settings** | Dark HCG pane with a live preview, plus engine status, rendering state, version and build ID |
 | **Safety** | Off after installation. Master switch, kill switch file, crash-loop guard and a fault fallback that removes the border |
-| **Efficiency** | Core Animation only (no per-frame code in SpringBoard). Pauses and hides when the screen is off, when the phone is locked or when an app is in front. Follows Reduce Motion; Low Power behaviour is configurable |
+| **Efficiency** | Core Animation only (no per-frame code in SpringBoard). Pauses and hides whenever the border is hidden: always when the screen is off, and on the Lock Screen or behind apps as *Show Halo on* says. Follows Reduce Motion; Low Power behaviour is configurable |
 | **Privacy** | No account, payment, telemetry or network access. The validator checks the binaries for networking APIs |
 
 Everything applies immediately, with no respring. Only the recovery mechanisms need one: the kill switch file, and
@@ -43,7 +47,12 @@ re-arming after the crash-loop guard has stopped Halo.
 
 ## Status
 
-**0.2.0~beta1** (this branch): build, validation, simulator and preview results are recorded in the pull request
+**0.3.0~beta1** (this branch): Show Halo on and Display Zoom geometry. Build, validation and Simulator results
+(host tests, runtime tests, the Settings preview and the new surfaces preview) are recorded in the pull request.
+Device rows S0–S16 in [`docs/DEVICE_TEST_CHECKLIST.md`](docs/DEVICE_TEST_CHECKLIST.md) are pending. The
+375 × 812 pt investigation is in [`docs/PROFILES.md`](docs/PROFILES.md).
+
+**0.2.0~beta1**: build, validation, simulator and preview results are recorded in the pull request
 and in [`docs/NEXUS.md`](docs/NEXUS.md#status). Device testing is pending.
 
 **0.1.0~beta1** (baseline):

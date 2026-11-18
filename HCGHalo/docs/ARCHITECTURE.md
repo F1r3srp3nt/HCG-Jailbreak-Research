@@ -38,10 +38,28 @@ It adds one `HaloOverlayView` there, covering the window. If neither exists on a
 Settings reads *Incompatible*. If the window isn't found within 30 s (15 attempts, 2 s apart), it reports the same.
 If SpringBoard rebuilds the window later, the overlay notices that it left the window and looks again.
 
-Because the overlay is inside the Home Screen window, the border appears only on the Home Screen. The Today View,
-App Library, Spotlight and open folders belong to that window, so the border also shows over them. **These
-sub-pages have not been checked separately.** Apps, the Lock Screen and the App Switcher are not covered. No other
-display context is offered: a context will get its own explicit switch only once it is implemented and verified.
+With **Show Halo on: Home Screen Only** (the default, and the only choice before 0.3.0~beta1) the overlay is inside
+the Home Screen window, so the border appears only on the Home Screen. The Today View, App Library, Spotlight and
+open folders belong to that window, so the border also shows over them. **These sub-pages have not been checked
+separately.**
+
+### Show Halo on (0.3.0~beta1)
+
+The other choices draw beyond the Home Screen, so the overlay moves to HCG Halo's own window,
+`HaloEdgeWindow` (`src/HaloEdgeWindow.m`):
+
+- created on SpringBoard's main window scene (the Home Screen window's scene, or the foreground scene on the main
+  screen), sized to the screen, level 2050 (above system alerts);
+- never interactive: `userInteractionEnabled = NO`, `-hitTest:` returns `nil`, never key, never affects the status
+  bar, hidden from accessibility; its root view declines touches too;
+- asks for a secure context (private overrides `_shouldCreateContextAsSecure` / `_isSecure`) so it can be shown
+  above the Lock Screen. If UIKit stops calling them, the window simply stays under the Lock Screen;
+- **hidden whenever the border is hidden**, so a hidden border costs no compositing.
+
+Changing the choice re-hosts the overlay at once (Home Screen window ↔ overlay window); no respring. The HCG Nexus
+panel border never uses this setting: it lives inside the Nexus panel and follows the panel's own visibility.
+**Device behaviour (levels relative to the real Lock Screen, Control Center, the App Switcher, screenshots) is not
+verified.**
 
 ### Never intercepting touches or accessibility
 
@@ -117,9 +135,27 @@ QA1673). A hidden overlay is also paused, so it costs no animation work. Resumin
 
 **Rebuilds** happen only when the appearance, geometry or plan changes. All of these are user actions or rotations.
 
-## Visibility (`HaloController.m`, `halo_visibility_block`)
+## Visibility (`HaloController.m`, `halo_surface_block`)
 
-The overlay draws only if every input is true:
+Per **Show Halo on** choice, the screen-edge border draws when:
+
+| Choice | Screen lit | Unlocked | Front | Host |
+|---|---|---|---|---|
+| Home Screen Only (default) | required | required | Home Screen (no app) | Home Screen window visible |
+| Selected App Only | required | required | the chosen app (bundle identifier); needs the hook — without it, nothing is drawn | overlay window |
+| Always | required | — (lit Lock Screen included) | anything | overlay window |
+| Always Except Lock Screen | required | required | anything | overlay window |
+| Always Except When Screen Is Off | required | — | anything | overlay window |
+
+**A display that is fully off can't show a border**, so every choice hides the border and pauses rendering while
+the screen is blanked. HCG Halo has **no Always-On display mode**: Always and Always Except When Screen Is Off use
+the same rule, so they behave identically on every iPhone (on an Always-On model, whether SpringBoard reports the
+dimmed Always-On Lock Screen as blanked is not verified). The host tests check every choice against every
+combination of inputs, and that Home Screen Only equals the 0.2.0 rules. *Always Except Lock Screen* follows the
+lock state: after Face ID unlocks but before you swipe up, the phone is no longer locked, so the border can appear
+on the Lock Screen then (device check S8).
+
+Home Screen Only uses exactly the 0.2.0 inputs:
 
 | Input | Source | If unreadable |
 |---|---|---|
@@ -129,6 +165,7 @@ The overlay draws only if every input is true:
 | unlocked | Darwin `com.apple.springboard.lockstate` state = 0 | assume unlocked |
 | Home Screen in front | the `frontDisplayDidChange:` hook: only an `SBApplication` counts as covering it. Initial value from `_accessibilityFrontMostApplication` | assume in front. Settings then says app detection is unavailable, and the border keeps running behind apps |
 | host visible | Home Screen window not hidden and alpha > 0 | — |
+| app in front (Selected App Only) | the same hook: the `SBApplication`'s `bundleIdentifier` | nothing is drawn: Selected App Only fails *closed*, since it cannot know which app is in front |
 
 Each fallback fails *open*: the border keeps showing rather than vanishing for an unknown reason. Settings shows
 the actual state: *Animating: Orbit*, *Static (Reduce Motion: static)* or *Hidden: app in front*. Settings is itself

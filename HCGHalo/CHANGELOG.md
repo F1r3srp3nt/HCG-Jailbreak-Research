@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.3.0~beta1 (unreleased candidate)
+
+**Free public beta demo — simulator-tested, real-device testing pending.** 0.2.0~beta1 and 0.1.0~beta1 are unchanged.
+
+- **Show Halo on** replaces the read-only *Display Context* row (screen edge only; applies at once):
+  - **Home Screen Only** — the default; existing users see no change.
+  - **Selected App Only** — with an installed-app picker (search, icons, *Enter Bundle ID* fallback). The border
+    shows only while that app is in front, unlocked and lit.
+  - **Always** — every lit surface: the Lock Screen, the Home Screen and apps.
+  - **Always Except Lock Screen** — the Home Screen and apps; hidden whenever the phone is locked.
+  - **Always Except When Screen Is Off** — like Always, stated explicitly.
+- Settings explains that a fully off display can't show a border (every choice hides the border and pauses rendering
+  then), and that Always and Always Except When Screen Is Off behave identically because HCG Halo has no Always-On
+  display mode. Low Power Mode and Reduce Motion apply under every choice.
+- The choices beyond the Home Screen draw in HCG Halo's own overlay window: never interactive, never key, hidden
+  (no compositing) whenever the border is hidden. Home Screen Only keeps the Home Screen window.
+- The HCG Nexus panel border is unchanged: it follows the panel's own visibility.
+- **Display Zoom:** an iPhone 11 Pro Max with Display Zoom reports 375 × 812 pt (same 1242 × 2688 px panel). 0.2.0
+  drew the profile's corners and notch about 10% too large in that case. Halo now detects Display Zoom from the pixel
+  size and scales the corners and notch to match; a genuinely different display is reported as a mismatch.
+  Settings shows points, pixels, native scale and the model identifier. If you calibrated under Display Zoom,
+  reset the calibration.
+- Not yet verified on a physical device.
+
 ## 0.2.0~beta1 (unreleased candidate)
 
 **Free public beta demo — not yet device-tested.** Builds on 0.1.0~beta1, which the owner reports running on

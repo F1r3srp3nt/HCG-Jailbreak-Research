@@ -50,6 +50,17 @@ It publishes nothing.
 | Handoff (refreshed text) | run [44204642906](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44204642906), archive `hcg-halo-0.1.0-beta1-handoff` (ID 14381939451): same `.deb`, corrected HCG-repo notes |
 | Handoff | run [44063187804](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44063187804): API provenance checked, SHA-256 recomputed from a fresh download, re-validated from the source commit, archive re-extracted and `SHA256SUMS` verified. Archive artifact `hcg-halo-0.1.0-beta1-handoff` (ID 14318997915, kept until 2027-02-15) |
 
+### 0.2.0~beta1 handoff (with HCG Nexus 0.2.2~beta1)
+
+See [`handoff/0.2.0-beta1/README.md`](handoff/0.2.0-beta1/README.md). It covers:
+
+- the build: run 44216299888, commit `778c21a`, SHA-256 `391a4421…`;
+- the HCG-repo review branch `candidate/hcg-halo-0.2.0-beta1-nexus-0.2.2-beta1`;
+- compatibility and install order;
+- the preview evidence.
+
+The import manifest is `hcg-repo/imports/hcg-halo-0.2.0-beta1-rootless.toml`.
+
 ## Dry run with HCG-repo's own tools
 
 The dry run used a scratch copy of HCG-repo at `6ff63fd`, the proposed `packages/com.hakmicapitalgroup.halo/`, and

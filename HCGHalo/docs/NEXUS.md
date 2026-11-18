@@ -141,10 +141,15 @@ Changes appear in the preview at once. SpringBoard applies them immediately; sli
 
 | Check | How | Result |
 |---|---|---|
-| Builds, both binaries, `validate.sh` (Nexus contract constants, no bundled definition, interface strings) | Linux toolchain locally; macOS/Xcode CI for the candidate | see the pull request |
-| Simulator runtime tests: definition fixtures, panel view (geometry, mask, touches, effects, cleanup), link (absent, incompatible, missing / malformed / outdated definition, waiting, version mismatch, attached, forged / malformed events, reversal, close fade off, Reduce Motion, screen off, disable, repeated cycles, Nexus update, removal) | `scripts/run-simulator-tests.sh`, CI. The link is driven by a test double registered under the interface's class name | see the pull request |
-| **Preview evidence**: HCG Nexus's real panel code and real `HaloBorder.plist` plus Halo's real link and renderer, scripted open / trace / workspace / presets / all modes / close / reversed open / Halo disabled / Nexus disabled / 30 cycles, with video and screenshots | `scripts/nexus-preview.sh`, workflow *HCG Halo × Nexus preview* | see the pull request. **Simulator only** |
+| Canonical macOS/Xcode build + `validate.sh --require-new-abi` (Nexus contract constants, interface strings, no bundled definition) | CI run [44216299888](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44216299888), commit `778c21a`. Re-validated locally from that commit on the downloaded artifact | **Pass**, 0 failures, 0 warnings, native arm64e ABI |
+| Simulator runtime tests, **415 checks**, including **105 Nexus panel border checks**. Covered: definition fixtures; the panel view (geometry, mask, touches, effects, cleanup); the link with Nexus absent, incompatible, missing / malformed / outdated definition, waiting, version mismatch, attached, forged / malformed events, reversal, close-fade off, Reduce Motion, screen off, disable, 60 repeated cycles, Nexus update and removal | `scripts/run-simulator-tests.sh`, CI. The link is driven by a test double registered under the interface's class name | **Pass** (runs 44214405128 and 44216299888) |
+| **Preview evidence**: HCG Nexus 0.2.2~beta1's real panel code and real `HaloBorder.plist` (HCG-Nexus `b68768f`) plus Halo's real link and renderer. The scripted run covers open with trace, workspace pulse, the three panel presets, all five modes, close, reversed opening, Halo off/on, Nexus off, and 30 rapid cycles | `scripts/nexus-preview.sh`, workflow *HCG Halo × Nexus preview*, run [44216300027](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44216300027) (artifact `halo-nexus-preview-evidence`: 176 s video + console log) | **14/14 structural checks pass**. Stills: [`preview/halo-nexus-preview-sheet.jpg`](preview/halo-nexus-preview-sheet.jpg). **Simulator only** |
 | On the phone, with HCG Nexus 0.2.2~beta1 | manual: [DEVICE_TEST_CHECKLIST.md](DEVICE_TEST_CHECKLIST.md#hcg-nexus-panel-border-020beta1) | **pending** |
 
 The preview runs as an ordinary app in the simulator. It shows the panel border's look and its lifecycle against
-Nexus's real code, but **not** SpringBoard, the overlay window, real gestures or device performance.
+Nexus's real code. Each state line in its log also records Nexus's own `panelState` and whether the panel and
+border are actually on screen. It does **not** show SpringBoard, the overlay window, real gestures (the opening
+is triggered through Nexus's `simulateHandleActivation`), rotation, the keyboard, or device performance and
+battery use.
+
+The workspace pulse is brief and soft, so it is hard to see in a still.

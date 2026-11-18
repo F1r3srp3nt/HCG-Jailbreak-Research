@@ -3,8 +3,8 @@
 # Builds a simulator app from HCG Nexus's real panel code and real border
 # definition (fetched from the public HCG-Nexus repository at `nexus_ref`)
 # plus HCG Halo's real link and renderer, runs a fixed open / workspace /
-# preset / close / reverse / disable script, and uploads a video, screenshots
-# and the console log with its structural checks.
+# preset / close / reverse / disable script, and uploads the video and the
+# console log with its structural checks (stills are taken from the video).
 #
 # This is preview evidence only: no SpringBoard, no device, no package is
 # built or published. It never installs anything on a phone.
@@ -53,7 +53,7 @@ jobs:
           xcodebuild -version
           xcrun simctl list runtimes
 
-      - name: Build and run the preview, recording video and screenshots
+      - name: Build and run the preview, recording video
         timeout-minutes: 20
         run: |
           {
@@ -74,7 +74,6 @@ jobs:
         with:
           name: halo-nexus-preview-evidence
           path: |
-            ${{ runner.temp }}/halo-nexus-preview/screenshots
             ${{ runner.temp }}/halo-nexus-preview/*.mp4
             ${{ runner.temp }}/halo-nexus-preview/console.log
             ${{ runner.temp }}/halo-nexus-preview/inputs.sha256

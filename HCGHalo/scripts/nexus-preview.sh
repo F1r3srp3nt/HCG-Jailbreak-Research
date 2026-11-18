@@ -8,8 +8,11 @@
 # and HCG Halo's real link / definition reader / panel border / renderer, copies
 # Nexus's REAL Prefs/Resources/HaloBorder.plist into the app bundle (where
 # Nexus's +borderDefinitionPath looks in preview builds), then runs the app's
-# fixed script while recording video and taking a screenshot at every
-# "HALO-PREVIEW-STATE" line. Exit status: non-zero if any HALO-PREVIEW-CHECK
+# fixed script while recording video. Each "HALO-PREVIEW-STATE" line marks a
+# state; stills are taken from the VIDEO afterwards (decode it sequentially, and
+# match each frame by the caption the app draws). simctl screenshots taken live
+# are slow on CI runners: they lag behind the script and show the wrong state,
+# so none are taken. Exit status: non-zero if any HALO-PREVIEW-CHECK
 # failed or the script did not finish.
 #
 # PREVIEW ONLY: no SpringBoard, no overlay window, no device. Never installs
@@ -28,7 +31,7 @@ stamp() { echo "==> [$(date -u +%H:%M:%S)] $*"; }
 
 OUT=${1:-build-preview}
 APP="$OUT/HaloNexusPreview.app"
-rm -rf "$OUT"; mkdir -p "$APP" "$OUT/screenshots"
+rm -rf "$OUT"; mkdir -p "$APP"
 VERSION=$(sed -n 's/^Version: *//p' control | tr '~' '-')
 ARCH=$(uname -m); [ "$ARCH" = x86_64 ] || ARCH=arm64
 NEXUS_VERSION=$(sed -n 's/^Version: *//p' "$NEXUS_DIR/control")
@@ -87,11 +90,7 @@ limit 180 xcrun simctl launch --console-pty --terminate-running-process "$UDID" 
 while IFS= read -r line; do
 	printf '%s\n' "$line" | tee -a "$LOG"
 	case "$line" in
-	*HALO-PREVIEW-STATE*)
-		name=$(printf '%s' "$line" | sed -E 's/.*HALO-PREVIEW-STATE ([^ ]+).*/\1/')
-		xcrun simctl io "$UDID" screenshot --type png "$OUT/screenshots/$name.png" >/dev/null 2>&1 || echo "screenshot $name failed";;
-	*HALO-PREVIEW-DONE*)
-		break;;
+	*HALO-PREVIEW-DONE*) break;;
 	esac
 done || true
 sleep 1
@@ -102,6 +101,6 @@ xcrun simctl shutdown "$UDID" 2>/dev/null || true
 
 grep -q 'HALO-PREVIEW-DONE failures=0' "$LOG" || status=1
 grep -q 'HALO-PREVIEW-CHECK FAIL' "$LOG" && status=1
-stamp "checks: $(grep -c 'HALO-PREVIEW-CHECK PASS' "$LOG" || true) passed, $(grep -c 'HALO-PREVIEW-CHECK FAIL' "$LOG" || true) failed; screenshots: $(ls "$OUT/screenshots" | wc -l | tr -d ' ')"
-ls -la "$OUT" "$OUT/screenshots"
+stamp "checks: $(grep -c 'HALO-PREVIEW-CHECK PASS' "$LOG" || true) passed, $(grep -c 'HALO-PREVIEW-CHECK FAIL' "$LOG" || true) failed"
+ls -la "$OUT"
 exit "$status"

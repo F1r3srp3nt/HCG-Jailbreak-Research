@@ -38,10 +38,26 @@ typedef NS_ENUM(NSInteger, HaloPickerSection) {
 
 #pragma mark Installed apps (LaunchServices, read-only)
 
+/// An object-returning private method; nil if it is missing or does not return an object.
 static id HaloSend(id target, NSString *selector) {
     SEL sel = NSSelectorFromString(selector);
     if (!target || ![target respondsToSelector:sel]) return nil;
+    const char *type = [target methodSignatureForSelector:sel].methodReturnType;
+    if (!type || type[0] != '@') return nil;
     return ((id(*)(id, SEL))objc_msgSend)(target, sel);
+}
+
+/// A BOOL-returning private method, called with the right return type (never through an
+/// id-returning cast: YES would come back as the pointer 0x1). Returns NO if the method is
+/// missing or does not return a BOOL; *value receives the result.
+static BOOL HaloSendBool(id target, NSString *selector, BOOL *value) {
+    SEL sel = NSSelectorFromString(selector);
+    if (!target || ![target respondsToSelector:sel]) return NO;
+    NSMethodSignature *signature = [target methodSignatureForSelector:sel];
+    const char *type = signature.methodReturnType;
+    if (!type || (strcmp(type, @encode(BOOL)) != 0 && strcmp(type, @encode(bool)) != 0)) return NO;
+    *value = ((BOOL(*)(id, SEL))objc_msgSend)(target, sel);
+    return YES;
 }
 
 static NSString *HaloString(id value) {
@@ -54,8 +70,8 @@ static NSDictionary<NSString *, NSString *> *HaloEntry(id app) {
     if (!identifier.length || ![[HaloPreferences sanitizedBundleIdentifier:identifier] isEqualToString:identifier]) return nil;
     NSArray *tags = HaloSend(app, @"appTags");
     if ([tags isKindOfClass:[NSArray class]] && [tags containsObject:@"hidden"]) return nil; // not on the Home Screen
-    id prohibited = HaloSend(app, @"isLaunchProhibited");
-    if ([prohibited isKindOfClass:[NSNumber class]] && [prohibited boolValue]) return nil;
+    BOOL prohibited = NO;
+    if (HaloSendBool(app, @"isLaunchProhibited", &prohibited) && prohibited) return nil;
     NSString *name = HaloString(HaloSend(app, @"localizedName")) ?: HaloString(HaloSend(app, @"itemName"));
     if (!name.length) return nil;
     return @{@"id" : identifier, @"name" : name};
@@ -103,8 +119,8 @@ static NSDictionary<NSString *, NSString *> *HaloEntry(id app) {
         SEL sel = NSSelectorFromString(@"applicationProxyForIdentifier:");
         if ([proxyClass respondsToSelector:sel]) {
             id proxy = ((id(*)(id, SEL, id))objc_msgSend)(proxyClass, sel, identifier);
-            id installed = HaloSend(proxy, @"isInstalled");
-            if ([installed isKindOfClass:[NSNumber class]] && ![installed boolValue]) return nil;
+            BOOL installed = YES;
+            if (HaloSendBool(proxy, @"isInstalled", &installed) && !installed) return nil;
             NSString *name = HaloString(HaloSend(proxy, @"localizedName"));
             if (name.length) return name;
         }

@@ -1,0 +1,172 @@
+# HCG Halo × HCG Nexus — PREVIEW evidence (iOS Simulator).
+#
+# Builds a simulator app from HCG Nexus's real panel code and real border
+# definition (fetched from the public HCG-Nexus repository at `nexus_ref`)
+# plus HCG Halo's real link and renderer, runs a fixed open / workspace /
+# preset / close / reverse / disable script, and uploads the video and the
+# console log with its structural checks (stills are taken from the video).
+#
+# A second step builds both packages' REAL Settings bundles for the simulator and
+# drives both entry points (Settings › HCG Nexus › Appearance › Halo border, and
+# Settings › HCG Halo › Nexus Panel Border) with HCG Nexus alone, both, and a
+# malformed or missing Nexus definition (scripts/settings-preview.sh).
+#
+# A third step runs HCG Halo's real SpringBoard controller and overlay window in a
+# stand-in SpringBoard to exercise "Show Halo on" (scripts/surfaces-preview.sh).
+#
+# This is preview evidence only: no SpringBoard, no Settings app, no device, no
+# package is built or published. It never installs anything on a phone.
+name: HCG Halo × Nexus preview
+
+on:
+  push:
+    paths:
+      - "HCGHalo/preview/**"
+      - "HCGHalo/scripts/nexus-preview.sh"
+      - "HCGHalo/scripts/settings-preview.sh"
+      - "HCGHalo/preferences/**"
+      - "HCGHalo/src/HaloNexus*"
+      - "HCGHalo/src/HaloPanelBorderView.*"
+      - "HCGHalo/src/HaloController.m"
+      - "HCGHalo/src/HaloEdgeWindow.*"
+      - "HCGHalo/src/HaloScreen.*"
+      - "HCGHalo/src/HaloConfig.*"
+      - "HCGHalo/src/HaloProfiles.*"
+      - "HCGHalo/scripts/surfaces-preview.sh"
+      - ".github/workflows/hcg-halo-nexus-preview.yml"
+  workflow_dispatch:
+    inputs:
+      nexus_ref:
+        description: "HCG-Nexus branch, tag or commit to preview against"
+        default: "claude/nexus-0.3.2-integrations"
+      only_settings:
+        description: "Run only the Settings entry-point step"
+        type: boolean
+        default: false
+      only_surfaces:
+        description: "Run only the Show Halo on surfaces step"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        working-directory: HCGHalo
+    env:
+      NEXUS_REF: ${{ inputs.nexus_ref || 'claude/nexus-0.3.2-integrations' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch HCG Nexus (public repository, read-only)
+        run: |
+          git init -q "$RUNNER_TEMP/hcg-nexus"
+          git -C "$RUNNER_TEMP/hcg-nexus" fetch -q --depth 1 https://github.com/F1r3srp3nt/HCG-Nexus.git "$NEXUS_REF"
+          git -C "$RUNNER_TEMP/hcg-nexus" checkout -q FETCH_HEAD
+          echo "HCG Nexus $NEXUS_REF = $(git -C "$RUNNER_TEMP/hcg-nexus" rev-parse HEAD)"
+          echo "NEXUS_DIR=$RUNNER_TEMP/hcg-nexus" >> "$GITHUB_ENV"
+
+      # Only for the Preferences framework headers (vendor/include); the same
+      # pinned commit as the HCG Halo build.
+      - name: Install Theos (pinned)
+        env:
+          THEOS_COMMIT: 8167f59de02fd32cf45b16bfcb1330dfa5c9974c
+        run: |
+          git init -q "$HOME/theos"
+          git -C "$HOME/theos" fetch -q --depth 1 https://github.com/theos/theos.git "$THEOS_COMMIT"
+          git -C "$HOME/theos" checkout -q FETCH_HEAD
+          git -C "$HOME/theos" submodule update -q --init --recursive --depth 1
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
+      - name: Simulator report
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+      - name: Build and run the panel preview, recording video
+        if: ${{ !inputs.only_settings && !inputs.only_surfaces }}
+        timeout-minutes: 20
+        run: |
+          {
+            echo "PREVIEW EVIDENCE — iOS Simulator, not a device result."
+            echo "HCG Halo commit:  $(git rev-parse HEAD)"
+            echo "HCG Nexus ref:    $NEXUS_REF"
+            echo "HCG Nexus commit: $(git -C "$NEXUS_DIR" rev-parse HEAD)"
+            echo "Workflow run:     $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/PROVENANCE.txt"
+          status=0
+          scripts/nexus-preview.sh "$RUNNER_TEMP/halo-nexus-preview" || status=$?
+          cp "$RUNNER_TEMP/PROVENANCE.txt" "$RUNNER_TEMP/halo-nexus-preview/" || true
+          echo "PANEL_PREVIEW_STATUS=$status" >> "$GITHUB_ENV"
+
+      - name: Settings entry points (both real Settings bundles), recording video
+        if: ${{ always() && !inputs.only_surfaces }}
+        timeout-minutes: 20
+        run: |
+          [ -f "$RUNNER_TEMP/PROVENANCE.txt" ] || {
+            echo "PREVIEW EVIDENCE — iOS Simulator, not a device result."
+            echo "HCG Halo commit:  $(git rev-parse HEAD)"
+            echo "HCG Nexus commit: $(git -C "$NEXUS_DIR" rev-parse HEAD)"
+            echo "Workflow run:     $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/PROVENANCE.txt"
+          status=0
+          scripts/settings-preview.sh "$RUNNER_TEMP/halo-settings-preview" || status=$?
+          cp "$RUNNER_TEMP/PROVENANCE.txt" "$RUNNER_TEMP/halo-settings-preview/" || true
+          echo "SETTINGS_PREVIEW_STATUS=$status" >> "$GITHUB_ENV"
+          echo "panel preview: ${PANEL_PREVIEW_STATUS:-?}, settings preview: $status"
+
+      # HCG Halo's real SpringBoard controller, overlay window and renderer in a
+      # stand-in SpringBoard: app switching, lock, wake and screen-off under every
+      # "Show Halo on" choice (scripts/surfaces-preview.sh). No Nexus needed.
+      - name: Show Halo on surfaces (real controller, stand-in SpringBoard), recording video
+        if: ${{ always() && !inputs.only_settings }}
+        timeout-minutes: 20
+        run: |
+          {
+            echo "PREVIEW EVIDENCE — iOS Simulator, stand-in SpringBoard, not a device result."
+            echo "HCG Halo commit:  $(git rev-parse HEAD)"
+            echo "Workflow run:     $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/PROVENANCE-surfaces.txt"
+          status=0
+          scripts/surfaces-preview.sh "$RUNNER_TEMP/halo-surfaces-preview" || status=$?
+          cp "$RUNNER_TEMP/PROVENANCE-surfaces.txt" "$RUNNER_TEMP/halo-surfaces-preview/PROVENANCE.txt" || true
+          echo "SURFACES_PREVIEW_STATUS=$status" >> "$GITHUB_ENV"
+
+      - name: Result
+        if: always()
+        run: |
+          echo "panel: ${PANEL_PREVIEW_STATUS:-skipped}  settings: ${SETTINGS_PREVIEW_STATUS:-skipped}  surfaces: ${SURFACES_PREVIEW_STATUS:-skipped}"
+          for s in "${PANEL_PREVIEW_STATUS:-0}" "${SETTINGS_PREVIEW_STATUS:-0}" "${SURFACES_PREVIEW_STATUS:-0}"; do
+            [ "$s" = 0 ] || exit 1
+          done
+
+      - name: Upload preview evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: halo-nexus-preview-evidence
+          path: |
+            ${{ runner.temp }}/halo-nexus-preview/*.mp4
+            ${{ runner.temp }}/halo-nexus-preview/console.log
+            ${{ runner.temp }}/halo-nexus-preview/inputs.sha256
+            ${{ runner.temp }}/halo-nexus-preview/simulator.txt
+            ${{ runner.temp }}/halo-nexus-preview/PROVENANCE.txt
+            ${{ runner.temp }}/halo-settings-preview/*.mp4
+            ${{ runner.temp }}/halo-settings-preview/console.log
+            ${{ runner.temp }}/halo-settings-preview/inputs.sha256
+            ${{ runner.temp }}/halo-settings-preview/*.txt
+            ${{ runner.temp }}/halo-settings-preview/*.log
+            ${{ runner.temp }}/halo-settings-preview/*.ips
+            ${{ runner.temp }}/halo-surfaces-preview/*.mp4
+            ${{ runner.temp }}/halo-surfaces-preview/console.log
+            ${{ runner.temp }}/halo-surfaces-preview/*.txt
+            ${{ runner.temp }}/halo-surfaces-preview/*.sha256
+            ${{ runner.temp }}/halo-surfaces-preview/*.ips
+          retention-days: 30
+          if-no-files-found: warn

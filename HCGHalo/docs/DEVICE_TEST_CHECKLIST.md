@@ -1,0 +1,175 @@
+# HCG Halo 0.1.0~beta1: device test checklist
+
+**First device: iPhone 11 Pro Max.** Its iOS version, build and jailbreak are **not confirmed**. Fill in step 0
+first. Do not install until the step 0 report has been reviewed. Record installation and runtime as **separate**
+results: a successful install says nothing about runtime.
+
+Nothing in this checklist has been done yet.
+
+## 0. Before installing: confirm the device (no changes made)
+
+1. Copy `scripts/device-info.sh` to the phone and run it over SSH as `mobile`:
+   `sh device-info.sh | tee halo-device-report.txt`. It is read-only.
+2. Send the full report for review. Fill in:
+
+| Field | Value |
+|---|---|
+| Date | |
+| Tester | |
+| Model and identifier (expect iPhone 11 Pro Max, `iPhone12,5`) | |
+| iOS version (build) | |
+| Jailbreak, version, rootless? | |
+| Injector (ElleKit version) and PreferenceLoader version | |
+| Package manager and version | |
+| Other SpringBoard tweaks installed | |
+| Package file and SHA-256 (must match the import manifest) | |
+
+**Go only if** every pre-check passes, the device is rootless (`/var/jb`), `dpkg --print-architecture` is
+`iphoneos-arm64`, and the iOS version is ≥ 15.0. Have recovery ready (`RECOVERY.md`) and a way in over SSH.
+
+## A. Installation (record as `stage = "install"`)
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| A1 | Add `https://repo.hakmicapitalgroup.com/repo/candidate/` and refresh | source loads; HCG Halo (Beta) listed | |
+| A2 | Open the depiction | version `0.1.0~beta1`; **free**, no sign-in or payment; beta / not device-tested labels | |
+| A3 | Install; accept only the expected dependencies (`mobilesubstrate` provider, `preferenceloader`, `firmware`) | dpkg finishes without errors. **Save the full log** | |
+| A4 | Before respringing, the Home Screen is unchanged | Halo is off after installation | |
+| A5 | Respring | SpringBoard returns normally | |
+
+## B. Off by default
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| B1 | Settings › HCG Halo opens | dark pane, preview, version `0.1.0-beta1`, build ID shown | |
+| B2 | Status | *Off*. Footer shows "Reported by SpringBoard at …". Rendering: *Not drawing* | |
+| B3 | Home Screen | no border | |
+
+## C. Static mode on the Home Screen
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| C1 | Turn **Enable HCG Halo** on and go to the Home Screen | a static cyan → violet gradient border appears **without a respring** | |
+| C2 | Corners and notch | the line follows all four corners and wraps the notch. Note any gap or overlap, with screenshots | |
+| C3 | Calibration (`PROFILES.md`) | values that make it exact: corner ___, notch width ___, depth ___, position ___ | |
+| C4 | Touch: open apps, open and drag folders, enter jiggle mode, swipe pages, tap icons at the very edge and corners, use the dock | everything works exactly as without Halo | |
+| C5 | System gestures: Home swipe, app switcher, Notification Centre, Control Centre, Spotlight, Today View, App Library | unchanged. Note where the border appears (Today View, App Library and folders are in the Home Screen window) | |
+| C6 | VoiceOver on: swipe through the Home Screen | the border is never announced or focused | |
+| C7 | Settings status | *Active*. Rendering *Hidden: app in front* (Settings is an app). App detection: *active (frontDisplayDidChange: hook)* | |
+
+## D. Visibility and power
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| D1 | Open an app, then return Home | border hidden in the app, back on the Home Screen | |
+| D2 | Lock, then unlock | not shown on the Lock Screen; back after unlock | |
+| D3 | Screen off for 30 s, on | nothing visible while off; resumes | |
+| D4 | Reduce Motion on (Accessibility › Motion), with an animated mode | border becomes static immediately; animates again when off | |
+| D5 | Low Power Mode with each policy (Static, Keep Animating, Hide) | behaves as named | |
+| D6 | Rotate (if the Home Screen rotates on this device) | the border follows the physical edges; the notch stays at the physical top | |
+
+## E. Modes and settings (each applies without a respring)
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| E1 | Breathing | smooth pulse; speed slider changes the pace | |
+| E2 | Colour Flow | colours travel around; direction switch reverses them; colour spacing repeats the palette | |
+| E3 | Orbit, with 1–4 segments and the length slider | segments with comet tails travel smoothly, with no jump at the loop point | |
+| E4 | Sci-Fi Circuit | dim trace, drifting segments, fast pulses, blinking nodes at corners and notch | |
+| E5 | Colours: single, multiple, gradient; add, remove, reorder, picker; quick palettes | border and preview update | |
+| E6 | Brightness, thickness, glow, inset | update live | |
+| E7 | Presets: apply a built-in; save, rename, duplicate and delete your own | as described. The switch, profile and calibration are unchanged | |
+| E8 | Reset Appearance / Reset Calibration | only their own settings reset | |
+| E9 | Device Profile page | "Automatic — Coming soon" and planned models cannot be selected; iPhone 11 Pro Max is ticked | |
+
+## F. Stability (record only what is observed; nothing is claimed in advance)
+
+| # | Step | Result |
+|---|---|---|
+| F1 | 15 minutes of normal use with an animated mode: any SpringBoard crash, freeze or glitch? | |
+| F2 | Battery and thermals: anything noticeable? (Not measured before this test) | |
+| F3 | Crash logs (Analytics Data, `SpringBoard-…`) collected if anything went wrong | |
+
+## G. Recovery and removal
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| G1 | Enable off | border gone immediately | |
+| G2 | Kill switch: `touch …/com.hakmicapitalgroup.halo.disabled`, respring | no border even with Enable on; status *Kill switch on*. Then `rm` and respring | |
+| G3 | Remove the package, respring | Home Screen stock; Settings entry gone; settings file kept | |
+| G4 | Reinstall, then purge | settings restored after reinstall; purge deletes only Halo's own preference files | |
+
+## HCG Nexus panel border (0.2.0~beta1; unchanged in 0.3.0~beta1)
+
+This is for 0.2.0~beta1 with HCG Nexus **0.3.1~beta1**, both from HCG Repo Candidate. Install them in either order,
+then respring once. Nothing is installed automatically. Keep section G at hand. The 0.1.0~beta1 package is the
+known-good baseline: reinstall it to go back.
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| N0 | Halo 0.2.0~beta1 alone (no Nexus), target unchanged | Screen edge exactly as on 0.1.0~beta1; Border Target footer: *Requires compatible HCG Nexus* | |
+| N1 | Nexus 0.3.1~beta1 alone (Halo removed) | Normal Nexus panel; Settings › HCG Nexus › Appearance › Halo border explains HCG Halo 0.2.0~beta1+ is needed | |
+| N2 | Both installed, respring. Settings › HCG Halo › Nexus Panel Border | *HCG Nexus 0.3.1~beta1 · compatible*; preview shows the panel outline; *Replay Opening* traces it | |
+| N3 | Same page from Settings › HCG Nexus › Appearance › Halo border | The same page and the same values | |
+| N4 | Enable both; Border Target **HCG Nexus Panel**; open the panel | Light trace once around the panel, then Nexus Signature; no border on the screen edge; panel controls all respond | |
+| N5 | Close by outside tap, then by the close button | The border fades with the panel; nothing is left on screen | |
+| N6 | Start dragging the handle and let go before it opens (cancel); open and close quickly several times | No stray or orphaned border; the trace stops when the opening reverses | |
+| N7 | Switch workspace in the panel | One soft pulse, no flash | |
+| N8 | Rotate inside a landscape app with the panel open; type in a panel text field (keyboard) | The border follows the panel's new size and position | |
+| N9 | Presets Reactor and Hologram; then each of the five modes; Thickness, Glow, Speed, Direction | Applies at once, without a respring; Reset Nexus Lighting restores Nexus Signature and leaves the screen edge unchanged | |
+| N10 | Border Target **Both** | Screen edge on the Home Screen and the panel border while the panel is open | |
+| N11 | Reduce Motion on | No trace; static border; Nexus crossfades | |
+| N12 | Reduce Transparency on | Panel border without glow | |
+| N13 | Low Power Mode with *Hide Border* | Panel border hidden | |
+| N14 | Lock the phone with the panel open; unlock | Panel and border gone on lock; nothing left after unlock | |
+| N15 | Turn Enable HCG Halo off with the panel open | The border disappears at once; the panel is unaffected | |
+| N16 | Turn Enable HCG Nexus off | Panel and border gone; screen edge (if targeted) unaffected | |
+| N17 | Halo's kill switch (G2) with target Both | No border anywhere | |
+
+## Use HCG Halo border from HCG Nexus (0.3.1~beta1 with HCG Nexus 0.3.2~beta1)
+
+HCG Halo 0.3.1~beta1 and HCG Nexus 0.3.2~beta1, either install order, respring once. The switch is in Settings ›
+HCG Nexus › Appearance and in the panel's Settings › *HCG Halo border*. It must **never** turn the screen edge on or
+off.
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| N18 | HCG Halo **off** (Enable off). Nexus › Appearance | *Use HCG Halo border* off, Status **Disabled**. Turn it on: Status **Ready**; HCG Halo shows Enable on with Border Target *HCG Nexus Panel*; **no screen-edge border** on the Home Screen | |
+| N19 | Open the panel; its Settings › HCG Halo border | Border drawn around the panel; Status **Active**. Close the panel: border gone; Settings › HCG Nexus shows **Ready** | |
+| N20 | Turn *Use HCG Halo border* off | Panel border gone; HCG Halo Enable off again; screen edge still dark | |
+| N21 | HCG Halo screen edge on (Target *Screen Edge*, any *Show Halo on*): turn the switch on, then off | On: Target *Both*, the screen edge unchanged (same Show Halo on). Off: Target *Screen Edge* again, unchanged | |
+| N22 | Kill switch (G2) present, respring: try the switch | Refused with *stopped by its kill switch*; nothing changes. Remove the kill switch, respring: the switch works again | |
+| N23 | Remove HCG Halo, respring | Nexus › Appearance: Status **Not installed**, switch disabled; the panel keeps Nexus's own outline | |
+
+## Show Halo on and screen geometry (0.3.0~beta1)
+
+Halo 0.3.0~beta1 from HCG Repo Candidate, alone or with HCG Nexus 0.3.1~beta1. Respring once after installing.
+Every change below applies **without** a respring. Section G still applies: the overlay window is removed at once by
+turning Enable off, and the kill switch stops everything.
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| S0 | Update from 0.2.0~beta1, respring; open Settings › HCG Halo | **Show Halo on: Home Screen Only**; the border behaves exactly as before | |
+| S1 | Home Screen Only: open an app, return; lock, wake, unlock | Hidden in the app and while locked; back on the Home Screen | |
+| S2 | **Always**: open several apps; Control Center; App Switcher | Border over apps; touches, gestures, keyboard and the status bar unchanged; note what it does over Control Center and the App Switcher | |
+| S3 | Always: lock (side button), wake with the screen on the Lock Screen | Border on the lit Lock Screen; the Lock Screen still works (notifications, torch, camera, Face ID) | |
+| S4 | Always: let the screen go black (lock and wait) | Nothing visible; on wake it returns without a flash or delay | |
+| S5 | **Always Except When Screen Is Off**: repeat S3–S4 | The same as Always (Settings says they behave identically on this iPhone) | |
+| S6 | **Always Except Lock Screen**: apps, then lock and wake | Border on the Home Screen and in apps; hidden on the Lock Screen and while dark | |
+| S7 | Always Except Lock Screen: Notification Centre pulled down while unlocked | Record what happens (the phone isn't locked, so the border may stay) | |
+| S8 | Always Except Lock Screen: Face ID unlock, but stay on the Lock Screen | Record whether the border appears before you swipe up | |
+| S9 | **Selected App Only** › Choose App: the list shows the installed apps with icons; choose one | Choice applies at once; border only while that app is in front | |
+| S10 | Selected App Only: switch apps with the home bar gesture, the App Switcher, and a notification banner; lock in the app | Border only while the chosen app is in front and unlocked; gone on switching or locking | |
+| S11 | Low Power Mode and Reduce Motion under Always | The Animation settings apply as on the Home Screen (static or hidden) | |
+| S12 | Settings › HCG Halo › Device Profile › This device; Status detail | Screen line shows points, pixels, native scale and `iPhone12,5`; the fit sentence matches the Display Zoom setting | |
+| S13 | Display Zoom **Standard** (414 × 896 pt): Static, Thickness 1–2, Glow 0, Inset 0 | Corners and notch line up; record any calibration needed | |
+| S14 | Display Zoom **Larger Text** (375 × 812 pt), same settings, respring after the zoom change | *Display Zoom … scales … by 0.906*; corners and notch line up as in S13 (no calibration change needed) | |
+| S15 | Screenshot with Always on | Record whether the border is in the screenshot | |
+| S16 | Border Target **HCG Nexus Panel** with Show Halo on Always | No screen-edge border anywhere; the panel border follows the panel only | |
+
+## Recording
+
+Recording in HCG Repo is done by HCG Repo's maintainers, from this checklist
+(`distribution/handoff/0.1.0-beta1/HCG-REPO-CHANGES.md` shows the format). A runtime **pass** needs sections A–E
+and G to pass. Any SpringBoard crash, a touch or gesture regression, or an accessibility problem is a **fail**
+(or a *partial*, with the reason) and goes in Known issues. Then update `PROFILES.md` as it describes.

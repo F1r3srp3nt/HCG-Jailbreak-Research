@@ -1,0 +1,12 @@
+#!/bin/sh
+# HCG Halo — dpkg post-removal script.
+# Only on "purge" (an explicit request to delete configuration) does it remove
+# HCG Halo's OWN preference files. Plain "remove" (the Sileo/Zebra default)
+# keeps your settings and presets, so a reinstall restores them.
+set -e
+if [ "$1" = "purge" ]; then
+	rm -f /var/mobile/Library/Preferences/com.hakmicapitalgroup.halo.plist \
+	      /var/mobile/Library/Preferences/com.hakmicapitalgroup.halo.status.plist \
+	      /var/mobile/Library/Preferences/com.hakmicapitalgroup.halo.disabled
+fi
+exit 0

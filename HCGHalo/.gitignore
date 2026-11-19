@@ -1,0 +1,10 @@
+.theos/
+/packages/
+*.deb
+.DS_Store
+*.newabi
+*.allemande.log
+tests/build/
+__pycache__/
+build-logs/
+*.d

@@ -29,6 +29,7 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <objc/message.h>
 #import <objc/runtime.h>
 
 #import "PortalCompanions.h"
@@ -214,24 +215,24 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
     return root;
 }
 
-/// Every label Settings is showing on screen (row titles, values and footers), top to bottom.
+/// What the REAL Settings controller displays in its Status and "On the Lock Screen" rows and
+/// in the status footer (the same getter methods and specifier Settings' table cells use).
 - (NSString *)settingsText:(UIViewController *)root {
-    UITableView *table = [root valueForKey:@"table"];
-    [table layoutIfNeeded];
-    NSMutableArray<UILabel *> *labels = [NSMutableArray array];
-    NSMutableArray<UIView *> *stack = [NSMutableArray arrayWithObject:table];
-    while (stack.count) {
-        UIView *v = stack.lastObject;
-        [stack removeLastObject];
-        if (v.hidden) continue;
-        if ([v isKindOfClass:[UILabel class]] && ((UILabel *)v).text.length) [labels addObject:(UILabel *)v];
-        [stack addObjectsFromArray:v.subviews];
+    [root valueForKey:@"specifiers"]; // loads Root.plist and fills the dynamic footers
+    NSMutableArray *parts = [NSMutableArray array];
+    for (NSString *getter in @[ @"engineStatus:", @"visibilityStatus:" ]) {
+        SEL sel = NSSelectorFromString(getter);
+        if ([root respondsToSelector:sel]) {
+            id value = ((id(*)(id, SEL, id))objc_msgSend)(root, sel, nil);
+            if ([value isKindOfClass:[NSString class]]) [parts addObject:value];
+        }
     }
-    [labels sortUsingComparator:^NSComparisonResult(UILabel *a, UILabel *b) {
-        CGFloat ya = [a convertPoint:CGPointZero toView:table].y, yb = [b convertPoint:CGPointZero toView:table].y;
-        return ya < yb ? NSOrderedAscending : ya > yb ? NSOrderedDescending : NSOrderedSame;
-    }];
-    return [[labels valueForKey:@"text"] componentsJoinedByString:@" | "];
+    id group = ((id(*)(id, SEL, id))objc_msgSend)(root, NSSelectorFromString(@"specifierForID:"), @"statusDetailGroup");
+    id footer = [group respondsToSelector:NSSelectorFromString(@"propertyForKey:")]
+                    ? ((id(*)(id, SEL, id))objc_msgSend)(group, NSSelectorFromString(@"propertyForKey:"), @"footerText")
+                    : nil;
+    if ([footer isKindOfClass:[NSString class]]) [parts addObject:footer];
+    return [parts componentsJoinedByString:@" | "];
 }
 
 - (BOOL)orbClearOfObstacles {

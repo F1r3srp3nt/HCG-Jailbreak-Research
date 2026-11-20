@@ -5,6 +5,8 @@
 
 #import "PortalStandIns.h"
 
+#import <objc/runtime.h>
+
 #include <notify.h>
 
 void PSIPostState(const char *name, uint64_t value) {
@@ -79,6 +81,19 @@ static void PSIPlatter(UIView *v, CGFloat radius) {
     v.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.12].CGColor;
 }
 
+static NSUInteger gOriginalWillAppearCalls;
+
+void PSIHookMessageEx(Class cls, SEL selector, IMP replacement, IMP *original) {
+    Method inherited = class_getInstanceMethod(cls, selector);
+    if (!inherited) return;
+    if (class_addMethod(cls, selector, replacement, method_getTypeEncoding(inherited))) {
+        if (original) *original = method_getImplementation(inherited); // the superclass's
+    } else {
+        IMP previous = method_setImplementation(class_getInstanceMethod(cls, selector), replacement);
+        if (original) *original = previous;
+    }
+}
+
 @implementation CSCoverSheetViewController {
     CSMainPageContentViewController *_main;
     CSComplicationContainerViewController *_widgets;
@@ -90,6 +105,15 @@ static void PSIPlatter(UIView *v, CGFloat radius) {
     UILabel *_caption;
     NSUInteger _notificationCount;
     BOOL _showsMedia;
+}
+
++ (NSUInteger)originalWillAppearCalls {
+    return gOriginalWillAppearCalls;
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    gOriginalWillAppearCalls++;
+    [super viewWillAppear:animated];
 }
 
 - (instancetype)init {
@@ -277,12 +301,23 @@ static void PSIPlatter(UIView *v, CGFloat radius) {
 
 #pragma mark - Lock Screen manager
 
+static NSUInteger gLockScreenManagerCalls, gPresentationManagerCalls;
+
 @implementation SBLockScreenManager {
     void (^_pending)(BOOL);
     UIView *_sheet;
 }
 
++ (NSUInteger)sharedInstanceCalls {
+    return gLockScreenManagerCalls;
+}
+
 + (instancetype)sharedInstance {
+    gLockScreenManagerCalls++;
+    return [self standIn];
+}
+
++ (instancetype)standIn {
     static SBLockScreenManager *shared;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
@@ -368,7 +403,14 @@ static void PSIPlatter(UIView *v, CGFloat radius) {
 @end
 
 @implementation SBCoverSheetPresentationManager
++ (NSUInteger)sharedInstanceCalls {
+    return gPresentationManagerCalls;
+}
 + (instancetype)sharedInstance {
+    gPresentationManagerCalls++;
+    return [self standIn];
+}
++ (instancetype)standIn {
     static SBCoverSheetPresentationManager *shared;
     static dispatch_once_t once;
     dispatch_once(&once, ^{

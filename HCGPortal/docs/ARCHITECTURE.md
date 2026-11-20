@@ -30,6 +30,16 @@ SpringBoard process                                              Settings app (P
 Preferences: CFPreferences domain `com.hakmicapitalgroup.portal`. Status: `com.hakmicapitalgroup.portal.status`.
 Both processes compile the same validator (`PortalPreferences.m`) and the same rules (`PortalCore.c`).
 
+## Startup (0.1.0~beta2)
+
+The dylib has no load-time dependency beyond system frameworks (no Substrate load command; `validate.sh` §5 enforces
+it). Its constructor only queues `PortalControllerBootstrap` on the main queue. The bootstrap reads Portal's own
+preferences, checks the kill switch and the launch guard, registers Darwin observers and writes a status that is built
+from Portal's own state and installed files only. Nothing in SpringBoard's Lock Screen (`SBLockScreenManager`,
+`SBCoverSheetPresentationManager`, the Cover Sheet) and no companion code is called until Portal is enabled **and**
+SpringBoard has finished launching. Then `MSHookMessageEx` is resolved with `dlsym`; if it is missing, Portal stays
+inactive (*Incompatible: inactive*, with the reason in Settings) and nothing is hooked or attached.
+
 ## Where the portal lives
 
 `PortalHost` uses, in order, `CSCoverSheetViewController.mainPageContentViewController.view` (the Lock Screen's main

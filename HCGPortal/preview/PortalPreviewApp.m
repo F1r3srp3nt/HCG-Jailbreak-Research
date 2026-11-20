@@ -44,6 +44,7 @@
 #include <notify.h>
 
 static int gFailures = 0;
+static IMP gLaunchWillAppearIMP; // CSCoverSheetViewController's own viewWillAppear: before anything could hook it
 static NSMutableArray<NSString *> *gLaunches;
 
 static void Say(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
@@ -122,7 +123,7 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
 }
 
 - (void)setLocked:(BOOL)locked {
-    [SBLockScreenManager sharedInstance].uiLocked = locked;
+    [SBLockScreenManager standIn].uiLocked = locked;
     PSIPostState(PORTAL_LOCKSTATE_NOTIFICATION, locked ? 1 : 0);
 }
 
@@ -131,7 +132,7 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
 }
 
 - (void)showCoverSheet:(BOOL)show {
-    [SBCoverSheetPresentationManager sharedInstance].visible = show;
+    [SBCoverSheetPresentationManager standIn].visible = show;
     if (show) {
         _window.hidden = NO;
         [_coverSheet beginAppearanceTransition:YES animated:NO];
@@ -195,6 +196,42 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
     [@"" writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:NULL];
 }
 
+/// Loads the REAL Settings bundle once and shows a fresh root page.
+- (UIViewController *)showSettingsRoot {
+    static BOOL loaded;
+    NSBundle *bundle = [NSBundle bundleWithPath:[NSBundle.mainBundle pathForResource:@"HCGPortalPrefs" ofType:@"bundle"]];
+    if (!loaded) {
+        void *prefs = dlopen("/System/Library/PrivateFrameworks/Preferences.framework/Preferences", RTLD_NOW | RTLD_GLOBAL);
+        Check(prefs != NULL, @"Preferences.framework loaded from the Simulator runtime");
+        NSError *error = nil;
+        Check([bundle loadAndReturnError:&error], [NSString stringWithFormat:@"Settings bundle loads (%@)", error.localizedDescription ?: @"ok"]);
+        loaded = YES;
+    }
+    UIViewController *root = [[bundle.principalClass alloc] init];
+    [self.settingsNav setViewControllers:@[ root ] animated:NO];
+    self.settingsWindow.hidden = NO;
+    [root loadViewIfNeeded];
+    return root;
+}
+
+/// The text of a specifier's cell, as Settings shows it (value and footer).
+- (NSString *)settingsText:(UIViewController *)root {
+    NSMutableArray *parts = [NSMutableArray array];
+    UITableView *table = [root valueForKey:@"table"];
+    [table layoutIfNeeded];
+    for (NSInteger section = 0; section < table.numberOfSections && section < 3; section++) {
+        for (NSInteger row = 0; row < [table numberOfRowsInSection:section]; row++) {
+            UITableViewCell *cell = [table.dataSource tableView:table cellForRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:section]];
+            if (cell.textLabel.text) [parts addObject:cell.textLabel.text];
+            if (cell.detailTextLabel.text) [parts addObject:cell.detailTextLabel.text];
+        }
+        NSString *footer = [table.dataSource respondsToSelector:@selector(tableView:titleForFooterInSection:)]
+                               ? [table.dataSource tableView:table titleForFooterInSection:section] : nil;
+        if (footer) [parts addObject:footer];
+    }
+    return [parts componentsJoinedByString:@" | "];
+}
+
 - (BOOL)orbClearOfObstacles {
     PortalOverlayView *o = [self overlay];
     CGRect orb = [o convertRect:o.orbFrame toView:_window];
@@ -239,8 +276,62 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
     STEP(1.0, {
         Check([self overlay] == nil, @"off after installation: no portal on the Lock Screen");
         Check([Status(PortalStatusKeyState) isEqualToString:PortalEngineStateDisabled], @"engine state: disabled");
+        Check(!PortalPreferences.loadSettings.enabled, @"fresh install: Enable defaults to off");
+        // The bootstrap ran from the real Tweak.m constructor and wrote its status; Settings asks again.
+        notify_post(PortalStatusRequestNotification.UTF8String);
+        WAIT_UNTIL(1.5, NO);
+        Check(SBLockScreenManager.sharedInstanceCalls == 0 && SBCoverSheetPresentationManager.sharedInstanceCalls == 0,
+              [NSString stringWithFormat:@"while off: SpringBoard's Lock Screen singletons never touched (SBLockScreenManager %lu, "
+                                         @"SBCoverSheetPresentationManager %lu calls)",
+                                         (unsigned long)SBLockScreenManager.sharedInstanceCalls,
+                                         (unsigned long)SBCoverSheetPresentationManager.sharedInstanceCalls]);
+        Check([Status(PortalStatusKeyHooks) hasPrefix:@"not installed"], @"while off: no hook installed");
+        Check(class_getMethodImplementation([CSCoverSheetViewController class], @selector(viewWillAppear:)) == gLaunchWillAppearIMP &&
+                  CSCoverSheetViewController.originalWillAppearCalls >= 1,
+              @"while off: the Lock Screen's own viewWillAppear: is not replaced and still runs");
         [self state:@"00-off" caption:@"HCG Portal installed, off"];
         [self shot:@"00-off"];
+    });
+
+    // ---- 0b. Enabled while the injector's hook API is unavailable ---------------------
+    STEP(0.5, {
+        IMP before = class_getMethodImplementation(NSClassFromString(@"CSCoverSheetViewController"), @selector(viewWillAppear:));
+        [self setPrefs:@{PortalKeyEnabled : @YES}];
+        WAIT_UNTIL(1, NO);
+        Check([Status(PortalStatusKeyState) isEqualToString:PortalEngineStateIncompatible],
+              [NSString stringWithFormat:@"hook API unavailable: Portal stays inactive (state %@)", Status(PortalStatusKeyState)]);
+        Check([Status(PortalStatusKeyDetail) containsString:@"MSHookMessageEx"] && [Status(PortalStatusKeyDetail) containsString:@"stays inactive"],
+              [NSString stringWithFormat:@"hook API unavailable: clear reason (%@)", Status(PortalStatusKeyDetail)]);
+        Check([self overlay] == nil, @"hook API unavailable: nothing added to the Lock Screen");
+        Check(class_getMethodImplementation(NSClassFromString(@"CSCoverSheetViewController"), @selector(viewWillAppear:)) == before,
+              @"hook API unavailable: no method replaced");
+        Check(SBLockScreenManager.sharedInstanceCalls == 0 && SBCoverSheetPresentationManager.sharedInstanceCalls == 0,
+              @"hook API unavailable: SpringBoard's Lock Screen singletons still untouched");
+        UIViewController *root = [self showSettingsRoot];
+        WAIT_UNTIL(0.8, NO);
+        NSString *text = [self settingsText:root];
+        Check([text containsString:@"Incompatible: inactive"] && [text containsString:@"MSHookMessageEx"],
+              [NSString stringWithFormat:@"Settings shows the state and the reason (%@)", [text substringToIndex:MIN((NSUInteger)240, text.length)]]);
+        [self state:@"00b-hook-api-unavailable" caption:@"Enabled without the injector's hook API: inactive, reason in Settings"];
+        [self shot:@"00b-settings-hook-api-unavailable"];
+        self.settingsWindow.hidden = YES;
+    });
+
+    // ---- 0c. The hook API becomes available: Enable off and on retries -------------------
+    STEP(0.5, {
+        PortalPreviewSetHookAPI(PSIHookMessageEx);
+        [self setPrefs:@{PortalKeyEnabled : @NO}];
+        [self setPrefs:@{PortalKeyEnabled : @YES}];
+        WAIT_UNTIL(1, [Status(PortalStatusKeyState) isEqualToString:PortalEngineStateActive]);
+        Check([Status(PortalStatusKeyState) isEqualToString:PortalEngineStateActive], @"Enable off and on with the hook API present: active");
+        Check([Status(PortalStatusKeyHooks) hasPrefix:@"CSCoverSheetViewController viewWillAppear:"], @"the three Cover Sheet hooks are installed");
+        NSUInteger originals = CSCoverSheetViewController.originalWillAppearCalls;
+        Check(class_getMethodImplementation([CSCoverSheetViewController class], @selector(viewWillAppear:)) != gLaunchWillAppearIMP,
+              @"viewWillAppear: now goes through Portal's hook");
+        [self.coverSheet viewWillAppear:NO]; // dispatches through the installed hook
+        Check(CSCoverSheetViewController.originalWillAppearCalls == originals + 1,
+              @"the installed viewWillAppear: hook calls the original exactly once");
+        [self setPrefs:@{PortalKeyEnabled : @NO}]; // step 1 enables it as before
     });
 
     // ---- 1. Enabled: idle portal below the clock --------------------------------
@@ -303,12 +394,12 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
     STEP(0.5, {
         [self tapOrb];
         WAIT_UNTIL(1, [self overlay].expanded);
-        NSUInteger requests = [SBLockScreenManager sharedInstance].requestCount;
+        NSUInteger requests = [SBLockScreenManager standIn].requestCount;
         Check([self tapItemTitled:@"Nexus"], @"Nexus item reachable");
         Check([[self overlay].visibleMessage isEqualToString:@"HCG Nexus isn't installed."], @"Nexus absent: says so");
         Check([self tapItemTitled:@"Devices"], @"Devices item reachable");
         Check([[self overlay].visibleMessage hasPrefix:@"Not connected."], @"Devices: Not connected");
-        Check([SBLockScreenManager sharedInstance].requestCount == requests && gLaunches.count == 0,
+        Check([SBLockScreenManager standIn].requestCount == requests && gLaunches.count == 0,
               @"unavailable destinations request no authentication and launch nothing");
         WAIT_UNTIL(0.4, NO);
         [self state:@"04-not-connected" caption:@"Devices: Not connected (no Connector/Origin integration exists)"];
@@ -335,7 +426,7 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
 
     // ---- 5. Backgrounds: authentication, then Settings opens ------------------------------
     STEP(0.5, {
-        SBLockScreenManager *m = [SBLockScreenManager sharedInstance];
+        SBLockScreenManager *m = [SBLockScreenManager standIn];
         m.authMode = PSIAuthHold;
         NSUInteger before = m.requestCount;
         if (![self overlay].expanded) {
@@ -351,7 +442,7 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         [self shot:@"06-authenticating"];
     });
     STEP(0.3, {
-        [[SBLockScreenManager sharedInstance] resolvePending:YES];
+        [[SBLockScreenManager standIn] resolvePending:YES];
         WAIT_UNTIL(2, gLaunches.count > 0);
         Check(gLaunches.count == 1 && [gLaunches[0] isEqualToString:@"com.apple.Preferences"],
               @"after success: exactly the selected action ran (Settings opened for Animation Center)");
@@ -371,13 +462,13 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         WAIT_UNTIL(1, [[self overlay].ringName isEqualToString:@"apps"]);
         PortalOverlayView *o = [self overlay];
         Check([o.ringName isEqualToString:@"apps"] && o.itemControls.count == 3, @"app ring: the three chosen apps");
-        Check([SBLockScreenManager sharedInstance].requestCount > 0 && gLaunches.count == 0, @"showing the ring launches nothing");
+        Check([SBLockScreenManager standIn].requestCount > 0 && gLaunches.count == 0, @"showing the ring launches nothing");
         WAIT_UNTIL(0.6, NO);
         [self state:@"08-apps-ring" caption:@"HCG Apps: user-selected shortcuts"];
         [self shot:@"08-apps-ring"];
     });
     STEP(0.3, {
-        SBLockScreenManager *m = [SBLockScreenManager sharedInstance];
+        SBLockScreenManager *m = [SBLockScreenManager standIn];
         m.authMode = PSIAuthHold;
         Check([self tapItemTitled:@"HCG News"], @"app 2 selected");
         WAIT_UNTIL(1, m.hasPendingRequest);
@@ -395,7 +486,7 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
 
     // ---- 7. App launch after success; screen-off discards ----------------------------
     STEP(0.4, {
-        SBLockScreenManager *m = [SBLockScreenManager sharedInstance];
+        SBLockScreenManager *m = [SBLockScreenManager standIn];
         m.authMode = PSIAuthSucceed;
         [self tapOrb];
         WAIT_UNTIL(1, [self overlay].expanded);
@@ -433,7 +524,7 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
     // ---- 8. Nexus through the proposed interface (test double) -----------------------
     STEP(0.4, {
         [HCGNexusPortalInterface setStandInActive:YES];
-        [SBLockScreenManager sharedInstance].authMode = PSIAuthSucceed;
+        [SBLockScreenManager standIn].authMode = PSIAuthSucceed;
         PortalControllerPreviewRelayout();
         [[self overlay] collapseAnimated:NO];
         [self tapOrb];
@@ -550,7 +641,7 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         self.window.layer.speed = 1;
         // As SpringBoard dismisses the Cover Sheet, then calls the viewDidDisappear: hook:
         // time only Portal's handler.
-        [SBCoverSheetPresentationManager sharedInstance].visible = NO;
+        [SBCoverSheetPresentationManager standIn].visible = NO;
         self.window.hidden = YES;
         CFTimeInterval t1 = CACurrentMediaTime();
         PortalControllerCoverSheetDidDisappear(self.coverSheet);
@@ -600,16 +691,8 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
     // ---- 14. Settings: the real Settings bundle -----------------------------------
     __block UIViewController *settingsRoot = nil;
     STEP(0.5, {
-        void *prefs = dlopen("/System/Library/PrivateFrameworks/Preferences.framework/Preferences", RTLD_NOW | RTLD_GLOBAL);
-        Check(prefs != NULL, @"Preferences.framework loaded from the Simulator runtime");
-        NSBundle *bundle = [NSBundle bundleWithPath:[NSBundle.mainBundle pathForResource:@"HCGPortalPrefs" ofType:@"bundle"]];
-        NSError *error = nil;
-        Check([bundle loadAndReturnError:&error], [NSString stringWithFormat:@"Settings bundle loads (%@)", error.localizedDescription ?: @"ok"]);
-        settingsRoot = [[bundle.principalClass alloc] init];
+        settingsRoot = [self showSettingsRoot];
         Check([NSStringFromClass([settingsRoot class]) isEqualToString:@"PortalRootListController"], @"principal class PortalRootListController");
-        [self.settingsNav setViewControllers:@[ settingsRoot ] animated:NO];
-        self.settingsWindow.hidden = NO;
-        [settingsRoot loadViewIfNeeded];
         NSArray *specifiers = [settingsRoot valueForKey:@"specifiers"];
         Check(specifiers.count >= 25, [NSString stringWithFormat:@"root page has its rows (%lu specifiers)", (unsigned long)specifiers.count]);
         WAIT_UNTIL(0.8, NO);
@@ -662,8 +745,9 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
     [[NSFileManager defaultManager] createDirectoryAtPath:c.jbroot withIntermediateDirectories:YES attributes:nil error:NULL];
     [PortalCompanions setJailbreakRootForTesting:c.jbroot];
 
+    gLaunchWillAppearIMP = class_getMethodImplementation([CSCoverSheetViewController class], @selector(viewWillAppear:));
     c.coverSheet = [[CSCoverSheetViewController alloc] init];
-    [SBLockScreenManager sharedInstance].coverSheetViewController = c.coverSheet;
+    [SBLockScreenManager standIn].coverSheetViewController = c.coverSheet;
     UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
     window.rootViewController = c.coverSheet;
     window.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
@@ -723,7 +807,9 @@ int main(int argc, char *argv[]) {
             return YES;
         }];
         Say(@"PORTAL-PREVIEW-START HCG Portal %s", PORTAL_VERSION);
-        PortalControllerBootstrap(NULL); // as the tweak's %ctor does (hooks are called by the harness)
+        // No explicit bootstrap: the REAL src/Tweak.m constructor queued it on the main queue
+        // when this executable loaded, exactly as in SpringBoard. The hook API starts out
+        // unavailable (PortalPreviewSetHookAPI not called yet), as in a SpringBoard without ElleKit.
         return UIApplicationMain(argc, argv, nil, NSStringFromClass([PortalPreviewAppDelegate class]));
     }
 }

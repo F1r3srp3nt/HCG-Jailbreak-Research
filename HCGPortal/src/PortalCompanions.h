@@ -62,8 +62,11 @@ typedef void (^PortalNexusOpenCompletion)(BOOL opened, NSString *_Nullable reaso
 /// Asks Nexus to open its panel. Only after authentication succeeded.
 + (void)openNexusPanelWithCompletion:(PortalNexusOpenCompletion)completion;
 
-/// One-line summary for Settings and the status report.
-+ (NSString *)summary;
+/// One-line summary for Settings and the status report. With `runtime` NO, only
+/// installed files are checked: no companion code is called (used while Portal is
+/// inactive, including during SpringBoard's launch).
++ (NSString *)summaryIncludingRuntime:(BOOL)runtime;
++ (NSString *)summary; // = summaryIncludingRuntime:YES
 
 /// User-facing text for an unavailable destination.
 + (NSString *)messageForDestination:(int)destination availability:(PortalAvailability)availability;

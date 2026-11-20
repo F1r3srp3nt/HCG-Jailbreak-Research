@@ -3,7 +3,8 @@
 #
 #   THEOS=~/theos scripts/preview.sh [output-dir]
 #
-# Builds preview/PortalPreviewApp.m with the REAL tweak code (PORTAL_PREVIEW_HOST,
+# Builds preview/PortalPreviewApp.m with the REAL tweak code, including src/Tweak.m and its
+# constructor (PORTAL_PREVIEW_HOST,
 # preview notification names) and the REAL Settings bundle (preferences/,
 # loaded with -bundle_loader), runs it in an iPhone simulator, records video,
 # takes a screenshot at every PORTAL-PREVIEW-SHOT marker and makes a contact
@@ -44,7 +45,7 @@ PROVENANCE="$OUT/PROVENANCE.txt"
 } > "$PROVENANCE"
 
 stamp "HCG Portal $VERSION ($(git rev-parse --short=12 HEAD))"
-for f in src/PortalController.m src/PortalOverlayView.m src/PortalView.m src/PortalHost.m src/PortalAuth.m \
+for f in src/Tweak.m src/PortalController.m src/PortalOverlayView.m src/PortalView.m src/PortalHost.m src/PortalAuth.m \
          src/PortalLauncher.m src/PortalCompanions.m src/PortalPreferences.m src/PortalLog.m src/PortalCore.c \
          preview/PortalStandIns.m preview/PortalPreviewApp.m; do
 	"${CC[@]}" "${STRICT[@]}" "${DEFS[@]}" "${INC[@]}" -c "$f" -o "$OUT/obj/$(basename "$f").o"

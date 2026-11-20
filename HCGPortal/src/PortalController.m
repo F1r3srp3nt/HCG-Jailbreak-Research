@@ -276,8 +276,12 @@ static void PortalStatusRequested(CFNotificationCenterRef c, void *o, CFStringRe
     if (!_hooksInstalled && _hookInstaller) {
         NSString *failure = _hookInstaller();
         if (failure) {
-            [self noteHooks:failure];
-            [self setState:PortalEngineStateIncompatible detail:failure];
+            // Nothing was hooked or attached: SpringBoard and the Lock Screen are untouched.
+            [self noteHooks:[NSString stringWithFormat:@"none: %@", failure]];
+            [self setState:PortalEngineStateIncompatible
+                    detail:[NSString stringWithFormat:@"%@ HCG Portal stays inactive and the Lock Screen is unchanged. "
+                                                      @"Turn Enable off and on, or respring, to try again.",
+                                                      failure]];
             return NO;
         }
         _hooksInstalled = YES;
@@ -803,6 +807,17 @@ static NSString *PortalStatusText(PortalAvailability a) {
 
 - (NSDictionary *)statusDictionary {
     PortalLayoutInput input = _measurement.input;
+    // SpringBoard's Lock Screen objects (SBLockScreenManager, SBCoverSheetPresentationManager)
+    // and companions' runtime interfaces are only consulted while Portal is active, which is
+    // never before SpringBoard has finished launching. The bootstrap writes this status from
+    // the constructor's queue on every launch, enabled or not: it must not create or call
+    // SpringBoard singletons there (0.1.0~beta1 did; see CHANGELOG 0.1.0~beta2).
+    BOOL live = _active && _launched;
+    NSString *scene = live ? [NSString stringWithFormat:@"screen %@, %@, Cover Sheet %@, Lock Screen session %@",
+                                                        _screenOn ? @"on" : @"off", _locked ? @"locked" : @"unlocked",
+                                                        [self coverSheetVisibleSafe] ? @"visible" : @"hidden",
+                                                        _lockScreenSession ? @"yes" : @"no"]
+                           : @"not observed (Portal inactive)";
     return @{
         PortalStatusKeyState : _state ?: @"",
         PortalStatusKeyDetail : _detail ?: @"",
@@ -821,13 +836,10 @@ static NSString *PortalStatusText(PortalAvailability a) {
                                                          : _plan.reason == PORTAL_PLAN_LOW_POWER_HIDDEN  ? @" (Low Power: hidden)"
                                                                                                          : @""],
         PortalStatusKeyHost : _hostSummary ?: @"none",
-        PortalStatusKeyScene : [NSString stringWithFormat:@"screen %@, %@, Cover Sheet %@, Lock Screen session %@",
-                                                          _screenOn ? @"on" : @"off", _locked ? @"locked" : @"unlocked",
-                                                          [self coverSheetVisibleSafe] ? @"visible" : @"hidden",
-                                                          _lockScreenSession ? @"yes" : @"no"],
+        PortalStatusKeyScene : scene,
         PortalStatusKeyAuthRoute : _auth.route ?: @"not checked",
         PortalStatusKeyLauncher : _launcher.route ?: @"not checked",
-        PortalStatusKeyCompanions : [PortalCompanions summary],
+        PortalStatusKeyCompanions : [PortalCompanions summaryIncludingRuntime:live],
         PortalStatusKeyLastAction : _lastAction ?: @"none",
         PortalStatusKeyCounters : [_counters copy],
         PortalStatusKeyHooks : _hooksSummary ?: @"",
@@ -839,6 +851,7 @@ static NSString *PortalStatusText(PortalAvailability a) {
 }
 
 - (BOOL)coverSheetVisibleSafe {
+    if (!_active || !_launched) return NO; // never touch SpringBoard's singletons while inactive
     @try {
         return [self coverSheetVisible];
     } @catch (NSException *exception) {

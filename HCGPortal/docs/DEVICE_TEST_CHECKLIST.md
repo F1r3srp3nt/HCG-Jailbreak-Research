@@ -1,3 +1,22 @@
+# Device test — HCG Portal 0.1.0~beta2 (startup hardening) and 0.1.0~beta1
+
+## 0.1.0~beta2 on the phone from the Safe Mode recording (do these first, in this order)
+
+| # | Step | Expected |
+|---|---|---|
+| B0 | If the phone is still in Safe Mode or Beta 1 is installed: exit Safe Mode, **remove 0.1.0~beta1** (`sudo apt remove com.hakmicapitalgroup.portal`), respring. Copy the `SpringBoard-*.ips` reports from around the incident (Settings › Privacy & Security › Analytics & Improvements › Analytics Data) | normal SpringBoard; crash reports saved |
+| B1 | `sh device-info.sh` (read-only); confirm `Settings › HCG Portal` is absent | report saved |
+| B2 | Install the 0.1.0~beta2 test `.deb` (`sudo dpkg -i …deb`), then **respring with Portal off** | SpringBoard starts normally, no Safe Mode. Settings › HCG Portal: Status *Off* |
+| B3 | Respring once more, still off; lock, unlock, open Notification Centre, camera, flashlight | all normal; no portal |
+| B4 | Enable HCG Portal | Status *Active* (or *Incompatible: inactive* with a reason: then stop and send the reason) |
+| B5 | Lock the phone, wake it | portal below the clock; rings turning |
+| B6 | Rows T1–T3, A1–A4, U1–U5 below | as listed |
+| B7 | Respring with Portal **on** | starts normally; portal back on the Lock Screen |
+| B8 | Recovery: Enable off (gone at once); kill switch file + respring (*Kill switch on*); remove the file, respring; finally uninstall + respring | Lock Screen exactly as before each time |
+
+If SpringBoard crashes at any step: note the step, let the launch guard or Safe Mode stop it, remove the package over
+SSH (`RECOVERY.md` §6) and send the newest `SpringBoard-*.ips`.
+
 # First device test — HCG Portal 0.1.0~beta1
 
 Nothing below has been done. Record each row as **pass / fail / not done** with the iOS version, jailbreak and any

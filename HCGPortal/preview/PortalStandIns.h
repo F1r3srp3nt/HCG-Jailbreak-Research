@@ -57,6 +57,8 @@ typedef NS_ENUM(NSInteger, PSIAuthMode) {
 @end
 
 @interface CSCoverSheetViewController : UIViewController
+/// How many times the class's own (original) -viewWillAppear: ran: proves a hook calls the original.
+@property (class, nonatomic, readonly) NSUInteger originalWillAppearCalls;
 @property (nonatomic, readonly) CSMainPageContentViewController *mainPageContentViewController;
 @property (nonatomic, readonly) CSComplicationContainerViewController *complicationContainerViewController;
 @property (nonatomic, readonly) SBFLockScreenDateView *dateView;
@@ -71,7 +73,11 @@ typedef NS_ENUM(NSInteger, PSIAuthMode) {
 @end
 
 @interface SBLockScreenManager : NSObject
+/// What Portal calls. Counted: Portal must not call it while inactive (0.1.0~beta1 did, at launch).
 + (instancetype)sharedInstance;
+/// The same object for the harness, NOT counted.
++ (instancetype)standIn;
+@property (class, nonatomic, readonly) NSUInteger sharedInstanceCalls;
 @property (nonatomic, strong, nullable) CSCoverSheetViewController *coverSheetViewController;
 @property (nonatomic) PSIAuthMode authMode;
 @property (nonatomic) BOOL uiLocked;
@@ -85,7 +91,9 @@ typedef NS_ENUM(NSInteger, PSIAuthMode) {
 @end
 
 @interface SBCoverSheetPresentationManager : NSObject
-+ (instancetype)sharedInstance;
++ (instancetype)sharedInstance; // counted, as above
++ (instancetype)standIn;        // not counted
+@property (class, nonatomic, readonly) NSUInteger sharedInstanceCalls;
 @property (nonatomic) BOOL visible;
 - (BOOL)isVisible;
 @end
@@ -100,6 +108,10 @@ typedef NS_ENUM(NSInteger, PSIAuthMode) {
 - (BOOL)canOpenPanel;
 - (void)openPanelFromSource:(NSString *)source completion:(void (^)(BOOL opened, NSString *_Nullable reason))completion;
 @end
+
+/// A stand-in for the injector's MSHookMessageEx (ElleKit / Substrate semantics: an
+/// inherited method is first added to the class, *original receives the previous IMP).
+void PSIHookMessageEx(Class cls, SEL selector, IMP replacement, IMP _Nullable *_Nullable original);
 
 /// Darwin state as SpringBoard publishes it (preview names).
 void PSIPostState(const char *name, uint64_t value);

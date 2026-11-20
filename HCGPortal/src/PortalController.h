@@ -17,16 +17,20 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <objc/runtime.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // Returns nil on success or a message explaining why Portal cannot activate.
-typedef NSString * _Nullable (*PortalHookInstaller)(void);
+typedef NSString *_Nullable (*PortalHookInstaller)(void);
 
-/// Called from constructor. `installHooks` runs at most once, only when enabled.
-void PortalControllerBootstrap(PortalHookInstaller installHooks);
+/// Called from the constructor (on the main queue). `installHooks` runs only when
+/// Portal is enabled, and is retried on the next enable if it reported a failure.
+void PortalControllerBootstrap(PortalHookInstaller _Nullable installHooks);
 /// Tweak.m reports which hooks it installed ("viewWillAppear:, …" or the reason none were).
 void PortalControllerNoteHooks(NSString *summary);
 
@@ -39,7 +43,7 @@ void PortalControllerCoverSheetDidLayout(id coverSheet);
 /// Preview / tests only (never in the package). Lock and screen state come
 /// from the preview-named Darwin notifications (PORTAL_*_NOTIFICATION).
 NSDictionary *PortalControllerPreviewStatus(void);
-id PortalControllerPreviewOverlay(void);
+id _Nullable PortalControllerPreviewOverlay(void);
 /// Re-reads preferences synchronously (tests do not wait for Darwin delivery).
 void PortalControllerPreviewReload(void);
 /// Simulates the Low Power / Reduce Motion inputs (the Simulator cannot toggle them).
@@ -48,8 +52,16 @@ void PortalControllerPreviewSetSystemInputs(int reduceMotion, int lowPower);
 void PortalControllerPreviewRelayout(void);
 /// Raises the fault fallback, as an Objective-C exception inside SpringBoard would.
 void PortalControllerPreviewInjectFault(void);
+
+/// The injector's MSHookMessageEx signature.
+typedef void (*PortalHookMessageFunction)(Class cls, SEL selector, IMP replacement, IMP _Nullable *_Nullable original);
+/// Preview only: what Tweak.m's hook-API lookup finds (NULL = the injector's API is unavailable),
+/// in place of dlsym(RTLD_DEFAULT, "MSHookMessageEx").
+void PortalPreviewSetHookAPI(PortalHookMessageFunction _Nullable function);
 #endif
 
 #ifdef __cplusplus
 }
 #endif
+
+NS_ASSUME_NONNULL_END

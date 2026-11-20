@@ -102,7 +102,12 @@ static id NexusActiveInterface(void) {
 }
 
 + (NSString *)summary {
-    NSString *nexus = ![self nexusInstalled]               ? @"not installed"
+    return [self summaryIncludingRuntime:YES];
+}
+
++ (NSString *)summaryIncludingRuntime:(BOOL)runtime {
+    NSString *nexus = ![self nexusInstalled] ? @"not installed"
+                      : !runtime              ? @"installed (interface not checked while Portal is inactive)"
                       : [self nexusOpenInterfaceAvailable] ? @"installed, open interface v1"
                                                            : @"installed, no open interface";
     return [NSString stringWithFormat:@"Nexus: %@ · Animation Center: %@ · Devices: not connected", nexus,

@@ -214,22 +214,24 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
     return root;
 }
 
-/// The text of a specifier's cell, as Settings shows it (value and footer).
+/// Every label Settings is showing on screen (row titles, values and footers), top to bottom.
 - (NSString *)settingsText:(UIViewController *)root {
-    NSMutableArray *parts = [NSMutableArray array];
     UITableView *table = [root valueForKey:@"table"];
     [table layoutIfNeeded];
-    for (NSInteger section = 0; section < table.numberOfSections && section < 3; section++) {
-        for (NSInteger row = 0; row < [table numberOfRowsInSection:section]; row++) {
-            UITableViewCell *cell = [table.dataSource tableView:table cellForRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:section]];
-            if (cell.textLabel.text) [parts addObject:cell.textLabel.text];
-            if (cell.detailTextLabel.text) [parts addObject:cell.detailTextLabel.text];
-        }
-        NSString *footer = [table.dataSource respondsToSelector:@selector(tableView:titleForFooterInSection:)]
-                               ? [table.dataSource tableView:table titleForFooterInSection:section] : nil;
-        if (footer) [parts addObject:footer];
+    NSMutableArray<UILabel *> *labels = [NSMutableArray array];
+    NSMutableArray<UIView *> *stack = [NSMutableArray arrayWithObject:table];
+    while (stack.count) {
+        UIView *v = stack.lastObject;
+        [stack removeLastObject];
+        if (v.hidden) continue;
+        if ([v isKindOfClass:[UILabel class]] && ((UILabel *)v).text.length) [labels addObject:(UILabel *)v];
+        [stack addObjectsFromArray:v.subviews];
     }
-    return [parts componentsJoinedByString:@" | "];
+    [labels sortUsingComparator:^NSComparisonResult(UILabel *a, UILabel *b) {
+        CGFloat ya = [a convertPoint:CGPointZero toView:table].y, yb = [b convertPoint:CGPointZero toView:table].y;
+        return ya < yb ? NSOrderedAscending : ya > yb ? NSOrderedDescending : NSOrderedSame;
+    }];
+    return [[labels valueForKey:@"text"] componentsJoinedByString:@" | "];
 }
 
 - (BOOL)orbClearOfObstacles {
@@ -310,7 +312,8 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         UIViewController *root = [self showSettingsRoot];
         WAIT_UNTIL(0.8, NO);
         NSString *text = [self settingsText:root];
-        Check([text containsString:@"Incompatible: inactive"] && [text containsString:@"MSHookMessageEx"],
+        Check([text containsString:@"Incompatible: inactive"] && [text containsString:@"Not shown (inactive)"] &&
+                  [text containsString:@"MSHookMessageEx"],
               [NSString stringWithFormat:@"Settings shows the state and the reason (%@)", [text substringToIndex:MIN((NSUInteger)240, text.length)]]);
         [self state:@"00b-hook-api-unavailable" caption:@"Enabled without the injector's hook API: inactive, reason in Settings"];
         [self shot:@"00b-settings-hook-api-unavailable"];

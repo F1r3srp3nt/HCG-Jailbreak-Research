@@ -259,6 +259,12 @@ static void PortalStatusUpdated(CFNotificationCenterRef center, void *observer, 
 }
 
 - (NSString *)visibilityStatus:(PSSpecifier *)specifier {
+    NSString *state = [PortalPreferences readStatus][PortalStatusKeyState];
+    // Enabled but not running (hook API missing, incompatible, kill switch, auto-disabled, fault):
+    // say so rather than "Off", which would contradict the Enable switch.
+    if ([state isKindOfClass:[NSString class]] && state.length && ![state isEqualToString:PortalEngineStateActive] &&
+        ![state isEqualToString:PortalEngineStateDisabled] && ![state isEqualToString:PortalEngineStateWaiting])
+        return @"Not shown (inactive)";
     NSString *v = [PortalPreferences readStatus][PortalStatusKeyVisibility];
     if (![v isKindOfClass:[NSString class]] || !v.length) return @"—";
     NSDictionary *labels = @{

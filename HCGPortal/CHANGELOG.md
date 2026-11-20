@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0~beta2
+
+Startup hardening after an observed SpringBoard Safe Mode incident. The tweak
+resolves the injector hook API only on enable and reports an unavailable API
+in Settings. Bootstrap runs on the main queue. Root cause and device recovery
+still need confirmation on the affected phone.
+
 ## 0.1.0~beta1
 
 First beta, free public candidate demo.

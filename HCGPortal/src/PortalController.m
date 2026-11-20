@@ -245,8 +245,7 @@ static void PortalStatusRequested(CFNotificationCenterRef c, void *o, CFStringRe
     if (_blocked || !_launched) return;
     @try {
         if (_settings.enabled && !_faulted) {
-            [self activate];
-            [self setState:PortalEngineStateActive detail:@""];
+            if ([self activate]) [self setState:PortalEngineStateActive detail:@""];
         } else {
             [self deactivate];
             if (!_faulted) [self setState:PortalEngineStateDisabled detail:@""];
@@ -273,10 +272,15 @@ static void PortalStatusRequested(CFNotificationCenterRef c, void *o, CFStringRe
     [self writeStatusNow];
 }
 
-- (void)activate {
+- (BOOL)activate {
     if (!_hooksInstalled && _hookInstaller) {
+        NSString *failure = _hookInstaller();
+        if (failure) {
+            [self noteHooks:failure];
+            [self setState:PortalEngineStateIncompatible detail:failure];
+            return NO;
+        }
         _hooksInstalled = YES;
-        _hookInstaller();
     }
     if (!_auth) _auth = [[PortalAuthBroker alloc] init];
     if (!_launcher) _launcher = [[PortalLauncher alloc] init];
@@ -287,6 +291,7 @@ static void PortalStatusRequested(CFNotificationCenterRef c, void *o, CFStringRe
     [self refreshApps];
     [self adoptCoverSheet:nil];
     [self update];
+    return YES;
 }
 
 - (void)deactivate {

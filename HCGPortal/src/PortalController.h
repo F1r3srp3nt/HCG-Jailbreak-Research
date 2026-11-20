@@ -4,15 +4,15 @@
 //
 //  The SpringBoard engine. Main thread only.
 //
-//    %ctor ─ bootstrap: kill switch? Cover Sheet interfaces? launch guard?
+//    constructor ─ bootstrap: kill switch? Cover Sheet interfaces? launch guard?
 //      ├─ Darwin observers: preferences-changed, status-request,
 //      │  com.apple.springboard.lockstate, com.apple.springboard.hasBlankedScreen
 //      ├─ Reduce Motion / Low Power observers
 //      └─ the hooks (installed once, only when enabled): CSCoverSheetViewController
-//         viewWillAppear: / viewDidDisappear: / viewDidLayoutSubviews, all %orig first
+//         viewWillAppear: / viewDidDisappear: / viewDidLayoutSubviews, all the original method first
 //
 //  Turning Enable off removes the overlay, cancels any pending action, stops
-//  every observer and timer; the hooks then return straight after %orig, so the
+//  every observer and timer; the hooks then return straight after the original method, so the
 //  Lock Screen behaves exactly as without HCG Portal.
 //
 
@@ -22,14 +22,15 @@
 extern "C" {
 #endif
 
-typedef void (*PortalHookInstaller)(void);
+// Returns nil on success or a message explaining why Portal cannot activate.
+typedef NSString * _Nullable (*PortalHookInstaller)(void);
 
-/// Called from %ctor. `installHooks` runs at most once, only when enabled.
+/// Called from constructor. `installHooks` runs at most once, only when enabled.
 void PortalControllerBootstrap(PortalHookInstaller installHooks);
-/// Tweak.x reports which hooks it installed ("viewWillAppear:, …" or the reason none were).
+/// Tweak.m reports which hooks it installed ("viewWillAppear:, …" or the reason none were).
 void PortalControllerNoteHooks(NSString *summary);
 
-// From the hooks, after %orig.
+// From the hooks, after the original method.
 void PortalControllerCoverSheetWillAppear(id coverSheet);
 void PortalControllerCoverSheetDidDisappear(id coverSheet);
 void PortalControllerCoverSheetDidLayout(id coverSheet);

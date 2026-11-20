@@ -28,7 +28,7 @@ first** — the normal iOS request — and only the action you chose runs after 
 | **Coexistence** | Measures clock, widgets, notifications, media controls, Live Activities, flashlight and camera; moves, shrinks, collapses to a 56 pt orb or hides. Decorative layers pass touches through |
 | **Settings** | Live mini Lock Screen preview; Position & Size (drag, pinch, sliders, sample notifications, **Reset**); colour (HCG Signature, Aurora, Solar, Mono), brightness, speed, intensity; unlock animation; Low Power Mode (Static / Economy / Hide); HCG Apps; status and recovery |
 | **Efficiency** | Paused whenever not visible (screen off, unlocked, authenticating, no room). Reduce Motion → static. Low Power → static by default |
-| **Safety** | Off after installation. Master switch, kill switch, launch guard, fault fallback. Three `%orig`-first hooks. Disabling or removing restores the normal Lock Screen |
+| **Safety** | Off after installation. Master switch, kill switch, launch guard, fault fallback. Three hooks that call the original methods first. Disabling or removing restores the normal Lock Screen |
 | **Privacy** | No network, account, telemetry or identifiers. Notifications are measured by frame only, never read. Writes only its own preferences |
 
 ## Status

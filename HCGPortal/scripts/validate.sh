@@ -331,6 +331,11 @@ for rel in FILES:
             if cmd == LC_SEGMENT_64 and s[off + 8:off + 24].rstrip(b"\0") == b"__TEXT":
                 text = struct.unpack("<Q", s[off + 48:off + 56])[0]
             if cmd == LC_CODE_SIGNATURE: signed = True
+            if cmd & 0x7FFFFFFF in (0xC, 0x18, 0x1F, 0x20, 0x23):
+                path_offset = struct.unpack_from("<I", s, off + 8)[0]
+                dependency = s[off + path_offset:off + size].split(b"\0", 1)[0]
+                if b"substrate" in dependency.lower():
+                    out("FAIL", f"{name}: links {dependency.decode(errors='replace')}; resolve the hook API only on enable")
             if cmd == LC_BUILD_VERSION:
                 platform, v = struct.unpack("<II", s[off + 8:off + 16])
                 minos = (platform, f"{v >> 16}.{(v >> 8) & 0xFF}")
@@ -393,7 +398,7 @@ printable_runs "$DYLIB" > "$WORK/dylib.strings"
 printable_runs "$PREFS" > "$WORK/prefs.strings"
 for s in CSCoverSheetViewController SBLockScreenManager SBLockScreenUnlockRequest SBCoverSheetPresentationManager \
          'unlockWithRequest:completion:' createUnlockRequest coverSheetContext mainPageContentViewController \
-         'viewWillAppear:' 'viewDidDisappear:' viewDidLayoutSubviews _MSHookMessageEx \
+         'viewWillAppear:' 'viewDidDisappear:' viewDidLayoutSubviews MSHookMessageEx _dlsym \
          LSApplicationWorkspace 'openApplicationWithBundleID:' com.apple.Preferences \
          com.apple.springboard.hasBlankedScreen com.apple.springboard.lockstate \
          com.hakmicapitalgroup.portal/preferences-changed com.hakmicapitalgroup.portal/status-request \

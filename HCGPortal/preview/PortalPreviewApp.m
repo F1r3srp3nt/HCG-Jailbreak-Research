@@ -11,7 +11,7 @@
 //     camera buttons; an SBLockScreenManager stand-in whose authentication is
 //     scripted (hold / succeed / cancel / refuse); lock and screen state as
 //     Darwin notifications with notify state (preview names). The three
-//     Cover Sheet hooks are called by this harness exactly where Tweak.x calls
+//     Cover Sheet hooks are called by this harness exactly where Tweak.m calls
 //     them.
 //
 //  2. Settings: loads the REAL HCGPortalPrefs.bundle (compiled for the

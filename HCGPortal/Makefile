@@ -39,7 +39,7 @@ PORTAL_DEFINES := -DPORTAL_VERSION=\"$(PORTAL_VERSION)\" -DPORTAL_BUILD_ID=\"$(P
 TWEAK_NAME = HCGPortal
 
 HCGPortal_FILES = \
-	src/Tweak.x \
+	src/Tweak.m \
 	src/PortalController.m \
 	src/PortalOverlayView.m \
 	src/PortalView.m \

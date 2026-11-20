@@ -23,7 +23,7 @@ SpringBoard process                                              Settings app (P
   │    ├─ PortalLauncher: LSApplicationWorkspace (as HCG Nexus 0.3.1)
   │    └─ PortalCompanions: Nexus / Animation Center / Halo, all optional
   │
-  └─ three hooks, installed only when first enabled, %orig first:
+  └─ three hooks, installed only when first enabled, call the original method first:
        -[CSCoverSheetViewController viewWillAppear:], viewDidDisappear:, viewDidLayoutSubviews
 ```
 
@@ -144,12 +144,12 @@ Skipped with Reduce Motion, in Low Power Mode, or when *Opening Animation on Unl
 | Mechanism | Effect |
 |---|---|
 | **Off by default** | `enabled` defaults to NO. Installing changes nothing until you turn it on |
-| **Master switch** | Off removes the overlay, cancels any pending action, stops observers and timers; the hooks then return after `%orig`. Immediate, no respring |
+| **Master switch** | Off removes the overlay, cancels any pending action, stops observers and timers; the hooks then return after the original method. Immediate, no respring |
 | **Kill switch** | `/var/mobile/Library/Preferences/com.hakmicapitalgroup.portal.disabled` at launch → Portal does nothing (respring to apply) |
 | **Interface gate** | No `CSCoverSheetViewController` / `SBLockScreenManager` → nothing, *Incompatible* |
 | **Launch guard** | Three SpringBoard launches in a row ending within 30 s while enabled → *Auto-disabled*. Enable off/on + respring re-arms |
 | **Fault fallback** | Every entry point is in `@try`; an Objective-C exception removes the overlay and reports *Fault*. Enable off/on retries |
-| **Hooks** | Three, `%orig` first, installed once when first enabled, never change arguments or return values |
+| **Hooks** | Three, call the original method first, installed once when first enabled, never change arguments or return values |
 
 A hard crash cannot be caught; that is what the launch guard and kill switch are for. No crash-prevention claim is
 made, and nothing has run on a device yet.

@@ -1,8 +1,8 @@
 Package: com.hakmicapitalgroup.portal
 Name: HCG Portal (Beta)
-Version: 0.1.0~beta1
+Version: 0.1.0~beta2
 Architecture: iphoneos-arm64
-Description: Free public beta demo. HCG Portal adds a luminous, interactive portal to the Lock Screen, below the clock and above notifications: a dark translucent centre with slowly turning cyan-and-violet energy rings. Tap it for a radial menu (Nexus, Backgrounds, Devices, HCG Apps); every destination asks for Face ID, Touch ID or your passcode first, and cancelling opens nothing. Adjustable position, size, colour, brightness, speed and intensity, with a live preview. Moves, shrinks or collapses around notifications, media controls, the flashlight and the camera. Off after installation; enable it in Settings. Not yet device-tested.
+Description: Free public beta demo. HCG Portal adds a luminous, interactive portal to the Lock Screen, below the clock and above notifications: a dark translucent centre with slowly turning cyan-and-violet energy rings. Tap it for a radial menu (Nexus, Backgrounds, Devices, HCG Apps); every destination asks for Face ID, Touch ID or your passcode first, and cancelling opens nothing. Adjustable position, size, colour, brightness, speed and intensity, with a live preview. Moves, shrinks or collapses around notifications, media controls, the flashlight and the camera. Off after installation; enable it in Settings. Startup hardening candidate. Real-device verification pending.
 Maintainer: Hakmi Capital Group
 Author: Hakmi Capital Group
 Section: Tweaks

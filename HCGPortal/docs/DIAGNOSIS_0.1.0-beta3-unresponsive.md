@@ -54,8 +54,24 @@ Tapping it produces no functional response.
    - The 0.1.0~beta4 preview then runs the real Portal overlay inside a Cover Sheet stand-in that has the same
      recognizers.
 
-   The results are in the CI log of the beta 4 preview run (see the README status). They are a Simulator result, not a
-   device result.
+   Result, *HCG Portal preview* run
+   [44870589462](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44870589462), iOS 26.2 Simulator:
+
+   | Tapped | Control fired | Scroll view's tap recognizer fired |
+   |---|---|---|
+   | plain `UIControl`, no recognizers around it (calibration) | 1 | — |
+   | `UIButton`, no recognizers around it (calibration) | 1 | — |
+   | **plain `UIControl` (how beta 1–3 built the orb) inside the scroll view** | **0** | **1** |
+   | `UIButton` inside the same scroll view | 1 | 0 |
+   | empty area of the scroll view | — | 1 |
+
+   - The ancestor tap recognizer wins over a plain `UIControl`, and the control never fires. That is the beta 3
+     mechanism.
+   - UIKit exempts `UIButton` (Apple: "default control actions prevent overlapping gesture recognizer behavior"),
+     which is why SpringBoard's own buttons keep working on the same Cover Sheet.
+   - With the beta 4 fix, a finger tap on the real orb opens the menu and SpringBoard's background tap does not fire.
+
+   This is a Simulator result, not a device result.
 
 ## Ruled out, with evidence
 

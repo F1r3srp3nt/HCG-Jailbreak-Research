@@ -45,3 +45,30 @@ Found and fixed by these runs before the candidate: the rings were drawn off the
 rotated layers); a stand-in lock-state publisher dropped its notify state (the portal correctly hid); headless
 `UIControl` actions need an application (tests now deliver target/action directly); a first-UIKit-call stall on a
 freshly booted simulator (settle delay + one retry on a time-limit kill, never on a failure).
+
+## 0.1.0~beta4 additions
+
+- **Host** (`tests/test_core.c`):
+  - `portal_access` over all 3⁵ source combinations: granted for exactly the 4 all-unlocked inputs; locked when any
+    source says locked; unverified when a required source is unknown.
+  - The access epoch under 200,000 random lock/unlock storms.
+  - `portal_pending_resolve` against relocks: discarded after a lock, after lock then unlock, and when selected while
+    closed.
+- **Runtime** (`tests/test_runtime.m`):
+  - The orb's own tap recognizer: SpringBoard's tap recognizers must wait for it; long presses and pans must not.
+  - The launcher gate: refused means iOS is asked for nothing.
+- **Preview, with real touches** (`preview/PortalTouchSynth.m`):
+  - Real `UITouch`/`UIEvent` objects with an IOHIDEvent go through `-[UIApplication sendEvent:]`, so UIKit's
+    hit-testing, gesture arbitration and scroll-view delays decide, as they do for a finger.
+  - The Cover Sheet stand-in's main page sits in a scroll view carrying a background `UITapGestureRecognizer` and a
+    `UILongPressGestureRecognizer`, as on iOS 17.0.3.
+  - Step T0 shows that a plain `UIControl` loses its tap there.
+  - Steps 1–14 cover: locked (nothing exists); Face ID matched but still on the Lock Screen; before the first unlock;
+    unlock and pull down; finger taps on the orb, the items and outside; long press and swipe on the orb; Backgrounds
+    and apps opening once after the Cover Sheet closes; relock mid-opening; rapid lock and unlock; screen off; a
+    missing `-isUILocked` (fails closed); a secure app; Animation Center's view present and absent; 20 finger
+    lock/unlock cycles; a layout storm; a rebuilt main page; late callbacks; disable/re-enable.
+- **Not simulated:** Face ID, Touch ID and the passcode themselves (Portal only reads the outcome, the same for all
+  three); the real SpringBoard and its recognizers' delegate decisions; Sileo installation; a SpringBoard restart. These
+  are device rows D1–D16.
+

@@ -63,6 +63,7 @@
 - (BOOL)isVisible;
 - (BOOL)isPresented;
 - (BOOL)isUILocked;     // SBLockScreenManager (iOS 17.0.3 header: SBLockScreenManager.h)
+- (BOOL)isVisibleAndNotDisappearing; // SBCoverSheetPresentationManager (iOS 17.0.3 header)
 - (BOOL)isInSecureApp;  // SBCoverSheetPresentationManager (iOS 17.0.3 header)
 - (void)setCoverSheetPresented:(BOOL)presented animated:(BOOL)animated withCompletion:(void (^)(void))completion;
 @end
@@ -585,6 +586,8 @@ static int PortalSignal(BOOL known, BOOL value) {
     Class cls = NSClassFromString(@"SBCoverSheetPresentationManager");
     if ([cls respondsToSelector:@selector(sharedInstance)]) {
         id m = [cls sharedInstance];
+        // Not while it is sliding away (right after an unlock): Portal would flash during the dismissal.
+        if ([m respondsToSelector:@selector(isVisibleAndNotDisappearing)]) return [m isVisibleAndNotDisappearing];
         if ([m respondsToSelector:@selector(isVisible)]) return [m isVisible];
         if ([m respondsToSelector:@selector(isPresented)]) return [m isPresented];
     }

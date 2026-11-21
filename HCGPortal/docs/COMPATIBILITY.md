@@ -48,7 +48,7 @@ Center used), CoverSheet.framework and SpringBoard.framework. No 17.4 dump was a
 | (removed in 0.1.0~beta4) `unlockWithRequest:completion:`, `createUnlockRequest`, `SBLockScreenUnlockRequest` | — | no longer called; `validate.sh` fails the build if referenced | — |
 | `-mainPageContentViewController` | `CSCoverSheetViewController.h` 246 | host view (scrolls/slides with the page) | hidden: *container unavailable* (no fallback since 0.1.0~beta3) |
 | `-dateView`, `-complicationContainerViewController` | 193, 601 | anchor (clock and widgets) | class-name scan, then 30 % estimate |
-| `SBCoverSheetPresentationManager -isVisible` / `-isPresented` | (HCG Nexus uses it on 16.5) | Cover Sheet visibility | hook state |
+| `SBCoverSheetPresentationManager -isVisibleAndNotDisappearing`, then `-isVisible` / `-isPresented` | `SBCoverSheetPresentationManager.h` 302–305 (HCG Nexus uses `-isVisible` on 16.5) | Cover Sheet visibility (not while it slides away after an unlock) | hook state |
 | `LSApplicationWorkspace openApplicationWithBundleID:` / `applicationIsInstalled:`; `-[SpringBoard launchApplicationWithIdentifier:suspended:]` | HCG Nexus 0.3.1~beta1 `HCGSpringBoardLauncher.m` | open an app / Settings on the unlocked iPhone | apps and Backgrounds: *Unavailable* |
 | Darwin `com.apple.springboard.lockstate`, `…hasBlankedScreen` | public; Halo, Animation Center, Nexus | lock state (access source, required), screen off | lock state unreadable → access **closed**; screen unreadable → not treated as off |
 | `+[UIImage _applicationIconImageForBundleIdentifier:format:scale:]` | Halo's app picker | app icons | first-letter-free symbol |

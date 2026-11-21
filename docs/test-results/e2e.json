@@ -1,0 +1,118 @@
+{
+  "date": "2026-11-21T08:56:53.811Z",
+  "chromium": true,
+  "passed": 22,
+  "failed": 0,
+  "results": [
+    {
+      "name": "axe WCAG 2.2 AA + best practice: desktop dark",
+      "ok": true,
+      "detail": "60 rules passed, 0 violations"
+    },
+    {
+      "name": "axe WCAG 2.2 AA + best practice: desktop light",
+      "ok": true,
+      "detail": "60 rules passed, 0 violations"
+    },
+    {
+      "name": "axe WCAG 2.2 AA + best practice: mobile dark",
+      "ok": true,
+      "detail": "61 rules passed, 0 violations"
+    },
+    {
+      "name": "axe WCAG 2.2 AA + best practice: mobile light",
+      "ok": true,
+      "detail": "61 rules passed, 0 violations"
+    },
+    {
+      "name": "no horizontal overflow at 320 px and on iPhone 13 (guide and HCG pages)",
+      "ok": true,
+      "detail": "4 pages x 2 widths"
+    },
+    {
+      "name": "page loads all assets without errors",
+      "ok": true,
+      "detail": "85 models loaded"
+    },
+    {
+      "name": "15 chapters, each with a completion button",
+      "ok": true,
+      "detail": "15/15"
+    },
+    {
+      "name": "checker: Supported (iPhone 12, 15.4.1, backup, TrollHelperOTA)",
+      "ok": true,
+      "detail": "Supported Supported"
+    },
+    {
+      "name": "checker: Supported with specific requirements (iPhone 15 Pro, 17.3.1)",
+      "ok": true,
+      "detail": "Requirements Supported with specific requirements"
+    },
+    {
+      "name": "checker: Unsupported (iPhone 12, 17.4)",
+      "ok": true,
+      "detail": "Unsupported Unsupported by Dopamine"
+    },
+    {
+      "name": "checker: cannot be verified (iPhone X, 17.0 never released for it)",
+      "ok": true,
+      "detail": "Not verified Compatibility cannot yet be verified"
+    },
+    {
+      "name": "checker: 16.7 asks for the build number",
+      "ok": true,
+      "detail": "build row shown"
+    },
+    {
+      "name": "checker: search by model number A2161",
+      "ok": true,
+      "detail": "iphone-11-pro-max"
+    },
+    {
+      "name": "progress: mark complete, persists across reload, reset",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "name": "preparation checklist updates status and install gate",
+      "ok": true,
+      "detail": "10 items"
+    },
+    {
+      "name": "tabs: keyboard arrows switch the route panel",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "name": "glossary search filters terms",
+      "ok": true,
+      "detail": "1 match “respring”"
+    },
+    {
+      "name": "troubleshooting expand all / collapse all",
+      "ok": true,
+      "detail": "12 items"
+    },
+    {
+      "name": "copy button copies the command",
+      "ok": true,
+      "detail": "uicache -a"
+    },
+    {
+      "name": "theme toggle: auto → light → dark → auto",
+      "ok": true,
+      "detail": "light, dark, auto"
+    },
+    {
+      "name": "keyboard: skip link moves focus to main",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "name": "no console errors, failed requests or HTTP errors",
+      "ok": true,
+      "detail": "none"
+    }
+  ]
+}

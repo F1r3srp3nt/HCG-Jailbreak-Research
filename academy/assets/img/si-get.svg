@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 480" width="240" height="480" role="img" aria-labelledby="t d" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif">
+<title id="t">Sileo package page with the Get button and the Queued bar (illustration)</title>
+<desc id="d">Tap Get on ElleKit, search for PreferenceLoader and tap Get, then tap the Queued bar.</desc>
+<rect width="240" height="480" fill="#0a1116"/>
+<rect x="8" y="8" width="224" height="464" rx="30" fill="#05080b" stroke="#2a3a45" stroke-width="2"/>
+<rect x="16" y="16" width="208" height="448" rx="24" fill="#10181e"/>
+<rect x="86.0" y="22" width="68" height="16" rx="8" fill="#05080b"/>
+<text x="120.0" y="64" font-size="14" fill="#e6edf1" font-weight="700" text-anchor="middle">ElleKit</text>
+<text x="28" y="64" font-size="11" fill="#2fd3e6" font-weight="400" text-anchor="start">‹ All Categories</text>
+<line x1="16" y1="76" x2="224" y2="76" stroke="#2a3a45"/>
+<rect x="30" y="92" width="46" height="46" rx="10" fill="#18232b" stroke="#2a3a45"/>
+<text x="88" y="110" font-size="14" fill="#e6edf1" font-weight="700" text-anchor="start">ElleKit</text>
+<text x="88" y="128" font-size="10" fill="#9aa9b2" font-weight="400" text-anchor="start">Tweak injection library</text>
+<rect x="154" y="100" width="54" height="26" rx="13" fill="#2fd3e6"/>
+<text x="181" y="118" font-size="11" fill="#031015" font-weight="800" text-anchor="middle">GET</text>
+<circle cx="181" cy="113" r="13" fill="none" stroke="#2fd3e6" stroke-width="2"/><circle cx="181" cy="113" r="4" fill="#2fd3e6"/>
+<text x="30" y="176" font-size="10" fill="#9aa9b2" font-weight="400" text-anchor="start">Then: Search › PreferenceLoader › Get</text>
+<rect x="26" y="358" width="188" height="38" rx="10" fill="#18232b" stroke="#2fd3e6" stroke-width="2"/>
+<text x="120.0" y="382" font-size="12" fill="#2fd3e6" font-weight="700" text-anchor="middle">Queued (2)</text>
+<rect x="76.0" y="430" width="88" height="18" rx="2" fill="none" stroke="#9aa9b2" stroke-dasharray="3 2"/>
+<text x="120.0" y="443" font-size="9" fill="#9aa9b2" font-weight="600" text-anchor="middle">ILLUSTRATION</text>
+</svg>

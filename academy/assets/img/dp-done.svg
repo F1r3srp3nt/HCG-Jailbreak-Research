@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 480" width="240" height="480" role="img" aria-labelledby="t d" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif">
+<title id="t">Dopamine progress log ending in Jailbroken (illustration)</title>
+<desc id="d">Dopamine shows its progress while it works; the device does a userspace reboot and the app then shows Jailbroken.</desc>
+<rect width="240" height="480" fill="#0a1116"/>
+<rect x="8" y="8" width="224" height="464" rx="30" fill="#05080b" stroke="#2a3a45" stroke-width="2"/>
+<rect x="16" y="16" width="208" height="448" rx="24" fill="#10181e"/>
+<rect x="86.0" y="22" width="68" height="16" rx="8" fill="#05080b"/>
+<text x="120.0" y="64" font-size="14" fill="#e6edf1" font-weight="700" text-anchor="middle"></text>
+<line x1="16" y1="76" x2="224" y2="76" stroke="#2a3a45"/>
+<text x="30" y="104" font-size="13" fill="#e6edf1" font-weight="700" text-anchor="start">Jailbreaking</text>
+<text x="30" y="130" font-size="10.5" fill="#9aa9b2" font-weight="400" text-anchor="start">✓ Exploiting Kernel</text>
+<text x="30" y="148" font-size="10.5" fill="#9aa9b2" font-weight="400" text-anchor="start">✓ Bypassing PAC / PPL</text>
+<text x="30" y="166" font-size="10.5" fill="#9aa9b2" font-weight="400" text-anchor="start">✓ Initializing Environment</text>
+<text x="30" y="184" font-size="10.5" fill="#9aa9b2" font-weight="400" text-anchor="start">✓ Initializing Protection</text>
+<text x="30" y="202" font-size="10.5" fill="#9aa9b2" font-weight="400" text-anchor="start">✓ Rebooting Userspace</text>
+<text x="30" y="226" font-size="9.5" fill="#9aa9b2" font-weight="400" text-anchor="start">Exact steps differ by device.</text>
+<rect x="36" y="362" width="168" height="40" rx="9" fill="#18232b" stroke="#4fcf91"/>
+<text x="120.0" y="387" font-size="14" fill="#4fcf91" font-weight="700" text-anchor="middle">Jailbroken</text>
+<rect x="76.0" y="430" width="88" height="18" rx="2" fill="none" stroke="#9aa9b2" stroke-dasharray="3 2"/>
+<text x="120.0" y="443" font-size="9" fill="#9aa9b2" font-weight="600" text-anchor="middle">ILLUSTRATION</text>
+</svg>

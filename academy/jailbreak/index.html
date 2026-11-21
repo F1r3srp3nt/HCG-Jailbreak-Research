@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#05080b">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="An independent, beginner-friendly guide from Hakmi Capital Group: what jailbreaking is, its risks, how to check whether your iPhone or iPad is supported, and how to install the Dopamine jailbreak with the official, verified steps.">
+<meta property="og:title" content="Why &amp; How to Jailbreak Your iPhone · HCG Jailbreak Academy">
+<meta property="og:description" content="Understand jailbreaking, check Dopamine compatibility for your exact device, and follow the verified installation route.">
+<meta property="og:image" content="https://repo.hakmicapitalgroup.com/assets/brand/hcg-repo-banner-1200.jpg">
+<title>Why &amp; How to Jailbreak Your iPhone · HCG Jailbreak Academy</title>
+<link rel="canonical" href="https://repo.hakmicapitalgroup.com/academy/jailbreak/">
+<link rel="icon" href="../../assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../../assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="../../assets/brand/favicon-16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="../../apple-touch-icon.png">
+<link rel="stylesheet" href="../../assets/site.css">
+<link rel="stylesheet" href="../assets/academy.css">
+<script>try{var t=JSON.parse(localStorage.getItem("hcg-academy-theme")||'"auto"');if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+</head>
+<body class="academy-page">
+<a class="skip" href="#main">Skip to content</a>
+<div class="circuit" aria-hidden="true"></div>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../"><img src="../../repo/CydiaIcon@2x.png" alt="" width="34" height="34"><span>HCG Repo</span></a>
+    <div class="topbar-tools">
+      <nav aria-label="Primary"><a href="../../#packages">Packages</a><a href="../../#install">Install</a><a href="../../#help">Help</a><a href="./" aria-current="page">Academy</a></nav>
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Appearance: Auto. Change appearance">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg>
+        <span class="theme-label">Appearance: Auto</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main" tabindex="-1">
+
+<section class="academy-hero" aria-labelledby="hero-h">
+  <div class="intro card">
+    <p class="eyebrow">HCG Jailbreak Academy</p>
+    <h1 id="hero-h">Why &amp; How to Jailbreak Your iPhone</h1>
+    <p class="lead">A plain-language guide to what jailbreaking is, what it costs you, whether your iPhone or iPad can do it, and how to install the Dopamine jailbreak by following its official, verified steps.</p>
+    <ul class="hero-meta">
+      <li>Publisher: <strong>Hakmi Capital Group</strong></li>
+      <li>Example jailbreak: <strong>Dopamine 3.0.13</strong></li>
+      <li>Last reviewed: <strong><time datetime="2026-11-21">21 November 2026</time></strong></li>
+      <li><a href="#sources">Sources</a></li>
+    </ul>
+    <p class="disclaimer"><strong>Independent guide.</strong> Hakmi Capital Group did not develop Dopamine, TrollStore, Sileo or Zebra and is not affiliated with their developers or with Apple. HCG does not host or modify any of them: every download link in this guide points to the official source. Nothing on this page installs anything or runs an exploit; every step is yours to take or skip.</p>
+  </div>
+  <div class="card progress-card" aria-labelledby="progress-h">
+    <div class="progress-row">
+      <h2 id="progress-h" class="sr-only">Your progress</h2>
+      <p><strong id="progress-text">0 of 15 chapters completed</strong> <span class="small muted">· saved only in this browser</span></p>
+      <button type="button" class="linklike small" id="progress-reset">Reset progress</button>
+    </div>
+    <div class="meter" id="progress-bar" role="progressbar" aria-label="Chapters completed" aria-valuemin="0" aria-valuemax="15" aria-valuenow="0"><span></span></div>
+  </div>
+</section>
+
+<details class="card toc-mobile">
+  <summary>Chapters</summary>
+  <ol class="toc-list" style="list-style:none;margin:0;padding:0">
+    <li data-toc="ch-1"><a href="#ch-1"><span class="num">1</span><span>What is jailbreaking?<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-2"><a href="#ch-2"><span class="num">2</span><span>Why do people jailbreak?<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-3"><a href="#ch-3"><span class="num">3</span><span>Benefits and limitations<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-4"><a href="#ch-4"><span class="num">4</span><span>Risks: security, privacy, stability, service<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-5"><a href="#ch-5"><span class="num">5</span><span>Rootless versus rootful<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-6"><a href="#ch-6"><span class="num">6</span><span>What is Dopamine?<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-7"><a href="#ch-7"><span class="num">7</span><span>Compatibility checker<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-8"><a href="#ch-8"><span class="num">8</span><span>Preparing and backing up<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-9"><a href="#ch-9"><span class="num">9</span><span>Installing Dopamine<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-10"><a href="#ch-10"><span class="num">10</span><span>Running the jailbreak<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-11"><a href="#ch-11"><span class="num">11</span><span>Sileo and Zebra<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-12"><a href="#ch-12"><span class="num">12</span><span>Repositories and packages<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-13"><a href="#ch-13"><span class="num">13</span><span>Safe Mode, troubleshooting, recovery<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-14"><a href="#ch-14"><span class="num">14</span><span>Removing a jailbreak<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-15"><a href="#ch-15"><span class="num">15</span><span>Exploring HCG software<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li><a href="#glossary-h"><span class="num">·</span><span>Glossary</span><span></span></a></li>
+    <li><a href="#sources"><span class="num">·</span><span>Sources</span><span></span></a></li>
+  </ol>
+</details>
+
+<div class="academy-layout">
+<nav class="toc card" aria-labelledby="toc-h">
+  <h2 id="toc-h">Chapters</h2>
+  <ol>
+    <li data-toc="ch-1"><a href="#ch-1"><span class="num">1</span><span>What is jailbreaking?<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-2"><a href="#ch-2"><span class="num">2</span><span>Why do people jailbreak?<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-3"><a href="#ch-3"><span class="num">3</span><span>Benefits and limitations<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-4"><a href="#ch-4"><span class="num">4</span><span>Risks: security, privacy, stability, service<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-5"><a href="#ch-5"><span class="num">5</span><span>Rootless versus rootful<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-6"><a href="#ch-6"><span class="num">6</span><span>What is Dopamine?<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-7"><a href="#ch-7"><span class="num">7</span><span>Compatibility checker<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-8"><a href="#ch-8"><span class="num">8</span><span>Preparing and backing up<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-9"><a href="#ch-9"><span class="num">9</span><span>Installing Dopamine<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-10"><a href="#ch-10"><span class="num">10</span><span>Running the jailbreak<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-11"><a href="#ch-11"><span class="num">11</span><span>Sileo and Zebra<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-12"><a href="#ch-12"><span class="num">12</span><span>Repositories and packages<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-13"><a href="#ch-13"><span class="num">13</span><span>Safe Mode, troubleshooting, recovery<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-14"><a href="#ch-14"><span class="num">14</span><span>Removing a jailbreak<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+    <li data-toc="ch-15"><a href="#ch-15"><span class="num">15</span><span>Exploring HCG software<span class="sr-only sr-done"></span></span><span class="tick" aria-hidden="true">✓</span></a></li>
+  </ol>
+  <ol class="toc-extra">
+    <li><a href="#glossary-h"><span class="num">·</span><span>Glossary</span><span></span></a></li>
+    <li><a href="#sources"><span class="num">·</span><span>Sources</span><span></span></a></li>
+  </ol>
+</nav>
+
+<div class="chapters">
+
+<!-- ======================================================================= 1 -->
+<section class="chapter" id="ch-1" data-chapter aria-labelledby="ch-1-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">1</span><div><p class="eyebrow">Basics</p><h2 id="ch-1-h">What is jailbreaking?</h2></div></div>
+  <div class="chapter-body">
+    <p>An iPhone only runs software that Apple has approved and signed, and every app is kept inside its own <strong>sandbox</strong>, a fenced-off area it cannot leave. Those rules are a large part of why iOS is secure.</p>
+    <p><strong>Jailbreaking</strong> uses security flaws in iOS (<strong>exploits</strong>) to lift some of those rules on your own device. Once jailbroken, you can install software Apple would not allow, change how iOS looks and behaves, and get deeper access to the file system. ios.cfw.guide sums up what you get: “Gain full access to your device's OS”, a package manager such as Sileo or Zebra, themes, and tweaks that “change how iOS behaves”.</p>
+    <h3>How a modern jailbreak runs</h3>
+    <p>Dopamine is <strong>semi-untethered</strong>: it “requires an app to re-apply the exploit after a reboot”. The jailbreak does not survive a full restart. After every restart your device is back to normal iOS until you open the Dopamine app and tap <em>Jailbreak</em> again. A <strong>respring</strong> (restarting only the Home Screen) or a <strong>userspace reboot</strong> keeps you jailbroken.</p>
+    <figure class="fig">
+      <img src="../assets/img/diagram-cycle.svg" width="760" height="300" alt="Diagram. Stock iOS becomes jailbroken when you open Dopamine and tap Jailbreak. A respring or userspace reboot keeps the jailbreak. A full reboot, power off or a flat battery returns the device to stock iOS until you run Dopamine again.">
+      <figcaption>The semi-untethered cycle. Original HCG diagram.</figcaption>
+    </figure>
+    <h3>Is it legal?</h3>
+    <p>ios.cfw.guide notes that in the United States the Copyright Office has granted an exemption for jailbreaking since 2010, and advises you to “check in your country whether it is legal there”. Legal is not the same as supported: Apple says unauthorized modification “is a violation of the iOS and iPadOS Software License Agreement” and that it “may deny service” for a device running unauthorized software (Apple's statement as published on the official Dopamine website). <a href="#ch-4">Chapter 4</a> covers what that means in practice.</p>
+    <p class="source-note">Sources: <a href="https://ios.cfw.guide/types-of-jailbreak/" rel="noopener">ios.cfw.guide: Types of Jailbreak</a>, <a href="https://ios.cfw.guide/faq/" rel="noopener">FAQ</a>, <a href="https://ellekit.space/dopamine/" rel="noopener">ellekit.space/dopamine</a>.</p>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-2">Next: Why do people jailbreak? →</a></p></div>
+</section>
+
+<!-- ======================================================================= 2 -->
+<section class="chapter" id="ch-2" data-chapter aria-labelledby="ch-2-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">2</span><div><p class="eyebrow">Motivation</p><h2 id="ch-2-h">Why do people jailbreak?</h2></div></div>
+  <div class="chapter-body">
+    <ul>
+      <li><strong>Personalisation.</strong> Themes, Home Screen and Lock Screen layouts, animations and system behaviour that iOS settings do not offer.</li>
+      <li><strong>Features Apple does not provide.</strong> Tweaks add controls, shortcuts, gestures and options to existing apps and to iOS itself.</li>
+      <li><strong>Learning and development.</strong> A terminal, the file system and developer tools on the device are useful for students, developers and security researchers studying their own hardware.</li>
+      <li><strong>Ownership.</strong> Some people simply want full control over a device they paid for.</li>
+    </ul>
+    <div class="callout callout-info"><span class="callout-title">Do you actually need it?</span>
+      <p>If you only want a feature Shortcuts, Focus modes, widgets or an App Store app can provide, use those: they keep every iOS protection. Jailbreak because you understand the trade-offs in Chapters 3 and 4, not because a video made it look easy.</p></div>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-1">← Previous</a><a href="#ch-3">Next →</a></p></div>
+</section>
+
+<!-- ======================================================================= 3 -->
+<section class="chapter" id="ch-3" data-chapter aria-labelledby="ch-3-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">3</span><div><p class="eyebrow">Trade-offs</p><h2 id="ch-3-h">Benefits and limitations</h2></div></div>
+  <div class="chapter-body">
+    <div class="compare">
+      <div class="card"><h3>Benefits</h3><ul class="pros">
+        <li>Tweaks, themes and command-line tools from package managers.</li>
+        <li>Deeper file-system access (within the rootless limits of <a href="#ch-5">Chapter 5</a>).</li>
+        <li>Dopamine is open source and removable from its own app.</li>
+        <li>Semi-untethered: a normal restart always gives you stock iOS back, which makes many problems easy to escape.</li>
+      </ul></div>
+      <div class="card"><h3>Limitations</h3><ul class="cons">
+        <li><strong>You are frozen on old iOS.</strong> Dopamine supports specific versions only; updating usually ends your ability to jailbreak.</li>
+        <li>You must re-run Dopamine after every full restart.</li>
+        <li>On the sideloading route the Dopamine app must be re-signed every 7 days.</li>
+        <li>Tweaks must be built for rootless jailbreaks and for your iOS version; many older tweaks are not.</li>
+        <li>Banking, payment, some games and other apps may refuse to run.</li>
+        <li>Tweaks can make the device unstable and drain the battery.</li>
+      </ul></div>
+    </div>
+    <p class="source-note">Sources: <a href="https://ios.cfw.guide/installing-dopamine/" rel="noopener">ios.cfw.guide: Installing Dopamine</a>, <a href="https://ellekit.space/dopamine/" rel="noopener">ellekit.space/dopamine</a>, <a href="https://ios.cfw.guide/blocking-jailbreak-detection/" rel="noopener">Blocking Jailbreak Detection</a>.</p>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-2">← Previous</a><a href="#ch-4">Next →</a></p></div>
+</section>
+
+<!-- ======================================================================= 4 -->
+<section class="chapter" id="ch-4" data-chapter aria-labelledby="ch-4-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">4</span><div><p class="eyebrow">Read before you decide</p><h2 id="ch-4-h">Security, privacy, stability and warranty risks</h2></div></div>
+  <div class="chapter-body">
+    <p>The official Dopamine website opens with Apple's warning, quoted here because it is the fairest summary of the downside:</p>
+    <blockquote class="callout callout-warn"><p>“Jailbreaking your device eliminates security layers designed to protect your personal information and your iOS device. With this security removed from your iPhone, hackers may steal your personal information, damage your device, attack your network, or introduce malware, spyware, or viruses.”</p>
+    <p class="source-note">Apple, as published on <a href="https://ellekit.space/dopamine/" rel="noopener">ellekit.space/dopamine</a>.</p></blockquote>
+    <h3>Security</h3>
+    <ul>
+      <li><strong>Weakened protections.</strong> The jailbreak works by bypassing kernel protections (Dopamine's log shows steps such as “Exploiting Kernel”, “Bypassing PAC” and “Bypassing PPL”). Code that iOS would block can now run with elevated privileges.</li>
+      <li><strong>Old, unpatched iOS.</strong> To stay jailbreakable you stay on a version with publicly known vulnerabilities. Every security fix Apple ships later is one you do not get. This is the biggest long-term cost.</li>
+      <li><strong>Update blocking has a price.</strong> ios.cfw.guide documents a profile that stops iOS updates so you are not updated by accident. Installing it also stops security updates, and it is a configuration profile from a third party. Only install it if you accept both; remove it when you stop jailbreaking.</li>
+      <li><strong>Accounts on the device.</strong> Dopamine lets you set the password of the <code>mobile</code> user, which “can also be used for root access using sudo”. If you enable SSH or a developer shell, set a strong password first.</li>
+    </ul>
+    <h3>Privacy</h3>
+    <ul>
+      <li>A tweak can be loaded into almost any process, including Messages, Mail and your password manager. Install only what you trust, from sources you trust (<a href="#ch-12">Chapter 12</a>).</li>
+      <li>Malicious or pirated packages are a classic way to spread spyware on jailbroken devices.</li>
+    </ul>
+    <h3>Stability and data</h3>
+    <ul>
+      <li>Apple lists “frequent and unexpected crashes”, “shortened battery life”, “unreliable voice and data” and disrupted services such as iCloud, iMessage, FaceTime and Apple Pay.</li>
+      <li>An incompatible tweak can cause a <strong>respring loop</strong>. ios.cfw.guide warns jailbreaking “can lead to data loss if you damage the OS”.</li>
+      <li>If your phone has a replacement screen, ios.cfw.guide warns its touchscreen may stop working after the jailbreak's userspace reboot.</li>
+    </ul>
+    <h3>Banking and other apps</h3>
+    <p>Many apps detect jailbreaks and refuse to run, including banking apps and some online games. ios.cfw.guide's own advice: “We do not recommend using banking apps on a jailbroken device. Use a separate secure device to access your bank account.” Dopamine's <em>Hide Jailbreak</em> option only removes jailbreak files temporarily and, in Dopamine's words, “is not entirely effective and does not conceal everything”. This guide does not cover defeating app security checks.</p>
+    <h3>Warranty and service</h3>
+    <p>Apple “may deny service for an iPhone that has any unauthorized software installed”. ios.cfw.guide adds that your warranty is void “until it is restored to an un-jailbroken state, which is easy to do”. Remove the jailbreak (<a href="#ch-14">Chapter 14</a>) before any repair or service appointment.</p>
+    <p class="source-note">Sources: <a href="https://ellekit.space/dopamine/" rel="noopener">ellekit.space/dopamine</a>; <a href="https://ios.cfw.guide/faq/" rel="noopener">ios.cfw.guide FAQ</a>; <a href="https://ios.cfw.guide/blocking-updates/" rel="noopener">Blocking Updates</a>; <a href="https://ios.cfw.guide/blocking-jailbreak-detection/" rel="noopener">Blocking Jailbreak Detection</a>; Dopamine 3.0.13 app strings (<a href="https://github.com/opa334/Dopamine" rel="noopener">source</a>).</p>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-3">← Previous</a><a href="#ch-5">Next →</a></p></div>
+</section>
+
+<!-- ======================================================================= 5 -->
+<section class="chapter" id="ch-5" data-chapter aria-labelledby="ch-5-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">5</span><div><p class="eyebrow">Concepts</p><h2 id="ch-5-h">Rootless versus rootful jailbreaking</h2></div></div>
+  <div class="chapter-body">
+    <p>Older jailbreaks were <strong>rootful</strong>: they wrote their files into the system part of the disk, the root (<code>/</code>). Dopamine is <strong>rootless</strong>. In the words of its website, rootless jailbreaks “do not provide full access to the iOS device's operating system, as only certain parts of the filesystem can be written to.”</p>
+    <figure class="fig">
+      <img src="../assets/img/diagram-rootless.svg" width="760" height="330" alt="Diagram comparing the two layouts. Rootful: jailbreak files are written into the system volume at /, packages use architecture iphoneos-arm. Rootless, used by Dopamine: the system volume is left untouched and everything goes under /var/jb on the data volume, a link to a hidden folder in /private/preboot; packages use architecture iphoneos-arm64.">
+      <figcaption>Where jailbreak files live. Original HCG diagram, simplified.</figcaption>
+    </figure>
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Package layouts (scrollable)"><table>
+      <caption>Package layouts</caption>
+      <thead><tr><th scope="col">Layout</th><th scope="col">Package architecture</th><th scope="col">Files installed under</th><th scope="col">Examples</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Rootless</th><td><code>iphoneos-arm64</code></td><td><code>/var/jb/…</code> only</td><td>Dopamine, palera1n (rootless)</td></tr>
+        <tr><th scope="row">Rootful</th><td><code>iphoneos-arm</code></td><td><code>/</code></td><td>palera1n (rootful), older jailbreaks</td></tr>
+        <tr><th scope="row">Roothide</th><td><code>iphoneos-arm64e</code></td><td>a randomised jailbreak root</td><td>separate tools (not covered here)</td></tr>
+      </tbody>
+    </table></div>
+    <h3>What it means for you</h3>
+    <ul>
+      <li>Install only tweaks built for rootless. Dopamine's website: “Users should check if their tweaks are compatible with iOS 15+ [and] are properly compiled for rootless before installing them.”</li>
+      <li>Sileo only lists packages whose architecture matches your device, so most incompatible rootful packages are simply hidden.</li>
+      <li>Developers: rebuild for rootless (Theos <code>THEOS_PACKAGE_SCHEME = rootless</code>) and resolve paths at run time with <a href="https://github.com/opa334/libroot" rel="noopener">libroot</a> rather than hard-coding <code>/var/jb</code>.</li>
+    </ul>
+    <p class="source-note">Sources: <a href="https://ellekit.space/dopamine/" rel="noopener">ellekit.space/dopamine</a>; HCG Repo <a href="https://github.com/F1r3srp3nt/HCG-repo/blob/main/docs/ROOTLESS_ROOTFUL.md" rel="noopener">docs/ROOTLESS_ROOTFUL.md</a> (Theos rootless guide, Procursus, Sileo source review).</p>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-4">← Previous</a><a href="#ch-6">Next →</a></p></div>
+</section>
+
+<!-- ======================================================================= 6 -->
+<section class="chapter" id="ch-6" data-chapter aria-labelledby="ch-6-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">6</span><div><p class="eyebrow">The example</p><h2 id="ch-6-h">What is Dopamine?</h2></div></div>
+  <div class="chapter-body">
+    <p><strong>Dopamine</strong> is “a rootless semi-untethered jailbreak” for iPhone and iPad (its README). It is open source under the MIT License, led by Lars Fröder (opa334) with a team its website credits as main developers: kok3shidoll, Alfie, TheRealClarity, staturnz and wh1te4ever. HCG is not part of that team.</p>
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Dopamine at a glance (reviewed 21 Nov 2026) (scrollable)"><table>
+      <caption>Dopamine at a glance (reviewed 21 Nov 2026)</caption>
+      <tbody>
+        <tr><th scope="row">Latest release</th><td>3.0.13 (tagged 3 November 2026)</td></tr>
+        <tr><th scope="row">Type</th><td>Rootless, semi-untethered</td></tr>
+        <tr><th scope="row">Chips</th><td>arm64: A8 – A11 · arm64e: A12 – A17, M1 – M2</td></tr>
+        <tr><th scope="row">Versions</th><td>iOS/iPadOS 15.0 – 17.3.1 on all supported chips; 17.4 – 18.7.1 and 26.0 – 26.0.1 on A13 and earlier (<a href="#ch-7">details</a>)</td></tr>
+        <tr><th scope="row">Package managers offered</th><td>Sileo, Zebra</td></tr>
+        <tr><th scope="row">Tweak injection</th><td>ElleKit, by évelyne</td></tr>
+        <tr><th scope="row">Official download</th><td><a href="https://ellekit.space/dopamine/" rel="noopener">ellekit.space/dopamine</a> and <a href="https://github.com/opa334/Dopamine/releases/latest" rel="noopener">GitHub releases</a></td></tr>
+      </tbody>
+    </table></div>
+    <h3>What is inside the app</h3>
+    <p>The app has a <em>Jailbreak</em> button and a menu with <em>Settings</em>, <em>Restart SpringBoard</em>, <em>Reboot Userspace</em> and <em>Credits</em>. In <em>Settings</em>:</p>
+    <ul>
+      <li><strong>Tweak Injection</strong>: loads your tweaks. Turning it off is how you start without tweaks (Safe Mode, <a href="#ch-13">Chapter 13</a>). Changing it needs a userspace reboot.</li>
+      <li><strong>Verbose Logs</strong>, <strong>Allow JIT in Apps</strong>, <strong>Allow Legacy arm64e Libraries</strong>, <strong>Jetsam Multiplier</strong> and <strong>iDownload (Developer Shell)</strong>: advanced options. Leave them alone unless a guide you trust tells you otherwise.</li>
+      <li><strong>Exploits</strong>: which kernel exploit and bypasses to use. The app marks its choice as <em>Recommended</em>; keep it.</li>
+      <li><strong>Refresh Jailbreak Apps</strong>, <strong>Reinstall Package Managers</strong>, <strong>Change “mobile” Password</strong>, <strong>Hide Jailbreak</strong> and <strong>Remove Jailbreak</strong>.</li>
+    </ul>
+    <div class="phones">
+      <figure><img src="../assets/img/dp-main.svg" width="240" height="480" alt="Illustration of Dopamine's main screen: the Dopamine logo, Settings and Credits rows, and a large Jailbreak button."><figcaption>Main screen (illustration)</figcaption></figure>
+      <figure><img src="../assets/img/dp-settings.svg" width="240" height="480" alt="Illustration of Dopamine Settings: Tweak Injection switched on, Verbose Logs off, and actions Refresh Jailbreak Apps, Reinstall Package Managers, Change mobile Password, Hide Jailbreak and Remove Jailbreak."><figcaption>Settings (illustration)</figcaption></figure>
+    </div>
+    <p class="small muted">Illustrations are original drawings using the wording of Dopamine 3.0.13's English interface. Layout and colours differ from the real app.</p>
+    <p class="source-note">Sources: <a href="https://github.com/opa334/Dopamine" rel="noopener">Dopamine README, LICENSE.md and app strings (3.0.13)</a>; <a href="https://ellekit.space/dopamine/" rel="noopener">ellekit.space/dopamine</a> (credits, chips, package managers).</p>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-5">← Previous</a><a href="#ch-7">Next →</a></p></div>
+</section>
+
+<!-- ======================================================================= 7 -->
+<section class="chapter" id="ch-7" data-chapter aria-labelledby="ch-7-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">7</span><div><p class="eyebrow">Interactive</p><h2 id="ch-7-h">Device and firmware compatibility</h2></div></div>
+  <div class="chapter-body">
+    <p>Not every iOS version can be jailbroken, and the newest never can. Dopamine's published support, word for word from its sources:</p>
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Dopamine 3.0.13 supported ranges (scrollable)"><table>
+      <caption>Dopamine 3.0.13 supported ranges</caption>
+      <thead><tr><th scope="col">Chips</th><th scope="col">iOS / iPadOS</th><th scope="col">Source wording</th></tr></thead>
+      <tbody>
+        <tr><td>A8 – A17, M1 – M2 (all supported)</td><td>15.0 – 17.3.1</td><td>“Supported on iOS 15.0 - 17.3.1 (A14 - A17 / M1 - M2)” and below</td></tr>
+        <tr><td>A8 – A13 (A13 and earlier)</td><td>17.4 – 18.7.1</td><td>“iOS 15.0 - 18.7.1 (arm64)” · “iOS 15.0 - 18.7.1, 26.0 - 26.0.1 (A12/A13)”</td></tr>
+        <tr><td>A12 – A13 in practice (older chips never received iOS 26)</td><td>26.0 – 26.0.1</td><td>“Supported on iOS 15.0 - 18.7.1 and 26.0 - 26.0.1 (A8 - A13)”</td></tr>
+      </tbody>
+    </table></div>
+    <p>Everything else is <strong>not supported</strong>, including 18.7.2 and later, 26.1 and later, 27.x, and every device with an A18, A19, A20, M3, M4 or M5 chip.</p>
+    <figure class="fig">
+      <img src="../assets/img/diagram-route.svg" width="760" height="360" alt="Table diagram of installation routes. 15.0 to 16.6.1: TrollStore route, permanent install. 16.7 RC (20H18) and 17.0: TrollStore route via TrollRestore, needs a computer. 16.7 to 16.7.x and 17.0.1 to 17.3.1: sideload route on all supported chips, re-sign every 7 days. 17.4 to 18.7.1: sideload route on A13 and earlier only. 26.0 to 26.0.1: sideload route on A13 and earlier only. Anything else: not supported.">
+      <figcaption>Which route applies to which version. Original HCG diagram based on ios.cfw.guide.</figcaption>
+    </figure>
+
+    <h3 id="checker-h">Check your device</h3>
+    <p>Find your answers in <strong>Settings › General › About</strong>: <em>Model Name</em>, <em>iOS Version</em>, and <em>Model Number</em> (tap it to switch to the number beginning with A, such as A2161). The checker runs entirely in your browser, sends nothing anywhere and never stores your answers.</p>
+    <form id="checker" class="card" aria-labelledby="checker-h" novalidate>
+      <div class="checker-grid">
+        <div>
+          <div class="field">
+            <label for="cc-filter">Search for your model</label>
+            <input class="input" id="cc-filter" type="search" autocomplete="off" placeholder="e.g. iPhone 12, A2161, iPhone13,2" aria-describedby="cc-filter-help">
+            <p class="help" id="cc-filter-help">Name, model number (A…), identifier or chip. The list below narrows as you type.</p>
+          </div>
+          <div class="field">
+            <label for="cc-device">Exact iPhone or iPad model</label>
+            <select class="select" id="cc-device" aria-describedby="cc-facts"><option value="">Choose your model…</option></select>
+            <p class="device-facts" id="cc-facts" aria-live="polite"></p>
+          </div>
+          <div class="field">
+            <label for="cc-version">Installed iOS / iPadOS version</label>
+            <input class="input" id="cc-version" type="text" inputmode="decimal" autocomplete="off" list="cc-versions" placeholder="e.g. 16.6.1" aria-describedby="cc-version-help">
+            <datalist id="cc-versions"></datalist>
+            <p class="help" id="cc-version-help">Exactly as shown under iOS Version. Suggestions list the versions Apple released for the model you chose.</p>
+          </div>
+          <fieldset class="field" id="cc-build-row" hidden>
+            <legend>Build number for 16.7</legend>
+            <p class="help">Shown in brackets next to the version in Settings › General › About, e.g. 16.7 (20H18).</p>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="cc-build" value="20H18"><span>20H18 (Release Candidate)</span></label>
+              <label class="choice"><input type="radio" name="cc-build" value="20H19"><span>20H19 or another</span></label>
+              <label class="choice"><input type="radio" name="cc-build" value="unsure" checked><span>Not sure</span></label>
+            </div>
+          </fieldset>
+        </div>
+        <div>
+          <fieldset class="field">
+            <legend>Is a jailbreak installed already?</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="cc-jb" value="none" checked><span>No</span></label>
+              <label class="choice"><input type="radio" name="cc-jb" value="dopamine"><span>Dopamine</span></label>
+              <label class="choice"><input type="radio" name="cc-jb" value="palera1n-rootless"><span>palera1n (rootless)</span></label>
+              <label class="choice"><input type="radio" name="cc-jb" value="palera1n-rootful"><span>palera1n (rootful)</span></label>
+              <label class="choice"><input type="radio" name="cc-jb" value="other-rootless"><span>nathanlr, Relaxin, Serotonin or Bootstrap</span></label>
+              <label class="choice"><input type="radio" name="cc-jb" value="older"><span>Another jailbreak</span></label>
+              <label class="choice"><input type="radio" name="cc-jb" value="unsure"><span>Not sure</span></label>
+            </div>
+          </fieldset>
+          <fieldset class="field">
+            <legend>Is TrollStore installed?</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="cc-ts" value="no" checked><span>No</span></label>
+              <label class="choice"><input type="radio" name="cc-ts" value="yes"><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="cc-ts" value="unsure"><span>Not sure</span></label>
+            </div>
+          </fieldset>
+          <fieldset class="field">
+            <legend>Do you have a current backup?</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="cc-backup" value="yes"><span>Yes, made today or recently</span></label>
+              <label class="choice"><input type="radio" name="cc-backup" value="no" checked><span>No</span></label>
+            </div>
+          </fieldset>
+          <fieldset class="field">
+            <legend>Has this device ever installed an iOS update?</legend>
+            <p class="help">The sideloading guide does not work on the version a device originally shipped with.</p>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="cc-fw" value="updated" checked><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="cc-fw" value="factory"><span>No, never updated</span></label>
+              <label class="choice"><input type="radio" name="cc-fw" value="unsure"><span>Not sure</span></label>
+            </div>
+          </fieldset>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Check compatibility</button>
+        <button type="reset" class="btn btn-metal">Clear</button>
+      </div>
+      <div id="cc-result" class="verdict" aria-live="polite"></div>
+      <noscript><p class="callout callout-info">The checker needs JavaScript. Without it, compare your chip and version with the table above and the official guides.</p></noscript>
+    </form>
+    <p class="small muted">Results: <span class="badge badge-ok">Supported</span> a documented route fits and nothing else is needed first · <span class="badge badge-warn">Requirements</span> supported once you meet the listed conditions · <span class="badge badge-danger">Unsupported</span> outside Dopamine's published ranges · <span class="badge badge-info">Not verified</span> we cannot match your answers to a real model and release, or no documented route fits. The checker never guesses.</p>
+    <p class="source-note">Sources: <a href="https://github.com/opa334/Dopamine" rel="noopener">Dopamine README</a>, <a href="https://ellekit.space/dopamine/" rel="noopener">ellekit.space/dopamine</a>, <a href="https://ios.cfw.guide/installing-dopamine/" rel="noopener">ios.cfw.guide</a> (routes), <a href="https://github.com/opa334/TrollStore" rel="noopener">TrollStore README</a>; device and release data from <a href="https://github.com/littlebyteorg/appledb" rel="noopener">AppleDB</a>, the database ellekit.space links to for “a more detailed breakdown”.</p>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-6">← Previous</a><a href="#ch-8">Next →</a></p></div>
+</section>
+
+<!-- ======================================================================= 8 -->
+<section class="chapter" id="ch-8" data-chapter aria-labelledby="ch-8-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">8</span><div><p class="eyebrow">Before you start</p><h2 id="ch-8-h">Preparing your iPhone and backing up</h2></div></div>
+  <div class="chapter-body">
+    <p>ios.cfw.guide “strongly” recommends a backup and says that “if no issues occur during installation, you will be jailbroken without any data loss”. Prepare for the case where issues do occur.</p>
+    <h3 id="checklist-h">Preparation checklist</h3>
+    <p class="checklist-status" aria-live="polite">0 of 10 preparation items done.</p>
+    <ul class="checklist" aria-labelledby="checklist-h">
+      <li><label><input type="checkbox" id="prep-check"><span>The checker in Chapter 7 says <em>Supported</em> or <em>Requirements</em> for my exact model and version, and I have met every listed requirement.<span class="why">Never rely on a video or a friend's phone: support depends on the exact chip and version.</span></span></label></li>
+      <li><label><input type="checkbox" id="prep-backup"><span>I made a full backup today: iCloud, or an <strong>encrypted</strong> backup in Finder or iTunes.<span class="why">Encrypted computer backups also keep saved passwords and Health data. Check that it finished.</span></span></label></li>
+      <li><label><input type="checkbox" id="prep-photos"><span>Photos and important files are also synced or copied somewhere else.<span class="why">A second copy protects you if a backup turns out to be incomplete.</span></span></label></li>
+      <li><label><input type="checkbox" id="prep-updates"><span>Automatic updates are off (Settings › General › Software Update › Automatic Updates).<span class="why">An accidental update can permanently end your ability to jailbreak.</span></span></label></li>
+      <li><label><input type="checkbox" id="prep-power"><span>The battery is well charged or the device is plugged in.<span class="why">ios.cfw.guide: prevent “any unexpected power off”.</span></span></label></li>
+      <li><label><input type="checkbox" id="prep-account"><span>I know my Apple Account password and passcode, and I can receive two-factor codes.<span class="why">Needed for sideloading, restores and Activation Lock.</span></span></label></li>
+      <li><label><input type="checkbox" id="prep-computer"><span>If my route needs a computer, it is ready with the tools from Chapter 9 (and iTunes on Windows).<span class="why">TrollRestore, TrollInstallerMDC and sideloading need one.</span></span></label></li>
+      <li><label><input type="checkbox" id="prep-oldjb"><span>No conflicting jailbreak is installed (rootful palera1n, nathanlr, Relaxin, Serotonin, Bootstrap).<span class="why">ios.cfw.guide requires removing these first.</span></span></label></li>
+      <li><label><input type="checkbox" id="prep-banking"><span>I accept that banking and some other apps may stop working, and I have another way to reach them.<span class="why">See Chapter 4.</span></span></label></li>
+      <li><label><input type="checkbox" id="prep-recovery"><span>I have read how to get out of trouble (Chapter 13) and how to remove the jailbreak (Chapter 14).<span class="why">Know the way back before you leave.</span></span></label></li>
+    </ul>
+    <h3>What a backup can and cannot do</h3>
+    <ul>
+      <li>A backup restores your <strong>data</strong>. It does not restore your iOS version or your jailbreak.</li>
+      <li>Restoring the phone with a computer installs a version Apple still signs, normally the newest. That usually ends jailbreak support for good, and you cannot choose to go back to an older version.</li>
+      <li>A backup made on a newer iOS version cannot be restored to a device running an older one.</li>
+      <li>Keep a backup from <em>before</em> you jailbreak. Backups made while jailbroken can carry tweak settings and leftovers back to a clean phone.</li>
+    </ul>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-7">← Previous</a><a href="#ch-9">Next →</a></p></div>
+</section>
+
+<!-- ======================================================================= 9 -->
+<section class="chapter" id="ch-9" data-chapter aria-labelledby="ch-9-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">9</span><div><p class="eyebrow">Installation</p><h2 id="ch-9-h">Installing Dopamine</h2></div></div>
+  <div class="chapter-body">
+    <div class="callout callout-warn" id="install-gate"><span class="callout-title">Preparation not finished</span><p>Your checklist in <a href="#checklist-h">Chapter 8</a> is not complete. You can read on, but finish it before you change anything on your device.</p></div>
+    <p>These steps summarise the official ios.cfw.guide instructions for Dopamine. Follow the official page side by side: if it differs from this summary, it wins. HCG has no way to install anything on your device.</p>
+    <h3>Get the official Dopamine package</h3>
+    <ul>
+      <li>Download <code>Dopamine.ipa</code> only from <a href="https://ellekit.space/dopamine/" rel="noopener">ellekit.space/dopamine</a> (“Download .ipa”, or “Open in TrollStore”) or from <a href="https://github.com/opa334/Dopamine/releases/latest" rel="noopener">github.com/opa334/Dopamine/releases</a>.</li>
+      <li>Do not use copies from mirrors, “signing services”, video descriptions, Discord files or HCG: HCG does not host Dopamine. A modified jailbreak runs with full control of your phone.</li>
+    </ul>
+    <p>Then follow the route the checker gave you. Use the tabs below (arrow keys switch tabs).</p>
+
+    <div class="tabs">
+      <div role="tablist" aria-label="Installation route">
+        <button type="button" role="tab" id="tab-trollstore" aria-controls="panel-trollstore" aria-selected="true">TrollStore route (15.0 – 16.6.1, 16.7 RC, 17.0)</button>
+        <button type="button" role="tab" id="tab-sideload" aria-controls="panel-sideload" aria-selected="false" tabindex="-1">Sideload route (16.7 – 16.7.x, 17.0.1 and later)</button>
+      </div>
+
+      <div role="tabpanel" id="panel-trollstore" aria-labelledby="tab-trollstore" tabindex="0">
+        <p class="route-note">TrollStore permanently installs Dopamine, so it never expires. TrollStore itself can only run on 14.0 beta 2 – 16.6.1, 16.7 RC (20H18) and 17.0 (TrollStore README).</p>
+        <h4>Part A. Install TrollStore (skip if you have it)</h4>
+        <p>The method depends on your chip and version. The checker names your method; the official page has a tab for each:</p>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="TrollStore installers (ios.cfw.guide) (scrollable)"><table>
+          <caption>TrollStore installers (ios.cfw.guide)</caption>
+          <thead><tr><th scope="col">Method</th><th scope="col">Versions</th><th scope="col">Computer</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">TrollHelperOTA</th><td>15.0 – 15.4.1; A12 and later 15.5 – 15.6.1</td><td>Not needed</td></tr>
+            <tr><th scope="row">TrollInstallerX</th><td>16.0 – 16.6.1; A9(X) and later 15.7 – 15.8.6; A9(X) – A11 15.5 – 15.6.1</td><td>Needed unless jailbreaks.app signs it</td></tr>
+            <tr><th scope="row">TrollRestore</th><td>15.8.7 – 15.8.8; 16.7 RC (20H18); 17.0; A8(X) 15.7.2 – 15.8.6</td><td>Needed; Find My must be off during it</td></tr>
+            <tr><th scope="row">TrollInstallerMDC</th><td>A8(X) 15.5 – 15.7.1</td><td>Needed</td></tr>
+          </tbody>
+        </table></div>
+        <p>Follow your method's tab on <a href="https://ios.cfw.guide/installing-dopamine-trollstore/" rel="noopener">Installing Dopamine (TrollStore)</a>, including <strong>Install Persistence Helper</strong>. TrollStore's README explains why: when iOS reloads its icon cache, TrollStore apps stop launching until the persistence helper re-registers them.</p>
+        <h4>Part B. Install Dopamine with TrollStore</h4>
+        <ol class="walk">
+          <li><strong>Save the .ipa on the device.</strong> Download <code>Dopamine.ipa</code> from the official site in Safari (or tap “Open in TrollStore” there).</li>
+          <li><strong>Open TrollStore</strong> and tap <em>+</em> at the top right.</li>
+          <li><strong>Choose the file.</strong> Go to where you saved the Dopamine <code>.ipa</code> and tap it.</li>
+          <li><strong>Tap Install.</strong> Dopamine appears on your Home Screen. No trust step and no Developer Mode are needed on this route.</li>
+        </ol>
+        <div class="phones">
+          <figure><img src="../assets/img/ts-plus.svg" width="240" height="480" alt="Illustration: TrollStore's Apps tab, with the plus button at the top right highlighted."><figcaption>Step 2 (illustration)</figcaption></figure>
+          <figure><img src="../assets/img/ts-file.svg" width="240" height="480" alt="Illustration: a file picker showing the Downloads folder with Dopamine.ipa highlighted."><figcaption>Step 3 (illustration)</figcaption></figure>
+          <figure><img src="../assets/img/ts-install.svg" width="240" height="480" alt="Illustration: TrollStore asks “Install this app?” for Dopamine, with Install highlighted."><figcaption>Step 4 (illustration)</figcaption></figure>
+        </div>
+      </div>
+
+      <div role="tabpanel" id="panel-sideload" aria-labelledby="tab-sideload" tabindex="0" hidden>
+        <p class="route-note">For 16.7 – 16.7.x (not 16.7 RC) and 17.0.1 or later, where TrollStore cannot run. The app is signed with your Apple Account and must be <strong>re-signed every 7 days</strong>. This route does not work on the iOS version a device originally shipped with.</p>
+        <div class="callout callout-info"><span class="callout-title">No computer?</span><p>ios.cfw.guide says the computer is only needed “unless jailbreaks.app is signed”. When we reviewed it, the guide said jailbreaks.app was signing <strong>Dopamine 2.5b4</strong>, an older version than 3.0.13. Signing status changes often; check which version you are getting.</p></div>
+        <h4>You need</h4>
+        <ul>
+          <li>A Windows, macOS or Linux computer and a cable.</li>
+          <li><a href="https://github.com/khcrysalis/PlumeImpactor/releases/latest" rel="noopener">PlumeImpactor</a>, the latest release from its official GitHub page, and iTunes if you use Windows.</li>
+          <li>The official <code>Dopamine.ipa</code> on the computer.</li>
+          <li>Your Apple Account. PlumeImpactor uses it to sign the app. Only enter it into the official PlumeImpactor build; some people use a separate Apple Account for sideloading.</li>
+        </ul>
+        <ol class="walk">
+          <li><strong>Connect and trust.</strong> Plug the device into the computer, and make sure the computer is trusted and allowed to view its contents.</li>
+          <li><strong>Sign in to PlumeImpactor.</strong> Open it, go to <em>Settings › Sign In</em>, enter your Apple Account and password, then close the Settings and Sign In windows.</li>
+          <li><strong>Install.</strong> Drag and drop the Dopamine <code>.ipa</code> into PlumeImpactor and click <em>Install</em>. After this, the computer is no longer needed.</li>
+          <li><strong>Trust the app.</strong> On the device go to <em>Settings › General › Device Management</em> (or <em>VPN &amp; Device Management</em> / <em>Profiles and Device Management</em>) › your Apple Account › <em>Trust</em>.</li>
+          <li><strong>Turn on Developer Mode (iOS 16 or later).</strong> If you did not use jailbreaks.app: <em>Settings › Privacy &amp; Security › Developer Mode</em>, switch it on and follow the on-screen instructions (the device restarts).</li>
+        </ol>
+        <div class="phones">
+          <figure><img src="../assets/img/sl-trust.svg" width="240" height="480" alt="Illustration: Settings, Device Management, showing the Developer App entry for your Apple Account and a Trust button."><figcaption>Step 4 (illustration)</figcaption></figure>
+          <figure><img src="../assets/img/sl-devmode.svg" width="240" height="480" alt="Illustration: Settings, Privacy and Security, with the Developer Mode switch turned on and highlighted."><figcaption>Step 5 (illustration)</figcaption></figure>
+        </div>
+        <div class="callout callout-warn"><span class="callout-title">Every 7 days</span><p>Apps signed with a regular Apple Account expire after 7 days (365 days with a paid Apple Developer account). After that Dopamine will not open, so you cannot re-jailbreak after a restart until you re-sign it. See <a href="https://ios.cfw.guide/sideloading-apps/" rel="noopener">ios.cfw.guide: Sideloading Apps</a>. Already-installed tweaks keep their files; they just are not active while the device is not jailbroken.</p></div>
+      </div>
+    </div>
+    <p class="source-note">Sources: <a href="https://ios.cfw.guide/installing-dopamine-trollstore/" rel="noopener">Installing Dopamine (TrollStore)</a> and <a href="https://ios.cfw.guide/installing-dopamine/" rel="noopener">Installing Dopamine</a> (page sources last changed 7 Aug 2026); <a href="https://github.com/opa334/TrollStore" rel="noopener">TrollStore README</a>; <a href="https://ellekit.space/dopamine/" rel="noopener">ellekit.space/dopamine</a>.</p>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-8">← Previous</a><a href="#ch-10">Next →</a></p></div>
+</section>
+
+<!-- ======================================================================= 10 -->
+<section class="chapter" id="ch-10" data-chapter aria-labelledby="ch-10-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">10</span><div><p class="eyebrow">Installation</p><h2 id="ch-10-h">Running the jailbreak</h2></div></div>
+  <div class="chapter-body">
+    <ol class="walk">
+      <li><strong>Reboot the device.</strong> Not required, but recommended by the official guide.</li>
+      <li><strong>Open Dopamine</strong> from the Home Screen immediately afterwards.</li>
+      <li><strong>Tap <em>Jailbreak</em>.</strong> Do not touch the device while it works.
+        <ul>
+          <li>On some 2 GB RAM devices on 15.8.7 – 15.8.8 or 16.7 and later, Dopamine first asks for a respring (<em>Respring Required</em> › <em>Apply Workaround</em>). After the respring, open Dopamine and tap <em>Jailbreak</em> again. On A8 devices this may need several tries.</li>
+          <li>On A12/A13 devices on 16.6 or later the screen briefly turns off and on. That is expected.</li>
+        </ul></li>
+      <li><strong>Choose a package manager</strong> (first run). Dopamine asks you to <em>Select Package Manager(s)</em>: “If you are unsure which one to select, select Sileo”. You can choose both.</li>
+      <li><strong>Wait for the userspace reboot.</strong> The screen goes dark and the Lock Screen returns. Dopamine then shows <em>Jailbroken</em>, and Sileo and/or Zebra are on your Home Screen.</li>
+    </ol>
+    <div class="phones">
+      <figure><img src="../assets/img/dp-main.svg" width="240" height="480" alt="Illustration of Dopamine's main screen with the Jailbreak button highlighted."><figcaption>Step 3 (illustration)</figcaption></figure>
+      <figure><img src="../assets/img/dp-pm.svg" width="240" height="480" alt="Illustration of the Select Package Manager(s) screen: the hint “If you are unsure which one to select, select Sileo”, Sileo selected, Zebra not selected, and a Continue button."><figcaption>Step 4 (illustration)</figcaption></figure>
+      <figure><img src="../assets/img/dp-done.svg" width="240" height="480" alt="Illustration of Dopamine's progress log: Exploiting Kernel, Bypassing PAC and PPL, Initializing Environment, Initializing Protection, Rebooting Userspace, ending with Jailbroken."><figcaption>Step 5 (illustration)</figcaption></figure>
+    </div>
+    <div class="callout callout-tip"><span class="callout-title">If it fails</span><p>“If the app or your device crashes/restarts unexpectedly and the jailbreak isn't installed, simply try rebooting and running the exploit again until it does work.” (ios.cfw.guide). Exploits are not 100% reliable.</p></div>
+
+    <h3>First-time setup: ElleKit and PreferenceLoader</h3>
+    <p>The official guide then updates and installs two essentials in Sileo (<a href="#ch-11">Chapter 11</a> explains the app):</p>
+    <ol class="walk">
+      <li><strong>ElleKit.</strong> <em>Sources</em> tab › <em>ElleKit</em> repository › <em>All Categories</em> › <em>ElleKit</em> › <em>Get</em>.</li>
+      <li><strong>PreferenceLoader.</strong> <em>Search</em> tab › search <code>PreferenceLoader</code> › <em>Get</em>. It lets tweaks add their settings to the Settings app.</li>
+      <li><strong>Confirm.</strong> Tap the <em>Queued</em> bar at the bottom, then <em>Confirm</em>.</li>
+      <li><strong>Tap <em>Reboot Device</em></strong> when it finishes. Despite the name this is not a full reboot: you stay jailbroken.</li>
+    </ol>
+    <div class="phones">
+      <figure><img src="../assets/img/si-sources.svg" width="240" height="480" alt="Illustration: Sileo's Sources tab with the ElleKit repository highlighted."><figcaption>Step 1 (illustration)</figcaption></figure>
+      <figure><img src="../assets/img/si-get.svg" width="240" height="480" alt="Illustration: Sileo's ElleKit package page with the Get button, and a Queued bar at the bottom showing 2 items."><figcaption>Steps 1–3 (illustration)</figcaption></figure>
+      <figure><img src="../assets/img/si-confirm.svg" width="240" height="480" alt="Illustration: Sileo's queue listing ElleKit and PreferenceLoader with a Confirm button, then a Reboot Device button and the note Stays jailbroken afterwards."><figcaption>Steps 3–4 (illustration)</figcaption></figure>
+    </div>
+    <p>On 15.0 – 16.6.1, 16.7 RC and 17.0, if you sideloaded Dopamine, the official guide then recommends installing TrollStore through Sileo's <em>TrollStore Helper</em> and reinstalling Dopamine with it, so you never have to re-sign. Follow “Next Steps” on <a href="https://ios.cfw.guide/installing-dopamine/" rel="noopener">Installing Dopamine</a>.</p>
+
+    <h3>How to tell it worked</h3>
+    <ul>
+      <li>Dopamine shows <em>Jailbroken</em>.</li>
+      <li>Sileo (or Zebra) opens and refreshes its sources without errors.</li>
+      <li>ElleKit and PreferenceLoader appear under Sileo's installed packages.</li>
+    </ul>
+    <h3>What happens after a reboot</h3>
+    <ul>
+      <li>After a <strong>full restart</strong> the device starts as normal iOS: no tweaks run. Your jailbreak files and installed packages stay on the device.</li>
+      <li>To jailbreak again: open Dopamine, tap <em>Jailbreak</em>. On the sideload route this only works while the app's 7-day signature is valid.</li>
+      <li>A <strong>respring</strong> (<em>Restart SpringBoard</em>) or <strong>userspace reboot</strong> (<em>Reboot Userspace</em>, or Sileo's <em>Reboot Device</em>) keeps you jailbroken.</li>
+      <li>When Dopamine offers an update, it shows <em>Update Available</em> inside the app.</li>
+    </ul>
+    <p class="source-note">Sources: ios.cfw.guide <a href="https://ios.cfw.guide/installing-dopamine/" rel="noopener">Installing Dopamine</a> (“Running Dopamine”, “Installing necessary software”, “Next Steps”); Dopamine 3.0.13 app strings.</p>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-9">← Previous</a><a href="#ch-11">Next →</a></p></div>
+</section>
+
+<!-- ======================================================================= 11 -->
+<section class="chapter" id="ch-11" data-chapter aria-labelledby="ch-11-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">11</span><div><p class="eyebrow">Package managers</p><h2 id="ch-11-h">Installing and using Sileo or Zebra</h2></div></div>
+  <div class="chapter-body">
+    <p>A <strong>package manager</strong> is the jailbreak's App Store: it installs, updates and removes tweaks, themes and tools. ios.cfw.guide: they “can be considered similar to the iOS App Store, where you can install both free and paid software.” Dopamine offers two:</p>
+    <div class="compare">
+      <div class="card"><h3>Sileo</h3><p>Dopamine's suggestion if you are unsure, and the one the official setup steps use. Credited on the Dopamine website to Amy While.</p></div>
+      <div class="card"><h3>Zebra</h3><p>An alternative package manager. Credited on the Dopamine website to Adam Demasi. It works with the same sources and packages.</p></div>
+    </div>
+    <p>Chose only one at first? Install the other later with <em>Dopamine › Settings › Reinstall Package Managers</em>. Use one at a time for changes, so two apps do not edit the same package database simultaneously.</p>
+    <h3>Everyday tasks</h3>
+    <ul>
+      <li><strong>Add a source:</strong> <em>Sources</em> tab › <em>+</em>, enter the URL exactly (with the trailing slash), let it refresh. Many sites have an “Add to Sileo” or “Add to Zebra” button that fills it in for you.</li>
+      <li><strong>Find a package:</strong> <em>Search</em> tab, or browse a source's categories.</li>
+      <li><strong>Install:</strong> open the package, read its description, compatibility and dependencies, tap <em>Get</em>, then the <em>Queued</em> bar › <em>Confirm</em>.</li>
+      <li><strong>Update:</strong> pull down to refresh sources, then review the available updates. Read changelogs; update a few things at a time.</li>
+      <li><strong>Remove:</strong> find the package among your installed packages, open it and choose <em>Remove</em>, then confirm. Respring if asked.</li>
+    </ul>
+    <h3>Command line (optional)</h3>
+    <p>With a terminal app or SSH, the same database is managed by APT. For example, after adding a source file:</p>
+    <div class="cmd"><pre><code id="cmd-apt-update">sudo apt update</code></pre><button type="button" class="btn btn-metal" data-copy-from="cmd-apt-update">Copy</button></div>
+    <p class="small muted">Commands are shown for you to copy and run yourself; nothing runs from this page.</p>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-10">← Previous</a><a href="#ch-12">Next →</a></p></div>
+</section>
+
+<!-- ======================================================================= 12 -->
+<section class="chapter" id="ch-12" data-chapter aria-labelledby="ch-12-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">12</span><div><p class="eyebrow">Concepts</p><h2 id="ch-12-h">Understanding repositories and packages</h2></div></div>
+  <div class="chapter-body">
+    <p>A <strong>repository</strong> (repo, or source) is a website that lists packages. ios.cfw.guide: repos “are essentially databases that contain lots of tweaks for you to install.” A <strong>package</strong> is a <code>.deb</code> file containing a tweak, theme, app or tool, plus a description of what it needs.</p>
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Parts of a package listing (scrollable)"><table>
+      <caption>Parts of a package listing</caption>
+      <tbody>
+        <tr><th scope="row">Package ID</th><td>A unique name, e.g. <code>com.hakmicapitalgroup.hcgnexus</code>.</td></tr>
+        <tr><th scope="row">Version</th><td><code>~beta</code> in a version marks a pre-release.</td></tr>
+        <tr><th scope="row">Architecture</th><td><code>iphoneos-arm64</code> = rootless (what Dopamine uses). <code>iphoneos-arm</code> = rootful.</td></tr>
+        <tr><th scope="row">Depends</th><td>Other packages it needs, often <code>preferenceloader</code> and an injector (<code>mobilesubstrate</code> or <code>ellekit</code>), and sometimes a minimum <code>firmware</code> (iOS) version.</td></tr>
+        <tr><th scope="row">Depiction</th><td>The package's information page: features, compatibility, known issues, changelog.</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Staying safe with sources</h3>
+    <div class="callout callout-danger"><span class="callout-title">Malicious repositories</span>
+      <ul>
+        <li>A package installs with the highest privileges on the device. Add only sources you have a reason to trust, and remove ones you no longer use.</li>
+        <li>Avoid “cracked” or pirated tweak repos. They are a well-known route for malware, and they take income from developers.</li>
+        <li>Never turn off APT signature checking to make a source work.</li>
+        <li>Be wary of any source or tweak that asks for your Apple Account, banking or other passwords.</li>
+      </ul></div>
+    <h3>Avoiding incompatible tweaks</h3>
+    <ul>
+      <li>Read the depiction: is it built for rootless (<code>iphoneos-arm64</code>) and does it list your iOS version?</li>
+      <li>Install one tweak at a time and use your device for a bit before adding the next. When something breaks, you know which one did it.</li>
+      <li>Two tweaks that change the same part of iOS (for example two Lock Screen tweaks) often conflict.</li>
+      <li>“Builds and installs” is not the same as “tested on a device like mine”. Prefer packages whose depiction lists tested devices.</li>
+    </ul>
+    <h3>Example: adding HCG Repo</h3>
+    <p>HCG Repo is one example of a source. Adding it is optional and not needed for Dopamine.</p>
+    <div class="cmd"><pre><code id="cmd-hcg-repo">https://repo.hakmicapitalgroup.com/repo/</code></pre><button type="button" class="btn btn-metal" data-copy-from="cmd-hcg-repo">Copy URL</button></div>
+    <p>Or, from a terminal, as a file under <code>/var/jb/etc/apt/sources.list.d/</code> followed by <code>sudo apt update</code>:</p>
+    <div class="cmd"><pre><code id="cmd-hcg-deb">deb https://repo.hakmicapitalgroup.com/repo/ ./</code></pre><button type="button" class="btn btn-metal" data-copy-from="cmd-hcg-deb">Copy</button></div>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-11">← Previous</a><a href="#ch-13">Next →</a></p></div>
+</section>
+
+<!-- ======================================================================= 13 -->
+<section class="chapter" id="ch-13" data-chapter aria-labelledby="ch-13-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">13</span><div><p class="eyebrow">When things go wrong</p><h2 id="ch-13-h">Safe Mode, troubleshooting and recovery</h2></div></div>
+  <div class="chapter-body">
+    <h3>Know your restarts</h3>
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Kinds of restart and whether you stay jailbroken (scrollable)"><table>
+      <caption>Kinds of restart and whether you stay jailbroken</caption>
+      <thead><tr><th scope="col">Action</th><th scope="col">What restarts</th><th scope="col">Still jailbroken?</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Respring</th><td>Only SpringBoard (Home Screen and system interface)</td><td>Yes</td></tr>
+        <tr><th scope="row">Userspace reboot</th><td>Everything above the kernel</td><td>Yes</td></tr>
+        <tr><th scope="row">Full reboot / force restart</th><td>The whole device</td><td>No: stock iOS until you run Dopamine</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Safe Mode</h3>
+    <p>In <strong>Safe Mode</strong> the device is jailbroken but no tweaks are loaded, so you can still open Sileo or Zebra and remove the package causing trouble. Dopamine has two ways into it:</p>
+    <ul>
+      <li><strong>You choose it:</strong> <em>Dopamine › Settings › Tweak Injection</em> off, then accept the userspace reboot.</li>
+      <li><strong>Dopamine chooses it:</strong> if iOS hits a userspace panic, Dopamine performs a userspace reboot instead of a full panic, saves a “userspace-panic” log, and turns tweak injection off. If your tweaks suddenly stopped working after a crash, look at <em>Tweak Injection</em>.</li>
+    </ul>
+    <p>When SpringBoard itself keeps crashing, the system can also come up in a Safe Mode screen with tweaks unloaded. Do not just tap to exit: first remove or disable the tweak you installed or changed last, or SpringBoard may load it again.</p>
+    <div class="callout callout-tip"><span class="callout-title">The universal escape</span><p>Because Dopamine is semi-untethered, a <strong>force restart</strong> always brings you back to normal iOS with no tweaks running. iPhone 8 or later: press and release volume up, press and release volume down, then hold the side button until the Apple logo appears. iPhone 7: hold volume down and the side button. iPhone 6s and SE (1st generation): hold the Home and side (or top) buttons. For iPads, see Apple's “Force restart iPad”.</p></div>
+
+    <h3 id="trouble-h">Troubleshooting</h3>
+    <div class="tools-row"><button type="button" class="linklike" data-details-all="open" aria-controls="trouble-list">Expand all</button><button type="button" class="linklike" data-details-all="close" aria-controls="trouble-list">Collapse all</button></div>
+    <div class="faq" id="trouble-list">
+      <details><summary>Dopamine crashes, or the device restarts during the jailbreak</summary>
+        <p>Normal for exploits now and then. Reboot, open Dopamine immediately, and tap <em>Jailbreak</em> again. Repeat if needed (ios.cfw.guide).</p></details>
+      <details><summary>Dopamine says “Respring Required” before it will jailbreak</summary>
+        <p>Some 2 GB RAM devices need a workaround first. Tap <em>Apply Workaround</em>; after the respring, open Dopamine and tap <em>Jailbreak</em>. On A8 devices it may need several attempts.</p></details>
+      <details><summary>Respring loop after installing or changing a tweak</summary>
+        <ol>
+          <li>Force restart (see above). You boot into stock iOS.</li>
+          <li>Open Dopamine › <em>Settings</em> › turn <em>Tweak Injection</em> off, then jailbreak.</li>
+          <li>Open Sileo or Zebra and remove the tweak you installed or changed last.</li>
+          <li>Turn <em>Tweak Injection</em> back on and accept the userspace reboot.</li>
+        </ol>
+        <p>ios.cfw.guide: “the most likely culprit is your most recently installed/updated tweak”.</p></details>
+      <details><summary>All my tweaks stopped working after a crash</summary>
+        <p>Dopamine turns tweak injection off after it catches a userspace panic. Check <em>Dopamine › Settings › Tweak Injection</em>. Before switching it back on, remove whatever caused the crash.</p></details>
+      <details><summary>The Dopamine app will not open (sideload route)</summary>
+        <p>Its 7-day signature has probably expired. Re-sign it with PlumeImpactor (<a href="https://ios.cfw.guide/sideloading-apps/#resigning-apps" rel="noopener">ios.cfw.guide: Resigning Apps</a>), then jailbreak. On 15.0 – 16.6.1, 16.7 RC and 17.0, consider moving to the TrollStore route.</p></details>
+      <details><summary>TrollStore or apps installed with it will not open</summary>
+        <p>When iOS reloads its icon cache, TrollStore apps revert to a non-launchable state. Open your persistence helper app (often Tips) and tap <em>Refresh App Registrations</em>.</p></details>
+      <details><summary>Sileo, Zebra or other jailbreak app icons are missing</summary>
+        <p>Use <em>Dopamine › Settings › Refresh Jailbreak Apps</em>. From a terminal you can also rebuild the icon cache:</p>
+        <div class="cmd"><pre><code id="cmd-uicache">uicache -a</code></pre><button type="button" class="btn btn-metal" data-copy-from="cmd-uicache">Copy</button></div></details>
+      <details><summary>Dopamine reports duplicate apps and cannot continue</summary>
+        <p>An app that Dopamine ships (for example a package manager) is also installed separately, or registered under a different path. Remove the separately installed copy, then jailbreak again.</p></details>
+      <details><summary>The touchscreen stopped responding after jailbreaking</summary>
+        <p>ios.cfw.guide: on devices with a replacement screen, “especially if the screen is of low quality”, touch may not work after the userspace reboot. This is not a Dopamine bug. Force restart to return to stock iOS.</p></details>
+      <details><summary>Sileo cannot refresh a source, or a package is “not found”</summary>
+        <p>Check the URL exactly, including the trailing slash, and your connection. Packages are hidden when they do not match your layout (rootless) or your iOS version.</p></details>
+      <details><summary>A banking or other app refuses to run</summary>
+        <p>Expected on a jailbroken device. Use another device for it, or remove the jailbreak (Chapter 14). See Chapter 4 for why HCG does not cover bypasses.</p></details>
+      <details><summary>Apple logo over and over, even after a force restart (bootloop)</summary>
+        <p>Rare with a rootless, semi-untethered jailbreak, but possible. ios.cfw.guide: a bootloop “can be diagnosed by looking for a constant re-occuring Apple logo, even after you've forcefully rebooted”, and escaping it needs a restore in DFU mode. A restore <strong>erases the device and installs current iOS</strong>, ending the jailbreak; afterwards restore your backup. Ask for help first (r/jailbreak Discord, linked from ios.cfw.guide) and keep any crash logs.</p></details>
+    </div>
+    <h3>Recovery Mode and DFU</h3>
+    <p><strong>Recovery Mode</strong> lets a computer reinstall iOS when the installed system cannot start. <strong>DFU mode</strong> is a deeper last resort that does not load iOS at all. Both are used by Finder or iTunes for restores, and both normally end with a fresh install of the newest signed iOS. Use them only when a force restart does not get you back.</p>
+    <p class="source-note">Sources: <a href="https://ios.cfw.guide/troubleshooting/" rel="noopener">ios.cfw.guide: Troubleshooting</a>, <a href="https://ios.cfw.guide/faq/" rel="noopener">FAQ</a>; Dopamine 3.0.13 source (<code>DOEnvironmentManager.m</code>, <code>jbdomain_watchdog.c</code>, app strings); <a href="https://github.com/opa334/TrollStore" rel="noopener">TrollStore README</a>.</p>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-12">← Previous</a><a href="#ch-14">Next →</a></p></div>
+</section>
+
+<!-- ======================================================================= 14 -->
+<section class="chapter" id="ch-14" data-chapter aria-labelledby="ch-14-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">14</span><div><p class="eyebrow">The way back</p><h2 id="ch-14-h">Removing a jailbreak</h2></div></div>
+  <div class="chapter-body">
+    <p>“Uninstalling a jailbreak isn't as simple as deleting the app” (ios.cfw.guide). Dopamine removes itself from inside its own app:</p>
+    <ol class="walk">
+      <li><strong>Reboot into a non-jailbroken state.</strong> A normal restart does this.</li>
+      <li><strong>Open Dopamine</strong> and tap <em>Settings</em>.</li>
+      <li><strong>Choose <em>Remove Jailbreak</em>.</strong>
+        <ul>
+          <li>Not installed with TrollStore: leave Settings and tap the <em>Remove Jailbreak</em> button.</li>
+          <li>Installed with TrollStore: tap <em>Continue</em>. This may take a while; if it fails, start again from step 1.</li>
+        </ul></li>
+      <li><strong>Reboot.</strong> Dopamine confirms “Successfully removed jailbreak. Rebooting the device is recommended.”</li>
+    </ol>
+    <div class="callout callout-warn"><span class="callout-title">What it removes, and what it keeps</span><p>Dopamine: removing the jailbreak “will delete all jailbreak-related files, but all regular apps, files and data will be kept … You can't undo this action.” Every tweak, its settings and your sources are gone; re-jailbreaking starts from scratch.</p></div>
+    <h3>Finish cleaning up</h3>
+    <ul>
+      <li>Delete the Dopamine app. Apps installed with TrollStore can only be removed from TrollStore itself (TrollStore README).</li>
+      <li>If you installed an update-blocking profile, remove it under <em>Settings › General › VPN &amp; Device Management</em>. iOS can then update, which normally ends jailbreak support for this device.</li>
+      <li>Turn automatic updates back on, and install the latest iOS to get Apple's security fixes.</li>
+      <li>Before a repair or warranty visit, the most thorough option is to erase and restore the device with a computer, then restore your backup.</li>
+    </ul>
+    <p class="small muted">Moving to rootless palera1n? ios.cfw.guide says it is intercompatible with Dopamine, so removal is not required for that. Rootful palera1n is not intercompatible.</p>
+    <p class="source-note">Sources: <a href="https://ios.cfw.guide/removing-dopamine/" rel="noopener">ios.cfw.guide: Removing Dopamine</a> (page source last changed 23 Aug 2026); Dopamine 3.0.13 app strings; <a href="https://github.com/opa334/TrollStore" rel="noopener">TrollStore README</a>; <a href="https://ios.cfw.guide/blocking-updates/" rel="noopener">Blocking Updates</a>.</p>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-13">← Previous</a><a href="#ch-15">Next →</a></p></div>
+</section>
+
+<!-- ======================================================================= 15 -->
+<section class="chapter" id="ch-15" data-chapter aria-labelledby="ch-15-h">
+  <div class="chapter-head"><span class="chapter-num" aria-hidden="true">15</span><div><p class="eyebrow">Optional</p><h2 id="ch-15-h">Exploring compatible HCG software</h2></div></div>
+  <div class="chapter-body">
+    <p>You do not need any HCG product to use Dopamine, and nothing earlier in this guide depends on one. If you are curious, here is what Hakmi Capital Group makes for jailbroken devices, with its real status.</p>
+    <ul class="status-legend" aria-label="Status labels">
+      <li><span class="badge badge-ok">Released</span> stable, in the main HCG Repo source</li>
+      <li><span class="badge badge-beta">Beta</span> test build in HCG Repo Candidate</li>
+      <li><span class="badge badge-warn">Experimental</span> not yet tested on a physical device</li>
+      <li><span class="badge badge-muted">Unavailable</span> announced, cannot be installed yet</li>
+    </ul>
+    <div class="callout callout-info"><span class="callout-title">Status at review time</span><p>As of <time datetime="2026-11-21T08:43Z">21 November 2026, 08:43 UTC</time>, <strong>no HCG product is released</strong>: the stable HCG Repo index lists 0 packages. Test builds live in the separate HCG Repo Candidate source. <strong>None of the products below has a recorded test on a physical device yet.</strong> Each product page shows the current state.</p></div>
+    <ul class="eco" role="list">
+      <li class="card">
+        <div class="dev-head"><h3>HCG Repo</h3><span class="badge badge-ok">Live</span></div>
+        <p class="dev-kind">Package source and website</p>
+        <p>HCG's APT source for Sileo, Zebra and other package managers, with a website listing every product's compatibility, tested devices and removal steps.</p>
+        <dl class="pkg-facts">
+          <div><dt>Status</dt><dd>Website and both sources online. Stable index: 0 packages. Release metadata is not yet signed (archive key pending).</dd></div>
+          <div><dt>Requirements</dt><dd>A package manager. Accepts rootless (<code>iphoneos-arm64</code>) and rootful (<code>iphoneos-arm</code>) packages.</dd></div>
+          <div><dt>Candidate (betas)</dt><dd><code>https://repo.hakmicapitalgroup.com/repo/candidate/</code></dd></div>
+        </dl>
+        <div class="actions"><a class="btn btn-metal" href="../../">Open HCG Repo</a></div>
+      </li>
+      <li class="card">
+        <div class="dev-head"><h3>HCG Nexus</h3><span><span class="badge badge-beta">Beta</span><span class="badge badge-warn">Experimental</span></span></div>
+        <p class="dev-kind">Jailbreak tweak · paid product, free beta demo</p>
+        <p>A smoked-glass command panel behind a cyan edge handle: Overview, Workspaces, Tools, HCG Products, Apps and Command Mode.</p>
+        <dl class="pkg-facts">
+          <div><dt>Availability</dt><dd>Paid release: not yet available. Free demo in Candidate: 0.3.3~beta1 at review time.</dd></div>
+          <div><dt>Verified requirements</dt><dd>Rootless only. Depends on an injector (<code>mobilesubstrate</code> or <code>ellekit</code>) and <code>preferenceloader</code>. Binaries built for iOS 15.0 or later; no iOS range declared.</dd></div>
+          <div><dt>Testing</dt><dd>iOS Simulator only. Not yet device-tested.</dd></div>
+        </dl>
+        <div class="actions"><a class="btn btn-metal" href="../../products/hcg-nexus/">Product page</a></div>
+      </li>
+      <li class="card">
+        <div class="dev-head"><h3>HCG Animation Center</h3><span><span class="badge badge-muted">Coming Soon</span><span class="badge badge-beta">Beta demo</span></span></div>
+        <p class="dev-kind">Jailbreak tweak · commercial prerelease</p>
+        <p>Plays your own videos and GIFs as animated backgrounds behind the Home Screen icons; Lock Screen playback is experimental.</p>
+        <dl class="pkg-facts">
+          <div><dt>Availability</dt><dd>Commercial version: listed as Coming Soon (announced introductory price US$1.99); purchases, downloads and installation are not open. Free demo in Candidate: 0.1.0~beta1.</dd></div>
+          <div><dt>Verified requirements</dt><dd>Rootless only. Depends on <code>mobilesubstrate</code> (ElleKit provides it), <code>preferenceloader</code>, <code>firmware (&gt;= 15.0)</code>. 15.0 is the install minimum, not tested compatibility.</dd></div>
+          <div><dt>Testing</dt><dd>iOS Simulator only. Not yet device-tested.</dd></div>
+        </dl>
+        <div class="actions"><a class="btn btn-metal" href="../../products/hcg-animation-center/">Product page</a></div>
+      </li>
+      <li class="card">
+        <div class="dev-head"><h3>HCG Portal</h3><span><span class="badge badge-beta">Beta</span><span class="badge badge-warn">Experimental</span></span></div>
+        <p class="dev-kind">Jailbreak tweak · free beta demo</p>
+        <p>An interactive portal on the Cover Sheet with a radial menu for Nexus, Backgrounds, Devices and HCG Apps; anything that opens an app asks for Face ID, Touch ID or your passcode first.</p>
+        <dl class="pkg-facts">
+          <div><dt>Availability</dt><dd>Candidate only: 0.1.0~beta4 at review time.</dd></div>
+          <div><dt>Verified requirements</dt><dd>Rootless only. Depends on <code>mobilesubstrate</code> (ElleKit provides it), <code>preferenceloader</code>, <code>firmware (&gt;= 15.0)</code>.</dd></div>
+          <div><dt>Testing</dt><dd>Simulator validated; physical iPhone validation pending. SpringBoard entered Safe Mode while an earlier build (0.1.0~beta1) was being installed; cause not confirmed. Read its removal steps before installing.</dd></div>
+        </dl>
+        <div class="actions"><a class="btn btn-metal" href="../../repo/candidate/depictions/com.hakmicapitalgroup.portal/">Package page</a></div>
+      </li>
+      <li class="card">
+        <div class="dev-head"><h3>HCG Terminal Unleashed</h3><span class="badge badge-muted">Unavailable</span></div>
+        <p class="dev-kind">Jailbreak app · requires HCG Connect sign-in</p>
+        <p>The jailbreak edition of HCG Terminal: a local shell in a pseudo-terminal, using only the access your device already grants. Separate from the sandboxed App Store / TestFlight edition.</p>
+        <dl class="pkg-facts">
+          <div><dt>Availability</dt><dd>Not yet available: installable once HCG Connect sign-in is live.</dd></div>
+          <div><dt>Verified requirements</dt><dd>iOS 17.0 or later (<code>firmware (&gt;= 17.0)</code>), rootless. With Dopamine that means 17.0 – 17.3.1 on any supported chip, or 17.4 – 18.7.1 and 26.0 – 26.0.1 on A13 and earlier.</dd></div>
+          <div><dt>Testing</dt><dd>Not yet run on a physical device.</dd></div>
+        </dl>
+        <div class="actions"><a class="btn btn-metal" href="../../products/hcg-terminal-unleashed/">Product page</a></div>
+      </li>
+    </ul>
+    <p class="source-note">Sources: HCG Repo <code>config/products.toml</code> and <code>packages/*/package.toml</code> (commit ade4a55), the live Candidate index and package pages (read 21 Nov 2026, 08:43 UTC).</p>
+  </div>
+  <div class="chapter-foot"><button type="button" class="btn btn-metal mark-complete" aria-pressed="false">Mark chapter complete</button><p class="chapter-nav"><a href="#ch-14">← Previous</a><a href="#glossary-h">Glossary →</a></p></div>
+</section>
+
+<!-- ======================================================================= glossary -->
+<section class="extra chapter" id="glossary-section" aria-labelledby="glossary-h">
+  <h2 id="glossary-h">Glossary</h2>
+  <div class="field glossary-search">
+    <label for="glossary-q">Search the glossary</label>
+    <input class="input" id="glossary-q" type="search" autocomplete="off" placeholder="e.g. respring" aria-describedby="glossary-count" aria-controls="glossary">
+    <p class="help" id="glossary-count" aria-live="polite">36 terms</p>
+  </div>
+  <dl class="glossary" id="glossary">
+    <div><dt>APT</dt><dd>The package system behind Sileo and Zebra. It downloads packages from repositories and resolves their dependencies.</dd></div>
+    <div><dt>Bootloop</dt><dd>The device keeps showing the Apple logo and never finishes starting, even after a force restart. Usually needs a restore.</dd></div>
+    <div><dt>Bootstrap</dt><dd>The base set of command-line tools and libraries a jailbreak installs. Dopamine uses Procursus.</dd></div>
+    <div><dt>Build number</dt><dd>Apple's exact identifier for an iOS release, e.g. 20H18 for 16.7 RC. Shown in Settings › General › About.</dd></div>
+    <div><dt>Chip (SoC)</dt><dd>The processor, such as A13 or M1. Jailbreak support depends on it. arm64 chips are A8–A11; arm64e chips are A12 and later.</dd></div>
+    <div><dt>Code signing</dt><dd>Apple's system for allowing only approved code to run. Sideloaded apps are signed with your own Apple Account for 7 days.</dd></div>
+    <div><dt>.deb</dt><dd>A package file: the software plus a description of its version, architecture and dependencies.</dd></div>
+    <div><dt>Depiction</dt><dd>A package's information page in a package manager or on a repository website.</dd></div>
+    <div><dt>Developer Mode</dt><dd>An iOS 16+ setting that must be on to run apps you sideloaded yourself.</dd></div>
+    <div><dt>DFU mode</dt><dd>Device Firmware Upgrade: a last-resort mode for restoring a device without loading iOS.</dd></div>
+    <div><dt>ElleKit</dt><dd>The tweak injection library Dopamine uses, by évelyne. It loads tweaks into apps and system processes.</dd></div>
+    <div><dt>Exploit</dt><dd>Code that takes advantage of a security flaw. Jailbreaks chain several to gain control of the kernel.</dd></div>
+    <div><dt>IPA / TIPA</dt><dd>An iOS app package. Dopamine is distributed as an .ipa; TrollStore also opens .tipa files.</dd></div>
+    <div><dt>Jailbreak</dt><dd>Using exploits to lift iOS restrictions on your own device so you can run unapproved software and modify the system.</dd></div>
+    <div><dt>Jetsam</dt><dd>The iOS feature that ends processes using too much memory. Dopamine's Jetsam Multiplier raises the limit; leave it alone unless advised.</dd></div>
+    <div><dt>Kernel</dt><dd>The core of the operating system that controls memory, hardware and permissions.</dd></div>
+    <div><dt>Package manager</dt><dd>An app such as Sileo or Zebra that installs, updates and removes jailbreak packages.</dd></div>
+    <div><dt>PAC, PPL, SPTM</dt><dd>Apple hardware and kernel protections (Pointer Authentication Codes, Page Protection Layer, Secure Page Table Monitor) that a jailbreak must bypass on newer chips.</dd></div>
+    <div><dt>Persistence Helper</dt><dd>A system app (often Tips) that TrollStore modifies so it can re-register TrollStore apps after iOS reloads its icon cache.</dd></div>
+    <div><dt>PreferenceLoader</dt><dd>A package that lets tweaks add their own pages to the Settings app.</dd></div>
+    <div><dt>Recovery Mode</dt><dd>A built-in mode in which a computer can reinstall iOS when the device cannot start normally.</dd></div>
+    <div><dt>Repository (repo, source)</dt><dd>A website that lists packages for package managers.</dd></div>
+    <div><dt>Respring</dt><dd>Restarting SpringBoard (the Home Screen and system interface). You stay jailbroken.</dd></div>
+    <div><dt>Rootful</dt><dd>An older jailbreak layout that writes into the system volume. Packages use <code>iphoneos-arm</code>.</dd></div>
+    <div><dt>Rootless</dt><dd>The layout Dopamine uses: all jailbreak files live under <code>/var/jb</code> and the system volume is left alone. Packages use <code>iphoneos-arm64</code>.</dd></div>
+    <div><dt>Roothide</dt><dd>A third layout with a randomised jailbreak root. Not used by Dopamine; packages use <code>iphoneos-arm64e</code>.</dd></div>
+    <div><dt>Safe Mode</dt><dd>A jailbroken state with tweaks turned off, used to remove a problem tweak.</dd></div>
+    <div><dt>Semi-untethered</dt><dd>A jailbreak that must be re-applied with an app on the device after every full reboot. Dopamine is one.</dd></div>
+    <div><dt>Sideloading</dt><dd>Installing an app from outside the App Store by signing it with your own Apple Account, using a computer tool such as PlumeImpactor.</dd></div>
+    <div><dt>Sileo</dt><dd>A package manager for jailbroken devices, and Dopamine's default suggestion.</dd></div>
+    <div><dt>SpringBoard</dt><dd>The iOS process that draws the Home Screen, Lock Screen and system interface.</dd></div>
+    <div><dt>TrollStore</dt><dd>An app that permanently installs other apps through a code-signing bug. Works only on 14.0 beta 2 – 16.6.1, 16.7 RC and 17.0.</dd></div>
+    <div><dt>Tweak</dt><dd>A small modification that changes how iOS or an app looks or behaves. Usually configured in Settings, not with its own icon.</dd></div>
+    <div><dt>Tweak injection</dt><dd>Loading tweaks into running apps and processes. Dopamine's Tweak Injection switch turns it on and off.</dd></div>
+    <div><dt>Userspace reboot</dt><dd>Restarting everything above the kernel without a full reboot. Dopamine and Sileo use it; you stay jailbroken.</dd></div>
+    <div><dt>/var/jb</dt><dd>The path where a rootless jailbreak keeps its files. It points to a hidden folder in <code>/private/preboot</code>.</dd></div>
+  </dl>
+</section>
+
+<!-- ======================================================================= sources -->
+<section class="extra chapter sources" id="sources" aria-labelledby="sources-h">
+  <h2 id="sources-h">Sources and review</h2>
+  <p>Last reviewed <time datetime="2026-11-21">21 November 2026</time> by Hakmi Capital Group. Facts were checked against these primary sources, in this order of authority. Version-specific statements will go out of date as Dopamine and iOS change; when the official pages differ from this guide, follow them.</p>
+  <ol>
+    <li><a href="https://github.com/opa334/Dopamine" rel="noopener">opa334/Dopamine</a>: README on the default <code>3.x</code> branch at tag 3.0.13 (commit 5b1d2c1, 3 Nov 2026); <code>LICENSE.md</code> (MIT); English app strings and source files <code>DOEnvironmentManager.m</code>, <code>DOJailbreaker.m</code>, <code>jbdomain_watchdog.c</code>.</li>
+    <li><a href="https://ellekit.space/dopamine/" rel="noopener">ellekit.space/dopamine</a>, the official Dopamine website: supported chips and versions, package managers, rootless explanation, credits, and Apple's warning. Read 21 Nov 2026.</li>
+    <li><a href="https://ios.cfw.guide/installing-dopamine/" rel="noopener">ios.cfw.guide: Installing Dopamine</a> and <a href="https://ios.cfw.guide/installing-dopamine-trollstore/" rel="noopener">Installing Dopamine (TrollStore)</a> (page sources last changed 7 Aug 2026); <a href="https://ios.cfw.guide/removing-dopamine/" rel="noopener">Removing Dopamine</a> (23 Aug 2026); <a href="https://ios.cfw.guide/troubleshooting/" rel="noopener">Troubleshooting</a>; <a href="https://ios.cfw.guide/faq/" rel="noopener">FAQ</a>; <a href="https://ios.cfw.guide/types-of-jailbreak/" rel="noopener">Types of Jailbreak</a>; <a href="https://ios.cfw.guide/blocking-updates/" rel="noopener">Blocking Updates</a>; <a href="https://ios.cfw.guide/blocking-jailbreak-detection/" rel="noopener">Blocking Jailbreak Detection</a>. Site source at commit 71cce3f (20 Nov 2026).</li>
+    <li><a href="https://github.com/opa334/TrollStore" rel="noopener">opa334/TrollStore</a> README: supported versions, persistence helper, uninstalling apps.</li>
+    <li><a href="https://github.com/littlebyteorg/appledb" rel="noopener">AppleDB</a> at commit b1ba172 (20 Nov 2026): device models, chips, model numbers, the iOS/iPadOS releases each model received, and AppleDB's own Dopamine compatibility list (used to cross-check this guide's checker on every model and release).</li>
+    <li><a href="https://github.com/F1r3srp3nt/HCG-repo" rel="noopener">HCG Repo</a> at commit ade4a55 and the live site (21 Nov 2026, 08:43 UTC): product statuses, package requirements and the rootless/rootful reference.</li>
+  </ol>
+  <p class="small muted">Illustrations are original HCG drawings, not screenshots. Dopamine, TrollStore, Sileo, Zebra and ElleKit are the work of their respective developers. iPhone, iPad and iOS are trademarks of Apple Inc.</p>
+</section>
+
+</div>
+</div>
+</main>
+<footer class="footer">
+  <p><strong>HCG Repo</strong> · Hakmi Capital Group · HCG Jailbreak Academy</p>
+  <p><a href="https://github.com/F1r3srp3nt/HCG-repo">Repository source on GitHub</a></p>
+</footer>
+<div class="sr-only" role="status" aria-live="polite" id="live"></div>
+<script src="../assets/compat-data.js" defer></script>
+<script src="../assets/compat.js" defer></script>
+<script src="../assets/academy.js" defer></script>
+</body>
+</html>

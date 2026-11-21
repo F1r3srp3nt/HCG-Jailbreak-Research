@@ -90,6 +90,13 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
 }
 @end
 
+#define WAIT_FOR(timeout, cond)                                                                            \
+    do {                                                                                                   \
+        NSDate *limit_ = [NSDate dateWithTimeIntervalSinceNow:(timeout)];                                   \
+        while (!(cond) && [limit_ timeIntervalSinceNow] > 0)                                               \
+            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]]; \
+    } while (0)
+
 @interface PortalPreviewController : NSObject
 @property (nonatomic, strong) UIWindow *window;
 @property (nonatomic, strong) UIWindow *settingsWindow;
@@ -231,6 +238,19 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
 - (CGPoint)emptyPoint {
     CGPoint orb = [self orbCentre];
     return CGPointMake(24, orb.y > 0 ? orb.y : 420);
+}
+
+/// A screenshot can take longer than the menu's 12 s idle collapse: reopen it (and the app ring)
+/// if it closed meanwhile, so the next finger tap finds its item.
+- (void)ensureMenuOpen:(BOOL)appRing {
+    if (![self overlay].expanded) {
+        [self fingerTapOrb];
+        WAIT_FOR(1, [self overlay].expanded);
+    }
+    if (appRing && ![[self overlay].ringName isEqualToString:@"apps"]) {
+        [self fingerTapItemTitled:@"HCG Apps"];
+        WAIT_FOR(1, [[self overlay].ringName isEqualToString:@"apps"]);
+    }
 }
 
 - (NSInteger)touchStat:(NSString *)key {
@@ -608,6 +628,7 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
     });
     STEP(0.4, {
         CSScrollView *scroll = self.coverSheet.scrollView;
+        [self ensureMenuOpen:NO];
         Check([self fingerTapItemTitled:@"Devices"], @"finger tap on Devices delivered");
         WAIT_UNTIL(1, [self overlay].visibleMessage != nil);
         Check([[self overlay].visibleMessage hasPrefix:@"Not connected."], @"finger tap on Devices: Not connected");
@@ -655,6 +676,7 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         SBCoverSheetPresentationManager *pm = [SBCoverSheetPresentationManager standIn];
         NSUInteger dismissals = pm.dismissRequests;
         [gLaunches removeAllObjects];
+        [self ensureMenuOpen:NO];
         Check([self fingerTapItemTitled:@"Backgrounds"], @"finger tap on Backgrounds delivered");
         WAIT_UNTIL(2, gLaunches.count > 0);
         Check(pm.dismissRequests == dismissals + 1, @"Backgrounds: the Cover Sheet is closed first (as a swipe up)");
@@ -680,6 +702,7 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         WAIT_UNTIL(0.6, NO);
         [self state:@"07-apps-ring" caption:@"HCG Apps: user-selected shortcuts"];
         [self shot:@"07-apps-ring"];
+        [self ensureMenuOpen:YES];
         Check([self fingerTapItemTitled:@"HCG Terminal"], @"finger tap on an app delivered");
         WAIT_UNTIL(2, gLaunches.count > 0);
         Check(gLaunches.count == 1 && [gLaunches[0] isEqualToString:@"com.hakmicapitalgroup.hcgterminal"],

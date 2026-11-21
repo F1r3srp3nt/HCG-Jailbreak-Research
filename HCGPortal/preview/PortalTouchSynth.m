@@ -80,8 +80,10 @@ static BOOL PTSResolve(void) {
         if (!gCreateFinger) [missing addObject:@"IOHIDEventCreateDigitizerFingerEventWithQuality"];
         if (!gAppend) [missing addObject:@"IOHIDEventAppendEvent"];
         if (!gSetInteger) [missing addObject:@"IOHIDEventSetIntegerValue"];
-        for (NSString *name in @[ @"setWindow:", @"setView:", @"setPhase:", @"setTimestamp:", @"setTapCount:", @"setIsTap:",
-                                  @"_setLocationInWindow:resetPrevious:", @"_setIsFirstTouchForView:", @"_setHidEvent:" ])
+        // Required; the remaining setters (-setTapCount:, -setIsTap:, -_setIsFirstTouchForView:,
+        // -setGestureView:, -_setIsTapToClick:) are used when present (they vary across iOS versions).
+        for (NSString *name in @[ @"setWindow:", @"setView:", @"setPhase:", @"setTimestamp:",
+                                  @"_setLocationInWindow:resetPrevious:", @"_setHidEvent:" ])
             if (![UITouch instancesRespondToSelector:NSSelectorFromString(name)]) [missing addObject:[@"UITouch -" stringByAppendingString:name]];
         if (![UIApplication instancesRespondToSelector:@selector(_touchesEvent)]) [missing addObject:@"UIApplication -_touchesEvent"];
         UIEvent *event = [[UIApplication sharedApplication] respondsToSelector:@selector(_touchesEvent)]
@@ -137,13 +139,13 @@ static UITouch *PTSBegin(UIWindow *window, CGPoint point) {
     UIView *target = [window hitTest:point withEvent:nil];
     UITouch *touch = [[UITouch alloc] init];
     [touch setWindow:window];
-    [touch setTapCount:1];
+    if ([touch respondsToSelector:@selector(setTapCount:)]) [touch setTapCount:1];
     [touch _setLocationInWindow:point resetPrevious:YES];
     [touch setView:target];
     [touch setPhase:UITouchPhaseBegan];
     if ([touch respondsToSelector:@selector(_setIsTapToClick:)]) [touch _setIsTapToClick:NO];
-    [touch _setIsFirstTouchForView:YES];
-    [touch setIsTap:YES];
+    if ([touch respondsToSelector:@selector(_setIsFirstTouchForView:)]) [touch _setIsFirstTouchForView:YES];
+    if ([touch respondsToSelector:@selector(setIsTap:)]) [touch setIsTap:YES];
     [touch setTimestamp:[NSProcessInfo processInfo].systemUptime];
     if ([touch respondsToSelector:@selector(setGestureView:)]) [touch setGestureView:target];
     PTSSend(touch);

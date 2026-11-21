@@ -136,10 +136,18 @@ void PSIHookMessageEx(Class cls, SEL selector, IMP replacement, IMP *original) {
     UIView *old = _main.view;
     [self addChildViewController:fresh];
     fresh.view.frame = old.frame;
+    // The widgets controller moves with its view (UIKit requires the view's controller
+    // hierarchy to match); its new parent is the new main page.
+    [_widgets willMoveToParentViewController:nil];
+    [_widgets.view removeFromSuperview];
+    [_widgets removeFromParentViewController];
     for (UIView *v in [old.subviews copy]) {
         if ([NSStringFromClass([v class]) hasPrefix:@"Portal"]) continue;
         [fresh.view addSubview:v];
     }
+    [fresh addChildViewController:_widgets];
+    [fresh.view addSubview:_widgets.view];
+    [_widgets didMoveToParentViewController:fresh];
     [self.view insertSubview:fresh.view aboveSubview:old];
     [fresh didMoveToParentViewController:self];
     [_main willMoveToParentViewController:nil];

@@ -492,12 +492,16 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
         _lastRaise = CACurrentMediaTime();
         [self count:@"attaches"];
         [self breadcrumb:@"on the Lock Screen"];
-    } else if (host.subviews.lastObject != _overlay && CACurrentMediaTime() - _lastRaise > 1.0) {
+    } else if (host.subviews.lastObject != _overlay) {
         // Something was added above the portal: raise it, at most once a second, so it
-        // never fights the Lock Screen's own layout.
-        [host bringSubviewToFront:_overlay];
-        _lastRaise = CACurrentMediaTime();
-        [self count:@"raises"];
+        // never fights the Lock Screen's own layout. Too soon: check again shortly (coalesced).
+        if (CACurrentMediaTime() - _lastRaise > 1.0) {
+            [host bringSubviewToFront:_overlay];
+            _lastRaise = CACurrentMediaTime();
+            [self count:@"raises"];
+        } else {
+            [self scheduleRelayout];
+        }
     }
     _hostSummary = reason;
     return host;
@@ -745,9 +749,15 @@ static NSString *PortalStatusText(PortalAvailability a) {
 
 #pragma mark PortalOverlayDelegate
 
+- (void)portalOverlayWillExpand:(PortalOverlayView *)overlay {
+    // Companions may have been installed or removed since the last probe: check again so the
+    // menu that is about to open shows the current availability.
+    _probeValid = NO;
+    [overlay setMainItems:[self mainItems]];
+}
+
 - (void)portalOverlayDidExpand:(PortalOverlayView *)overlay {
     [self count:@"expansions"];
-    _probeValid = NO;
     [PortalCompanions postLightingEvent:@"expanded" palette:_settings.appearance.palette intensity:_settings.appearance.intensity];
 }
 

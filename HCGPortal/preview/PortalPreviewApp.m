@@ -175,7 +175,14 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         UIControl *c = o.itemControls[i];
         CGPoint p = [c convertPoint:CGPointMake(CGRectGetMidX(c.bounds), CGRectGetMidY(c.bounds)) toView:_window];
         UIView *v = [self hit:p];
-        if (v != c) return NO;
+        if (v != c) {
+            NSMutableString *chain = [NSMutableString string];
+            for (UIView *s = v; s; s = s.superview) [chain appendFormat:@" < %@", NSStringFromClass([s class])];
+            Say(@"PORTAL-PREVIEW-NOTE tap %@: hit %@ (ring %@, expanded %d, hidden %d, alpha %.2f, overlay index %lu of %lu)",
+                  title, chain, o.ringName, o.expanded, o.hidden, o.alpha,
+                  (unsigned long)[o.superview.subviews indexOfObject:o], (unsigned long)o.superview.subviews.count);
+            return NO;
+        }
         [c sendActionsForControlEvents:UIControlEventTouchUpInside];
         return YES;
     }

@@ -38,6 +38,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)portalOverlay:(PortalOverlayView *)overlay didSelectItem:(PortalMenuItem *)item;
 - (void)portalOverlayDidExpand:(PortalOverlayView *)overlay;
 - (void)portalOverlayDidCollapse:(PortalOverlayView *)overlay;
+@optional
+/// Just before the menu opens: the last chance to refresh the destinations' availability.
+- (void)portalOverlayWillExpand:(PortalOverlayView *)overlay;
 @end
 
 @interface PortalOverlayView : UIView

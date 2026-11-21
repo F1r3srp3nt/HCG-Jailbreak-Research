@@ -378,6 +378,7 @@ static NSString *PortalItemsSignature(NSArray<PortalMenuItem *> *items) {
 
 - (void)expand {
     if (_expanded || _layout.mode == PORTAL_LAYOUT_HIDDEN) return;
+    if ([self.delegate respondsToSelector:@selector(portalOverlayWillExpand:)]) [self.delegate portalOverlayWillExpand:self];
     _expanded = YES;
     _ringName = @"main";
     [self installItems:_mainItems];

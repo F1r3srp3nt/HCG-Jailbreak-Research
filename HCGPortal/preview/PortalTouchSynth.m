@@ -62,6 +62,7 @@ static PTSSetIntegerValue gSetInteger;
 - (void)_clearTouches;
 - (void)_addTouch:(UITouch *)touch forDelayedDelivery:(BOOL)delayed;
 - (void)_setHIDEvent:(PTSHIDEventRef)event;
+- (void)_setTimestamp:(NSTimeInterval)timestamp;
 @end
 
 static NSString *gWhyNot;
@@ -136,7 +137,11 @@ static void PTSSpin(NSTimeInterval seconds) {
 }
 
 static UITouch *PTSBegin(UIWindow *window, CGPoint point) {
-    UIView *target = [window hitTest:point withEvent:nil];
+    // UIKit hit-tests a new touch WITH its touches event (views such as Portal's overlay react
+    // to that, e.g. a tap outside its menu): do the same, with a fresh timestamp.
+    UIEvent *touchesEvent = [[UIApplication sharedApplication] _touchesEvent];
+    if ([touchesEvent respondsToSelector:@selector(_setTimestamp:)]) [touchesEvent _setTimestamp:[NSProcessInfo processInfo].systemUptime];
+    UIView *target = [window hitTest:point withEvent:touchesEvent];
     UITouch *touch = [[UITouch alloc] init];
     [touch setWindow:window];
     if ([touch respondsToSelector:@selector(setTapCount:)]) [touch setTapCount:1];

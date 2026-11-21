@@ -41,7 +41,7 @@ NS_ASSUME_NONNULL_BEGIN
 // ---- Portal lighting events (in-process, main thread, version 1) ---------------
 // object: nil. userInfo: {"event": NSString, "interfaceVersion": @1,
 //                         "palette": NSString, "intensity": NSNumber 0...1}
-// Events: "expanded", "collapsed", "authenticating", "opened", "unlock", "hidden".
+// Events: "expanded", "collapsed", "opened", "unlock", "hidden".
 // Carries no user data (no app names, no destinations beyond the four kinds).
 FOUNDATION_EXPORT NSNotificationName const PortalLightingEventNotification; // "com.hakmicapitalgroup.portal.lighting-event"
 #define PORTAL_LIGHTING_INTERFACE_VERSION 1

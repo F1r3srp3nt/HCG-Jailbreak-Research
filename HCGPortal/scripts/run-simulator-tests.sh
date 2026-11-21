@@ -29,7 +29,7 @@ xcrun --sdk iphonesimulator clang -fobjc-arc -fobjc-arc-exceptions -arch "$ARCH"
 	-DPORTAL_VERSION="\"$VERSION\"" -DPORTAL_BUILD_ID="\"simulator-test\"" -DPORTAL_PREVIEW_HOST=1 \
 	-Isrc -Ipreview \
 	tests/test_runtime.m preview/PortalStandIns.m \
-	src/PortalView.m src/PortalOverlayView.m src/PortalAuth.m src/PortalLauncher.m src/PortalCompanions.m \
+	src/PortalView.m src/PortalOverlayView.m src/PortalLauncher.m src/PortalCompanions.m \
 	src/PortalPreferences.m src/PortalLog.m src/PortalCore.c \
 	-framework UIKit -framework QuartzCore -framework CoreGraphics -o "$OUT/test_runtime"
 

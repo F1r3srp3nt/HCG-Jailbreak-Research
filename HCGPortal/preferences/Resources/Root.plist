@@ -8,7 +8,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>footerText</key>
-			<string>Off after installation. Changes apply immediately, without a respring. HCG Portal never bypasses your passcode: opening anything from the Lock Screen asks for Face ID, Touch ID or your passcode first.</string>
+			<string>Off after installation. Changes apply immediately, without a respring. HCG Portal works only on an unlocked iPhone: it appears on the Cover Sheet when you pull it down after unlocking with Face ID, Touch ID or your passcode, and never on the locked Lock Screen. Locking removes it at once.</string>
 			<key>id</key>
 			<string>generalGroup</string>
 			<key>label</key>
@@ -48,7 +48,7 @@
 			<key>id</key>
 			<string>visibilityStatus</string>
 			<key>label</key>
-			<string>On the Lock Screen</string>
+			<string>On the Cover Sheet</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -60,7 +60,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>footerText</key>
-			<string>By default the portal sits below the clock and widgets and above notifications. It moves, shrinks, collapses to a small orb or hides when notifications, media controls, the flashlight or the camera need the space.</string>
+			<string>On the Cover Sheet the portal sits below the clock and widgets and above notifications. It moves, shrinks, collapses to a small orb or hides when notifications, media controls, the flashlight or the camera need the space.</string>
 			<key>id</key>
 			<string>placementGroup</string>
 			<key>label</key>
@@ -224,7 +224,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>footerText</key>
-			<string>The opening animation plays briefly when you unlock. It never delays unlocking. With Reduce Motion on, the portal is static and the opening animation is skipped.</string>
+			<string>The opening animation plays briefly the first time the portal appears after you unlock. With Reduce Motion on, the portal is static and the opening animation is skipped.</string>
 			<key>id</key>
 			<string>behaviourGroup</string>
 			<key>label</key>
@@ -328,7 +328,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>footerText</key>
-			<string>Turning Enable off removes the portal at once and the Lock Screen behaves as if HCG Portal were not installed. If Settings can't be opened: over SSH, touch /var/mobile/Library/Preferences/com.hakmicapitalgroup.portal.disabled and respring (the kill switch). After three quick SpringBoard crashes in a row HCG Portal turns itself off.</string>
+			<string>Turning Enable off removes the portal at once and the Cover Sheet behaves as if HCG Portal were not installed. If Settings can't be opened: over SSH, touch /var/mobile/Library/Preferences/com.hakmicapitalgroup.portal.disabled and respring (the kill switch). After three quick SpringBoard crashes in a row HCG Portal turns itself off.</string>
 			<key>id</key>
 			<string>recoveryGroup</string>
 			<key>label</key>

@@ -7,14 +7,26 @@
 //  pending protected action. This file gathers the inputs and applies the
 //  results.
 //
-//  Privacy and authentication:
+//  Security (0.1.0~beta4): Portal is an extension of the UNLOCKED iPhone.
+//    - iOS decides. Portal exists on screen only while every lock-state
+//      source iOS offers reports the device unlocked: the keybag
+//      (-[UIApplication isProtectedDataAvailable], NO before the first unlock
+//      after a reboot), SpringBoard's lock state (Darwin
+//      com.apple.springboard.lockstate) and -[SBLockScreenManager isUILocked].
+//      Any "locked", or any source that cannot be read, keeps it closed
+//      (PortalCore portal_access). Face ID / Touch ID / passcode are never
+//      touched, hooked or requested: Portal only reads the outcome.
+//    - So on the locked Lock Screen nothing of Portal exists: no view, no
+//      control, no accessibility element. It appears on the Cover Sheet only
+//      when that is pulled down on an unlocked iPhone.
+//    - Locking (lock state, screen off, keybag, Cover Sheet re-appearing)
+//      revokes access at once: the overlay is removed and any pending action
+//      discarded. Each revocation starts a new access epoch.
+//    - Privileged actions re-check at the boundary: on selection, again when
+//      the Cover Sheet has closed (portal_pending_resolve with the access
+//      session), and again in the launcher right before it calls iOS.
 //    - Nothing private is read: no notification content, no credentials, no
 //      passcode, no biometric data. Obstacles are measured by frame only.
-//    - Every destination that opens something requests the normal iOS
-//      authentication first (PortalAuth). Only the selected action of that
-//      same request runs, once, after SpringBoard reports success. Failure,
-//      cancellation, a refused request, screen-off, disabling, a fault or a
-//      90 s timeout discard it.
 //    - No device command is ever executed. Devices shows "Not connected".
 //
 
@@ -25,7 +37,6 @@
 
 #include <notify.h>
 
-#import "PortalAuth.h"
 #import "PortalCompanions.h"
 #import "PortalCore.h"
 #import "PortalHost.h"
@@ -51,7 +62,16 @@
 - (id)coverSheetViewController;
 - (BOOL)isVisible;
 - (BOOL)isPresented;
+- (BOOL)isUILocked;     // SBLockScreenManager (iOS 17.0.3 header: SBLockScreenManager.h)
+- (BOOL)isInSecureApp;  // SBCoverSheetPresentationManager (iOS 17.0.3 header)
+- (void)setCoverSheetPresented:(BOOL)presented animated:(BOOL)animated withCompletion:(void (^)(void))completion;
 @end
+
+static id PortalSharedInstance(NSString *className) {
+    Class cls = NSClassFromString(className);
+    if (![cls respondsToSelector:@selector(sharedInstance)]) return nil;
+    return [cls sharedInstance];
+}
 
 static NSString *const kOverlayIdentifier = @"com.hakmicapitalgroup.portal.overlay";
 
@@ -74,8 +94,11 @@ static NSString *const kOverlayIdentifier = @"com.hakmicapitalgroup.portal.overl
     int _blankToken, _lockToken;
     BOOL _screenOn, _locked;
     BOOL _coverSheetVisibleByHook;
-    BOOL _lockScreenSession;
-    BOOL _authenticationVisible;
+    BOOL _opening;                  // a selected destination is opening (Cover Sheet closing)
+    BOOL _flourishPending;          // play the opening animation the first time Portal shows after an unlock
+    PortalAccessSession _access;    // iOS unlock state, as last read (closed at start)
+    PortalAccess _accessDecision;
+    NSString *_accessDetail;
     __weak UIViewController *_coverSheet;
     NSMutableArray *_observerTokens;
     NSTimer *_measureTimer;
@@ -89,7 +112,6 @@ static NSString *const kOverlayIdentifier = @"com.hakmicapitalgroup.portal.overl
     PortalRenderPlan _plan;
     PortalVisibility _visibility;
 
-    PortalAuthBroker *_auth;
     PortalLauncher *_launcher;
     PortalPending _pending;
     BOOL _updating;                 // update is not re-entrant
@@ -104,6 +126,7 @@ static NSString *const kOverlayIdentifier = @"com.hakmicapitalgroup.portal.overl
     NSMutableDictionary<NSString *, NSNumber *> *_counters;
 
     int _previewReduceMotion, _previewLowPower; // -1 = use the system
+    int _previewProtectedData;                  // -1 = use the system
 }
 
 + (instancetype)shared {
@@ -126,8 +149,11 @@ static NSString *const kOverlayIdentifier = @"com.hakmicapitalgroup.portal.overl
         _lastAction = @"none";
         _hooksSummary = @"not installed (Portal not enabled since this respring)";
         _hostSummary = @"none";
-        _previewReduceMotion = _previewLowPower = -1;
+        _previewReduceMotion = _previewLowPower = _previewProtectedData = -1;
         portal_pending_init(&_pending);
+        portal_access_session_init(&_access);
+        _accessDecision = PORTAL_ACCESS_UNVERIFIED;
+        _accessDetail = @"not checked (Portal inactive)";
         _visibility = PORTAL_VIS_DISABLED;
     }
     return self;
@@ -299,7 +325,6 @@ static void PortalStatusRequested(CFNotificationCenterRef c, void *o, CFStringRe
         }
         _hooksInstalled = YES;
     }
-    if (!_auth) _auth = [[PortalAuthBroker alloc] init];
     if (!_launcher) _launcher = [[PortalLauncher alloc] init];
     if (!_active) {
         _active = YES;
@@ -317,8 +342,12 @@ static void PortalStatusRequested(CFNotificationCenterRef c, void *o, CFStringRe
         [self count:@"actionsDiscarded"];
         _lastAction = @"Portal turned off: the pending action was discarded";
     }
-    _authenticationVisible = NO;
+    _opening = NO;
+    _flourishPending = NO;
     _active = NO;
+    portal_access_session_apply(&_access, PORTAL_ACCESS_UNVERIFIED); // closed; a new epoch on the next grant
+    _accessDecision = PORTAL_ACCESS_UNVERIFIED;
+    _accessDetail = @"not checked (Portal inactive)";
     [self stopSystemObservers];
     [_measureTimer invalidate];
     _measureTimer = nil;
@@ -351,12 +380,22 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
         }) != NOTIFY_STATUS_OK)
         _lockToken = NOTIFY_TOKEN_INVALID;
     uint64_t state = 0;
-    _screenOn = PortalReadNotifyState(_blankToken, &state) ? state == 0 : YES; // unreadable: assume lit
+    _screenOn = PortalReadNotifyState(_blankToken, &state) ? state == 0 : YES; // unreadable: assume lit (access decides)
     state = 0;
-    _locked = PortalReadNotifyState(_lockToken, &state) ? state != 0 : NO;
-    if (_locked) _lockScreenSession = YES;
+    _locked = PortalReadNotifyState(_lockToken, &state) ? state != 0 : YES; // unreadable: locked
 
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+    // The keybag locking or unlocking (public notifications): re-read every source.
+    for (NSNotificationName name in @[
+             UIApplicationProtectedDataWillBecomeUnavailable, UIApplicationProtectedDataDidBecomeAvailable
+         ]) {
+        [_observerTokens addObject:[center addObserverForName:name
+                                                       object:nil
+                                                        queue:[NSOperationQueue mainQueue]
+                                                   usingBlock:^(NSNotification *note) {
+                                                       [weakSelf accessSourceChanged:@"keybag"];
+                                                   }]];
+    }
     for (NSNotificationName name in @[
              UIAccessibilityReduceMotionStatusDidChangeNotification, NSProcessInfoPowerStateDidChangeNotification
          ]) {
@@ -388,13 +427,14 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
         if (!_screenOn) {
             [_overlay collapseAnimated:NO];
             if (_pending.awaiting) {
-                // The phone went dark while authentication was up: never act later.
+                // The phone went dark while something was opening: never act later.
                 portal_pending_cancel(&_pending);
-                _authenticationVisible = NO;
+                _opening = NO;
                 [self count:@"actionsDiscarded"];
                 _lastAction = @"Screen turned off: the pending action was discarded";
             }
         }
+        [self refreshAccess:@"screen"];
         [self update];
     } @catch (NSException *exception) {
         [self fault:[NSString stringWithFormat:@"screen state: %@", exception.reason]];
@@ -404,24 +444,116 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
 - (void)lockStateChanged {
     @try {
         uint64_t state = 0;
-        BOOL wasLocked = _locked;
-        _locked = PortalReadNotifyState(_lockToken, &state) ? state != 0 : NO;
-        if (_locked) _lockScreenSession = YES;
-        if (wasLocked && !_locked) {
-            // A successful unlock (Face ID, Touch ID or passcode). The flourish is
-            // decoration inside the Cover Sheet: it never delays the dismissal.
-            if (_visibility == PORTAL_VIS_VISIBLE && _plan.unlockAnimation) {
-                [_overlay collapseAnimated:NO];
-                [_overlay.portalView playUnlockFlourish];
-                [self count:@"unlockFlourishes"];
-                [PortalCompanions postLightingEvent:@"unlock" palette:_settings.appearance.palette
-                                          intensity:_settings.appearance.intensity];
-            }
-        }
+        _locked = PortalReadNotifyState(_lockToken, &state) ? state != 0 : YES; // unreadable: locked
+        [self refreshAccess:@"lock state"];
         [self update];
     } @catch (NSException *exception) {
         [self fault:[NSString stringWithFormat:@"lock state: %@", exception.reason]];
     }
+}
+
+- (void)accessSourceChanged:(NSString *)source {
+    @try {
+        [self refreshAccess:source];
+        [self update];
+    } @catch (NSException *exception) {
+        [self fault:[NSString stringWithFormat:@"%@: %@", source, exception.reason]];
+    }
+}
+
+#pragma mark - Access (the iOS unlock state)
+
+static int PortalSignal(BOOL known, BOOL value) {
+    return known ? (value ? PORTAL_SIGNAL_YES : PORTAL_SIGNAL_NO) : PORTAL_SIGNAL_UNKNOWN;
+}
+
+/// Reads every lock-state source iOS offers, without changing anything. Only while Portal is
+/// active and SpringBoard has finished launching (SpringBoard's singletons are never created
+/// by Portal).
+- (PortalAccessInput)readAccessInput:(NSString **)detail {
+    PortalAccessInput in;
+    NSMutableArray<NSString *> *notes = [NSMutableArray array];
+    BOOL protectedData = [UIApplication sharedApplication].isProtectedDataAvailable;
+#ifdef PORTAL_PREVIEW_HOST
+    if (_previewProtectedData >= 0) protectedData = _previewProtectedData != 0;
+#endif
+    in.protectedDataAvailable = protectedData ? PORTAL_SIGNAL_YES : PORTAL_SIGNAL_NO;
+    if (!protectedData) [notes addObject:@"keybag locked (protected data unavailable)"];
+
+    uint64_t state = 0;
+    BOOL readable = PortalReadNotifyState(_lockToken, &state);
+    in.lockStateLocked = PortalSignal(readable, state != 0);
+    if (!readable) [notes addObject:@"lockstate unreadable"];
+    else if (state != 0) [notes addObject:@"lockstate locked"];
+
+    id manager = PortalSharedInstance(@"SBLockScreenManager");
+    BOOL hasUILocked = [manager respondsToSelector:@selector(isUILocked)];
+    BOOL uiLocked = hasUILocked && [manager isUILocked];
+    in.uiLocked = PortalSignal(hasUILocked, uiLocked);
+    if (!hasUILocked) [notes addObject:@"SBLockScreenManager -isUILocked unavailable"];
+    else if (uiLocked) [notes addObject:@"Lock Screen UI locked"];
+
+    id presentation = PortalSharedInstance(@"SBCoverSheetPresentationManager");
+    BOOL hasSecureApp = [presentation respondsToSelector:@selector(isInSecureApp)];
+    BOOL secureApp = hasSecureApp && [presentation isInSecureApp];
+    in.inSecureApp = PortalSignal(hasSecureApp, secureApp);
+    if (secureApp) [notes addObject:@"camera over the Lock Screen"];
+
+    uint64_t blank = 0;
+    BOOL blankReadable = PortalReadNotifyState(_blankToken, &blank);
+    in.screenOn = PortalSignal(blankReadable, blank == 0);
+    if (blankReadable && blank != 0) [notes addObject:@"screen off"];
+
+    if (detail) *detail = notes.count ? [notes componentsJoinedByString:@", "] : @"every source reports unlocked";
+    return in;
+}
+
+/// Re-reads the unlock state and applies it. Revocation is immediate: the overlay leaves the
+/// Cover Sheet and anything pending is discarded. Never calls -update (callers do).
+- (BOOL)refreshAccess:(NSString *)trigger {
+    if (!_active || !_launched) {
+        portal_access_session_apply(&_access, PORTAL_ACCESS_UNVERIFIED);
+        _accessDecision = PORTAL_ACCESS_UNVERIFIED;
+        return NO;
+    }
+    NSString *detail = nil;
+    PortalAccessInput input = [self readAccessInput:&detail];
+    PortalAccess decision = portal_access(&input);
+    BOOL wasGranted = _access.granted;
+    BOOL revoked = portal_access_session_apply(&_access, decision);
+    _accessDecision = decision;
+    _accessDetail = detail;
+    if (revoked) [self accessRevoked:trigger ?: @"update"];
+    if (!wasGranted && _access.granted) {
+        [self count:@"accessGrants"];
+        _flourishPending = YES;
+        _probeValid = NO;
+        [self refreshApps];
+    }
+    if (wasGranted != _access.granted) {
+        PortalLogInfo("access %{public}s (%{public}@): %{public}@", portal_access_name(decision), trigger ?: @"update", detail);
+        [self scheduleStatus];
+    }
+    return _access.granted;
+}
+
+- (void)accessRevoked:(NSString *)trigger {
+    [self count:@"accessRevocations"];
+    _flourishPending = NO;
+    if (_overlay.expanded) [_overlay collapseAnimated:NO];
+    [self detachOverlay];
+    if (_pending.awaiting) {
+        portal_pending_cancel(&_pending);
+        [self count:@"actionsDiscarded"];
+        _lastAction = [NSString stringWithFormat:@"iPhone locked (%@): the pending action was discarded", trigger];
+    }
+    _opening = NO;
+}
+
+/// Whether something selected at `epoch` may still run: re-reads the sources now.
+- (BOOL)accessPermitsEpoch:(unsigned)epoch {
+    [self refreshAccess:@"action"];
+    return portal_access_permits(&_access, epoch);
 }
 
 - (BOOL)reduceMotion {
@@ -465,8 +597,8 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
     if (coverSheet) _coverSheet = coverSheet; // weak: never keeps SpringBoard's controller alive
 }
 
-/// Attaches the single overlay to the Lock Screen's main page, once per host. Called only
-/// while the Lock Screen is on screen as the Lock Screen (see -update). Returns the host,
+/// Attaches the single overlay to the Cover Sheet's main page, once per host. Called only
+/// while the Cover Sheet is on screen AND iOS reports the device unlocked (see -update). Returns the host,
 /// or nil: then Portal stays hidden and the Lock Screen is left exactly as it is.
 - (UIView *)attachIfPossible {
     UIViewController *cs = [self currentCoverSheet];
@@ -530,8 +662,8 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
     if (!_active) return;
     @try {
         _coverSheetVisibleByHook = YES;
-        if (_locked) _lockScreenSession = YES;
         _attachRetries = 0;
+        [self refreshAccess:@"Cover Sheet appeared"]; // locking brings the Cover Sheet back
         [self adoptCoverSheet:[coverSheet isKindOfClass:[UIViewController class]] ? coverSheet : nil];
         [self update];
     } @catch (NSException *exception) {
@@ -543,7 +675,6 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
     if (!_active) return;
     @try {
         _coverSheetVisibleByHook = NO;
-        _lockScreenSession = _locked; // a new session starts at the next lock
         [self detachOverlay];         // whatever SpringBoard's own state says, leave the Cover Sheet now
         [self update];
     } @catch (NSException *exception) {
@@ -584,11 +715,11 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
         PortalAppearance appearance = _settings.appearance;
         _plan = portal_render_plan(&appearance, [self reduceMotion], [self lowPower], _settings.lowPowerPolicy,
                                    _settings.unlockAnimation);
+        [self refreshAccess:nil]; // every update re-reads the unlock state first
         BOOL coverSheetVisible = [self coverSheetVisible];
-        if (!coverSheetVisible && !_locked) _lockScreenSession = NO;
 
-        // Attached only while the Lock Screen is on screen as the Lock Screen; detached otherwise.
-        BOOL eligible = _launched && _screenOn && coverSheetVisible && _lockScreenSession;
+        // Attached only while the Cover Sheet is on screen on an UNLOCKED iPhone; detached otherwise.
+        BOOL eligible = _launched && _screenOn && coverSheetVisible && _access.granted;
         UIView *host = nil;
         if (eligible) {
             host = [self attachIfPossible];
@@ -615,8 +746,8 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
         v.hostAttached = host != nil || !eligible; // when not eligible, report the real reason
         v.coverSheetVisible = coverSheetVisible;
         v.screenOn = _screenOn;
-        v.lockScreenSession = _lockScreenSession;
-        v.authenticationVisible = _authenticationVisible;
+        v.accessGranted = _access.granted;
+        v.opening = _opening;
         v.layoutMode = _layout.mode;
         v.planDraws = _plan.draw;
         PortalVisibility previous = _visibility;
@@ -632,6 +763,16 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
                 [_overlay applyLayout:_layout safe:input.safe animated:previous == PORTAL_VIS_VISIBLE];
                 // Availability is refreshed while collapsed, so an open menu never rebuilds under a finger.
                 if (!_overlay.expanded) [_overlay setMainItems:[self mainItems]];
+                if (_flourishPending && previous != PORTAL_VIS_VISIBLE) {
+                    // The first appearance after an unlock ("Opening animation on unlock").
+                    _flourishPending = NO;
+                    if (_plan.unlockAnimation) {
+                        [_overlay.portalView playUnlockFlourish];
+                        [self count:@"unlockFlourishes"];
+                        [PortalCompanions postLightingEvent:@"unlock" palette:_settings.appearance.palette
+                                                  intensity:_settings.appearance.intensity];
+                    }
+                }
             } else if (_overlay.expanded) {
                 [_overlay collapseAnimated:NO];
             }
@@ -661,9 +802,9 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
             [self scheduleStatus];
         }
         if (portal_pending_expire(&_pending, CACurrentMediaTime())) {
-            _authenticationVisible = NO;
+            _opening = NO;
             [self count:@"actionsDiscarded"];
-            _lastAction = @"Authentication did not finish in time: the pending action was discarded";
+            _lastAction = @"The destination did not open in time: the pending action was discarded";
         }
     } @catch (NSException *exception) {
         _updating = NO;
@@ -681,7 +822,6 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
     PortalDestinationProbe p;
     memset(&p, 0, sizeof p);
     p.launcherAvailable = _launcher.available;
-    p.authAvailable = _auth.available;
     p.nexusInstalled = [PortalCompanions nexusInstalled];
     p.nexusOpenInterface = [PortalCompanions nexusOpenInterfaceAvailable];
     p.animationCenterInstalled = [PortalCompanions animationCenterInstalled];
@@ -707,7 +847,6 @@ static NSString *PortalStatusText(PortalAvailability a) {
         case PORTAL_AVAIL_NOT_CONNECTED: return @"Not connected";
         case PORTAL_AVAIL_NO_APPS: return @"None chosen";
         case PORTAL_AVAIL_LAUNCHER_UNAVAILABLE: return @"Unavailable";
-        case PORTAL_AVAIL_AUTH_UNAVAILABLE: return @"Unlock first";
     }
     return @"Unavailable";
 }
@@ -775,8 +914,15 @@ static NSString *PortalStatusText(PortalAvailability a) {
 }
 
 - (void)select:(PortalMenuItem *)item {
+    // Action boundary 1: iOS must report the device unlocked right now. If not, the overlay is
+    // already gone (refreshAccess revoked it) and nothing happens.
+    if (![self refreshAccess:@"selection"]) {
+        [self count:@"selectionsRefused"];
+        [self update];
+        return;
+    }
     if (_pending.awaiting) {
-        [_overlay showMessage:@"Waiting for Face ID, Touch ID or your passcode…"];
+        [_overlay showMessage:@"Opening…"];
         return;
     }
     PortalDestinationProbe probe = [self probe];
@@ -795,53 +941,74 @@ static NSString *PortalStatusText(PortalAvailability a) {
         [_overlay showMessage:@"That app is no longer installed."];
         return;
     }
-    if (!portal_destination_requires_auth(item.destination)) return;
+    if (!portal_destination_performs_action(item.destination)) return;
 
-    unsigned generation = portal_pending_begin(&_pending, item.destination, item.item, CACurrentMediaTime());
+    unsigned generation =
+        portal_pending_begin(&_pending, item.destination, item.item, CACurrentMediaTime(), _access.epoch);
     if (!generation) return;
-    [self count:@"authRequests"];
-    [self breadcrumb:@"requesting authentication"];
-    _authenticationVisible = YES;
-    _overlay.portalView.waiting = YES;
+    [self count:@"actionsRequested"];
+    [self breadcrumb:[NSString stringWithFormat:@"selected %s", portal_destination_id(item.destination)]];
+    _opening = YES;
     [_overlay collapseAnimated:NO];
     [self update];
-    [PortalCompanions postLightingEvent:@"authenticating" palette:_settings.appearance.palette intensity:_settings.appearance.intensity];
-    NSString *name = [NSString stringWithFormat:@"HCG Portal: %s", portal_destination_id(item.destination)];
     __weak PortalController *weakSelf = self;
-    [_auth requestAuthenticationNamed:name
-                           completion:^(PortalAuthOutcome outcome) {
-                               [weakSelf authenticationFinished:generation outcome:outcome];
-                           }];
+    [self closeCoverSheetThen:^(BOOL closed) {
+        [weakSelf openingPrepared:generation closed:closed];
+    }];
 }
 
-- (void)authenticationFinished:(unsigned)generation outcome:(PortalAuthOutcome)outcome {
-    @try {
-        BOOL success = outcome == PortalAuthOutcomeAuthenticated;
-        BOOL current = _pending.awaiting && _pending.generation == generation;
-        PortalPendingOutcome o = portal_pending_resolve(&_pending, generation, success, CACurrentMediaTime());
-        if (current) {
-            _authenticationVisible = NO;
-            _overlay.portalView.waiting = NO;
+/// Closes the Cover Sheet (as a swipe up would) so the destination opens in front, then calls
+/// `next` once on the main queue. Without SpringBoard's interface it just continues: opening an
+/// app takes the Cover Sheet away itself.
+- (void)closeCoverSheetThen:(void (^)(BOOL closed))next {
+    __block BOOL called = NO;
+    void (^once)(BOOL) = ^(BOOL closed) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (called) return;
+            called = YES;
+            next(closed);
+        });
+    };
+    id manager = PortalSharedInstance(@"SBCoverSheetPresentationManager");
+    if ([self coverSheetVisible] && [manager respondsToSelector:@selector(setCoverSheetPresented:animated:withCompletion:)]) {
+        @try {
+            [manager setCoverSheetPresented:NO
+                                   animated:YES
+                             withCompletion:^{
+                                 once(YES);
+                             }];
+        } @catch (NSException *exception) {
+            PortalLogError("closing the Cover Sheet raised %{public}@", exception.reason);
+            once(NO);
         }
+    } else {
+        once(YES);
+    }
+}
+
+- (void)openingPrepared:(unsigned)generation closed:(BOOL)closed {
+    @try {
+        BOOL current = _pending.awaiting && _pending.generation == generation;
+        // Action boundary 2: every source is read again now. A relock since the selection (even
+        // if unlocked again meanwhile) changed the access epoch and discards the action.
+        [self refreshAccess:@"before opening"];
+        PortalPendingOutcome o = portal_pending_resolve(&_pending, generation, closed, CACurrentMediaTime(), &_access);
+        if (current) _opening = NO;
         if (!o.perform) {
             if (current) {
-                [self count:success ? @"actionsDiscarded" : @"authCancelled"];
-                _lastAction = outcome == PortalAuthOutcomeRefused     ? @"SpringBoard refused the authentication request: nothing was done"
-                              : outcome == PortalAuthOutcomeUnavailable ? @"No authentication route: nothing was done"
-                              : success                                  ? @"Authenticated too late: the action was discarded"
-                                                                         : @"Authentication cancelled: the action was discarded";
-                [self update];
-                if (outcome == PortalAuthOutcomeRefused)
-                    [_overlay showMessage:@"Couldn't ask for authentication. Unlock your iPhone, then try again."];
+                [self count:@"actionsDiscarded"];
+                _lastAction = !_access.granted ? @"iPhone locked before it opened: nothing was done"
+                              : closed         ? @"Locked and unlocked again, or too late: nothing was done"
+                                               : @"The Cover Sheet did not close: nothing was done";
             }
+            [self update];
             [self scheduleStatus];
             return;
         }
-        [self count:@"authSucceeded"];
         [self perform:o];
         [self update];
     } @catch (NSException *exception) {
-        [self fault:[NSString stringWithFormat:@"authentication result: %@", exception.reason]];
+        [self fault:[NSString stringWithFormat:@"opening: %@", exception.reason]];
     }
 }
 
@@ -850,6 +1017,12 @@ static NSString *PortalStatusText(PortalAvailability a) {
     [self breadcrumb:[NSString stringWithFormat:@"opening %s", portal_destination_id(o.destination)]];
     [PortalCompanions postLightingEvent:@"opened" palette:_settings.appearance.palette intensity:_settings.appearance.intensity];
     __weak PortalController *weakSelf = self;
+    unsigned epoch = _access.epoch;
+    // Action boundary 3: the launcher asks again right before it calls iOS.
+    BOOL (^gate)(void) = ^BOOL {
+        PortalController *strongSelf = weakSelf;
+        return strongSelf && [strongSelf accessPermitsEpoch:epoch];
+    };
     switch (o.destination) {
         case PORTAL_DEST_APP_ITEM: {
             if (o.item < 0 || o.item >= (int)_installedApps.count) {
@@ -858,27 +1031,32 @@ static NSString *PortalStatusText(PortalAvailability a) {
             }
             NSString *bundle = _installedApps[o.item].bundleIdentifier;
             int index = o.item + 1;
-            _lastAction = [NSString stringWithFormat:@"Opening app %d after authentication", index];
+            _lastAction = [NSString stringWithFormat:@"Opening app %d", index];
             [_launcher openApplication:bundle
-                            completion:^(BOOL launched) {
-                                [weakSelf noteAction:[NSString stringWithFormat:@"App %d %@ after authentication", index,
-                                                                                launched ? @"opened" : @"could not be opened"]];
+                                  gate:gate
+                            completion:^(PortalLaunchResult result) {
+                                [weakSelf noteAction:[NSString stringWithFormat:@"App %d %@", index, PortalLaunchResultText(result)]];
                             }];
             break;
         }
         case PORTAL_DEST_BACKGROUNDS: {
-            _lastAction = @"Opening Settings (HCG Animation Center) after authentication";
+            _lastAction = @"Opening Settings (HCG Animation Center)";
             [_launcher openApplication:PortalSettingsBundleIdentifier
-                            completion:^(BOOL launched) {
-                                [weakSelf noteAction:launched ? @"Settings opened for HCG Animation Center after authentication"
-                                                              : @"Settings could not be opened"];
+                                  gate:gate
+                            completion:^(PortalLaunchResult result) {
+                                [weakSelf noteAction:[NSString stringWithFormat:@"Settings for HCG Animation Center %@",
+                                                                                PortalLaunchResultText(result)]];
                             }];
             break;
         }
         case PORTAL_DEST_NEXUS: {
-            _lastAction = @"Opening HCG Nexus after authentication";
+            if (!gate()) {
+                _lastAction = @"iPhone locked: HCG Nexus was not opened";
+                break;
+            }
+            _lastAction = @"Opening HCG Nexus";
             [PortalCompanions openNexusPanelWithCompletion:^(BOOL opened, NSString *reason) {
-                [weakSelf noteAction:opened ? @"HCG Nexus opened after authentication"
+                [weakSelf noteAction:opened ? @"HCG Nexus opened"
                                             : [NSString stringWithFormat:@"HCG Nexus did not open: %@", reason ?: @"no reason"]];
             }];
             break;
@@ -906,11 +1084,14 @@ static NSString *PortalStatusText(PortalAvailability a) {
     // the constructor's queue on every launch, enabled or not: it must not create or call
     // SpringBoard singletons there (0.1.0~beta1 did; see CHANGELOG 0.1.0~beta2).
     BOOL live = _active && _launched;
-    NSString *scene = live ? [NSString stringWithFormat:@"screen %@, %@, Cover Sheet %@, Lock Screen session %@",
+    NSString *scene = live ? [NSString stringWithFormat:@"screen %@, lockstate %@, Cover Sheet %@",
                                                         _screenOn ? @"on" : @"off", _locked ? @"locked" : @"unlocked",
-                                                        [self coverSheetVisibleSafe] ? @"visible" : @"hidden",
-                                                        _lockScreenSession ? @"yes" : @"no"]
+                                                        [self coverSheetVisibleSafe] ? @"visible" : @"hidden"]
                            : @"not observed (Portal inactive)";
+    NSDictionary *touches = PortalOverlayTouchDiagnostics();
+    NSString *touch = [NSString stringWithFormat:@"%@ down, %@ up, %@ cancelled, %@ taps, %@ activations; last cancelled by %@",
+                                                 touches[@"down"], touches[@"up"], touches[@"cancelled"], touches[@"taps"],
+                                                 touches[@"activations"], touches[@"lastCanceller"]];
     return @{
         PortalStatusKeyState : _state ?: @"",
         PortalStatusKeyDetail : _detail ?: @"",
@@ -930,7 +1111,8 @@ static NSString *PortalStatusText(PortalAvailability a) {
                                                                                                          : @""],
         PortalStatusKeyHost : _hostSummary ?: @"none",
         PortalStatusKeyScene : scene,
-        PortalStatusKeyAuthRoute : _auth.route ?: @"not checked",
+        PortalStatusKeyAccess : [NSString stringWithFormat:@"%s: %@", portal_access_name(_accessDecision), _accessDetail ?: @""],
+        PortalStatusKeyTouch : touch,
         PortalStatusKeyLauncher : _launcher.route ?: @"not checked",
         PortalStatusKeyCompanions : [PortalCompanions summaryIncludingRuntime:live],
         PortalStatusKeyLastAction : _lastAction ?: @"none",
@@ -989,6 +1171,10 @@ static NSString *PortalStatusText(PortalAvailability a) {
     _previewReduceMotion = rm;
     _previewLowPower = lp;
     [self update];
+}
+- (void)previewSetProtectedData:(int)available {
+    _previewProtectedData = available;
+    [self accessSourceChanged:@"keybag"];
 }
 #endif
 
@@ -1052,5 +1238,9 @@ void PortalControllerPreviewInjectFault(void) {
 
 BOOL PortalControllerPreviewMeasureTimerRunning(void) {
     return [[PortalController shared] previewMeasureTimerRunning];
+}
+
+void PortalControllerPreviewSetProtectedData(int available) {
+    [[PortalController shared] previewSetProtectedData:available];
 }
 #endif

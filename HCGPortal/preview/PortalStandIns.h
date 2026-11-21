@@ -56,7 +56,20 @@ typedef NS_ENUM(NSInteger, PSIAuthMode) {
 @interface CSQuickActionsButton : UIControl
 @end
 
+/// The Cover Sheet's scroll view (iOS 17.0.3: CSCoverSheetView's CSScrollView), an ancestor of
+/// the main page. Like SpringBoard (-_setupBackgroundContentGestureOnScrollView:,
+/// -_setupComplicationGestureOnScrollView:), it carries SpringBoard's own recognizers, which
+/// decide by location and know nothing about Portal: a background TAP recognizer and a
+/// LONG-PRESS (poster switcher) recognizer, counted here.
+@interface CSScrollView : UIScrollView
+@property (nonatomic, readonly) UITapGestureRecognizer *backgroundContentGestureRecognizer;
+@property (nonatomic, readonly) UILongPressGestureRecognizer *posterSwitcherGestureRecognizer;
+@property (nonatomic, readonly) NSInteger backgroundTaps;
+@property (nonatomic, readonly) NSInteger longPresses;
+@end
+
 @interface CSCoverSheetViewController : UIViewController
+@property (nonatomic, readonly) CSScrollView *scrollView;
 /// How many times the class's own (original) -viewWillAppear: ran: proves a hook calls the original.
 @property (class, nonatomic, readonly) NSUInteger originalWillAppearCalls;
 @property (nonatomic, readonly) CSMainPageContentViewController *mainPageContentViewController;
@@ -86,6 +99,8 @@ typedef NS_ENUM(NSInteger, PSIAuthMode) {
 @property (nonatomic, strong, nullable) CSCoverSheetViewController *coverSheetViewController;
 @property (nonatomic) PSIAuthMode authMode;
 @property (nonatomic) BOOL uiLocked;
+/// YES: behaves like an iOS without -isUILocked (-respondsToSelector: says NO): Portal must fail closed.
+@property (nonatomic) BOOL uiLockedUnavailable;
 @property (nonatomic, readonly) NSUInteger requestCount;
 @property (nonatomic, readonly, nullable) SBLockScreenUnlockRequest *lastRequest;
 @property (nonatomic, readonly) BOOL hasPendingRequest;
@@ -100,7 +115,15 @@ typedef NS_ENUM(NSInteger, PSIAuthMode) {
 + (instancetype)standIn;        // not counted
 @property (class, nonatomic, readonly) NSUInteger sharedInstanceCalls;
 @property (nonatomic) BOOL visible;
+@property (nonatomic) BOOL inSecureApp;          // -isInSecureApp
+@property (nonatomic) BOOL holdsDismissal;       // YES: -setCoverSheetPresented:NO… waits for -finishDismissal
+@property (nonatomic, readonly) NSUInteger dismissRequests;
+@property (nonatomic, copy, nullable) void (^dismissHandler)(void); // the harness hides its window here
 - (BOOL)isVisible;
+- (BOOL)isInSecureApp;
+- (void)setCoverSheetPresented:(BOOL)presented animated:(BOOL)animated withCompletion:(nullable void (^)(void))completion;
+/// Completes a held dismissal. Returns NO if none was held.
+- (BOOL)finishDismissal;
 @end
 
 /// Test double of the PROPOSED Nexus interface (Nexus 0.3.1~beta1 has none).

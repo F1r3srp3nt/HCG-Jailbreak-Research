@@ -70,32 +70,59 @@ static BOOL (^gPreviewInstalled)(NSString *);
     return [_workspace applicationIsInstalled:bundleIdentifier];
 }
 
-- (void)openApplication:(NSString *)bundleIdentifier completion:(PortalLaunchCompletion)completion {
+NSString *PortalLaunchResultText(PortalLaunchResult result) {
+    switch (result) {
+        case PortalLaunchResultOpened: return @"opened";
+        case PortalLaunchResultFailed: return @"could not be opened";
+        case PortalLaunchResultRefused: return @"not opened: iPhone locked";
+        case PortalLaunchResultUnavailable: return @"not opened: no launch route";
+    }
+    return @"not opened";
+}
+
+- (void)openApplication:(NSString *)bundleIdentifier gate:(PortalLaunchGate)gate completion:(PortalLaunchCompletion)completion {
+    // Privileged action boundary: nothing is asked of iOS unless the gate passes right now.
+    if (!gate || !gate()) {
+        completion(PortalLaunchResultRefused);
+        return;
+    }
 #ifdef PORTAL_PREVIEW_HOST
     if (gPreviewLaunch) {
         BOOL launched = gPreviewLaunch(bundleIdentifier);
         dispatch_async(dispatch_get_main_queue(), ^{
-            completion(launched);
+            completion(launched ? PortalLaunchResultOpened : PortalLaunchResultFailed);
         });
         return;
     }
 #endif
     if (!_available) {
-        completion(NO);
+        completion(PortalLaunchResultUnavailable);
         return;
     }
     id workspace = _canOpen ? _workspace : nil;
     BOOL canFallback = _canFallback;
     NSString *bundle = [bundleIdentifier copy];
+    PortalLaunchGate checkAgain = [gate copy];
     // LaunchServices IPC off the main thread; it is user-initiated, never part
-    // of a SpringBoard lifecycle callback.
+    // of a SpringBoard lifecycle callback. (iOS itself still refuses to show an
+    // app over a locked device; the gate is Portal's own boundary.)
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         BOOL ok = workspace ? [workspace openApplicationWithBundleID:bundle] : NO;
         dispatch_async(dispatch_get_main_queue(), ^{
-            BOOL launched = ok;
-            if (!launched && canFallback)
-                launched = [[UIApplication sharedApplication] launchApplicationWithIdentifier:bundle suspended:NO];
-            completion(launched);
+            if (ok) {
+                completion(PortalLaunchResultOpened);
+                return;
+            }
+            if (!canFallback) {
+                completion(PortalLaunchResultFailed);
+                return;
+            }
+            if (!checkAgain()) { // the phone may have locked while LaunchServices answered
+                completion(PortalLaunchResultRefused);
+                return;
+            }
+            BOOL launched = [[UIApplication sharedApplication] launchApplicationWithIdentifier:bundle suspended:NO];
+            completion(launched ? PortalLaunchResultOpened : PortalLaunchResultFailed);
         });
     });
 }

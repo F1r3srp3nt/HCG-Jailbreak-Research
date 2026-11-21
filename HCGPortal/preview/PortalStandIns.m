@@ -94,8 +94,31 @@ void PSIHookMessageEx(Class cls, SEL selector, IMP replacement, IMP *original) {
     }
 }
 
+@implementation CSScrollView
+- (instancetype)initWithFrame:(CGRect)frame {
+    if ((self = [super initWithFrame:frame])) {
+        // SpringBoard's own recognizers on the Cover Sheet's scroll view (default configuration:
+        // cancelsTouchesInView = YES, as UIKit creates them).
+        _backgroundContentGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(backgroundTapped:)];
+        [self addGestureRecognizer:_backgroundContentGestureRecognizer];
+        _posterSwitcherGestureRecognizer = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPressed:)];
+        [self addGestureRecognizer:_posterSwitcherGestureRecognizer];
+        self.alwaysBounceVertical = YES;
+        self.showsVerticalScrollIndicator = NO;
+    }
+    return self;
+}
+- (void)backgroundTapped:(UITapGestureRecognizer *)g {
+    if (g.state == UIGestureRecognizerStateEnded) _backgroundTaps++;
+}
+- (void)longPressed:(UILongPressGestureRecognizer *)g {
+    if (g.state == UIGestureRecognizerStateBegan) _longPresses++;
+}
+@end
+
 @implementation CSCoverSheetViewController {
     CSMainPageContentViewController *_main;
+    CSScrollView *_scroll;
     CSComplicationContainerViewController *_widgets;
     SBFLockScreenDateView *_date;
     SBDefaultCoverSheetContext *_context;
@@ -148,13 +171,16 @@ void PSIHookMessageEx(Class cls, SEL selector, IMP replacement, IMP *original) {
     [fresh addChildViewController:_widgets];
     [fresh.view addSubview:_widgets.view];
     [_widgets didMoveToParentViewController:fresh];
-    [self.view insertSubview:fresh.view aboveSubview:old];
+    [old.superview insertSubview:fresh.view aboveSubview:old];
     [fresh didMoveToParentViewController:self];
     [_main willMoveToParentViewController:nil];
     [old removeFromSuperview];
     [_main removeFromParentViewController];
     _main = fresh;
     [self.view setNeedsLayout];
+}
+- (CSScrollView *)scrollView {
+    return _scroll;
 }
 - (CSComplicationContainerViewController *)complicationContainerViewController {
     return _widgets;
@@ -195,9 +221,13 @@ void PSIHookMessageEx(Class cls, SEL selector, IMP replacement, IMP *original) {
     wallpaper.endPoint = CGPointMake(0.85, 1);
     [v.layer addSublayer:wallpaper];
 
+    _scroll = [[CSScrollView alloc] initWithFrame:v.bounds];
+    _scroll.contentSize = v.bounds.size;
+    _scroll.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [v addSubview:_scroll];
     [self addChildViewController:_main];
-    _main.view.frame = v.bounds;
-    [v addSubview:_main.view];
+    _main.view.frame = _scroll.bounds;
+    [_scroll addSubview:_main.view];
     [_main didMoveToParentViewController:self];
     UIView *page = _main.view;
     CGFloat W = v.bounds.size.width, H = v.bounds.size.height;
@@ -354,6 +384,11 @@ static NSUInteger gLockScreenManagerCalls, gPresentationManagerCalls;
     return shared;
 }
 
+- (BOOL)respondsToSelector:(SEL)selector {
+    if (selector == @selector(isUILocked) && _uiLockedUnavailable) return NO;
+    return [super respondsToSelector:selector];
+}
+
 - (BOOL)isUILocked {
     return _uiLocked;
 }
@@ -447,6 +482,33 @@ static NSUInteger gLockScreenManagerCalls, gPresentationManagerCalls;
 }
 - (BOOL)isVisible {
     return _visible;
+}
+- (BOOL)isInSecureApp {
+    return _inSecureApp;
+}
+static void (^gHeldDismissal)(void);
+- (void)setCoverSheetPresented:(BOOL)presented animated:(BOOL)animated withCompletion:(void (^)(void))completion {
+    if (presented) return;
+    _dismissRequests++;
+    void (^completion_)(void) = [completion copy];
+    __weak SBCoverSheetPresentationManager *weakSelf = self;
+    void (^finish)(void) = ^{
+        SBCoverSheetPresentationManager *strongSelf = weakSelf;
+        strongSelf.visible = NO;
+        if (strongSelf.dismissHandler) strongSelf.dismissHandler();
+        if (completion_) completion_();
+    };
+    if (_holdsDismissal) {
+        gHeldDismissal = [finish copy];
+    } else {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.15 * NSEC_PER_SEC)), dispatch_get_main_queue(), finish);
+    }
+}
+- (BOOL)finishDismissal {
+    void (^held)(void) = gHeldDismissal;
+    gHeldDismissal = nil;
+    if (held) held();
+    return held != nil;
 }
 @end
 

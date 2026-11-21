@@ -22,23 +22,142 @@
 
 @end
 
+#pragma mark - Touch diagnostics
+
+// What happened to touches that landed on Portal's controls, for Settings › Diagnostics.
+// 0.1.0~beta1–3 relied on UIControl touch tracking alone; on the Cover Sheet, SpringBoard's own
+// recognizers on the scroll view above Portal can take those touches (see PortalTapRecognizer).
+static NSInteger gTouchesDown, gTouchesUp, gTouchesCancelled, gActivations, gTapsRecognized;
+static NSString *gLastCanceller;
+
+NSDictionary<NSString *, id> *PortalOverlayTouchDiagnostics(void) {
+    return @{
+        @"down" : @(gTouchesDown),
+        @"up" : @(gTouchesUp),
+        @"cancelled" : @(gTouchesCancelled),
+        @"taps" : @(gTapsRecognized),
+        @"activations" : @(gActivations),
+        @"lastCanceller" : gLastCanceller ?: @"none",
+    };
+}
+
+static NSString *PortalRecognizerName(UIGestureRecognizer *g) {
+    return [NSString stringWithFormat:@"%@ on %@", NSStringFromClass([g class]), g.view ? NSStringFromClass([g.view class]) : @"nil"];
+}
+
 #pragma mark - Controls
 
+/// Portal's own tap recognizer, one per control (orb and items).
+@interface PortalTapRecognizer : UITapGestureRecognizer
+@end
+@implementation PortalTapRecognizer
+@end
+
 /// A circular control: its touch area is the circle, never the square.
-@interface PortalCircleControl : UIControl
+///
+/// Activation (0.1.0~beta4): a PortalTapRecognizer on the control, not UIControl touch tracking.
+/// On iOS 17 the Cover Sheet installs SpringBoard's own UITapGestureRecognizers (background
+/// content, quick note) and long-press / pan recognizers on its scroll view, an ancestor of the
+/// Lock Screen's main page and so of Portal (CSCoverSheetView -_setupBackgroundContentGesture
+/// OnScrollView: …, iOS 17.0.3 headers). SpringBoard decides by location and does not know
+/// Portal is there, so a tap on the orb could be recognized as a tap on the background and the
+/// control's own tracking cancelled: the portal is drawn but nothing responds. Here SpringBoard's
+/// TAP recognizers wait for Portal's tap to fail, only for touches that land on Portal's orb or
+/// items (the only touches Portal's recognizer ever receives). Pans (scrolling, dismissing) and
+/// long presses (poster switcher) are untouched; nothing is hooked or reconfigured in SpringBoard.
+@interface PortalCircleControl : UIControl <UIGestureRecognizerDelegate>
 @property (nonatomic) CGFloat touchRadius;
+@property (nonatomic, copy) void (^activationHandler)(PortalCircleControl *control);
+@property (nonatomic, readonly) PortalTapRecognizer *portalTap;
 @end
 
 @implementation PortalCircleControl
+
+- (instancetype)initWithFrame:(CGRect)frame {
+    if ((self = [super initWithFrame:frame])) {
+        _portalTap = [[PortalTapRecognizer alloc] initWithTarget:self action:@selector(portalTapRecognized:)];
+        _portalTap.delegate = self;
+        _portalTap.cancelsTouchesInView = NO; // the control's highlight still tracks the finger
+        _portalTap.delaysTouchesBegan = NO;
+        _portalTap.delaysTouchesEnded = NO;
+        [self addGestureRecognizer:_portalTap];
+    }
+    return self;
+}
+
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
     CGFloat r = self.touchRadius > 0 ? self.touchRadius : MIN(self.bounds.size.width, self.bounds.size.height) / 2;
     CGPoint c = CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds));
     return hypot(point.x - c.x, point.y - c.y) <= r;
 }
+
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     if (self.hidden || self.alpha < 0.02 || !self.userInteractionEnabled) return nil;
     return [self pointInside:point withEvent:event] ? self : nil;
 }
+
+- (BOOL)activatable {
+    return self.activationHandler && !self.hidden && self.alpha >= 0.02 && self.userInteractionEnabled && self.enabled;
+}
+
+- (void)activate {
+    if (![self activatable]) return;
+    gActivations++;
+    self.activationHandler(self);
+}
+
+- (void)portalTapRecognized:(PortalTapRecognizer *)tap {
+    if (tap.state != UIGestureRecognizerStateEnded) return;
+    gTapsRecognized++;
+    [self activate];
+}
+
+// VoiceOver, Switch Control and Voice Control activate through here.
+- (BOOL)accessibilityActivate {
+    if (![self activatable]) return NO;
+    [self activate];
+    return YES;
+}
+
+#pragma mark UIGestureRecognizerDelegate (Portal's own recognizer only)
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)recognizer {
+    if (recognizer != _portalTap) return [super gestureRecognizerShouldBegin:recognizer];
+    return [self activatable];
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)recognizer
+    shouldBeRequiredToFailByGestureRecognizer:(UIGestureRecognizer *)other {
+    // Another tap recognizer that saw this same touch (it landed on Portal) waits for Portal's.
+    return recognizer == _portalTap && [other isKindOfClass:[UITapGestureRecognizer class]] &&
+           ![other isKindOfClass:[PortalTapRecognizer class]];
+}
+
+#pragma mark Diagnostics
+
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    gTouchesDown += (NSInteger)touches.count;
+    [super touchesBegan:touches withEvent:event];
+}
+
+- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    gTouchesUp += (NSInteger)touches.count;
+    [super touchesEnded:touches withEvent:event];
+}
+
+- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    gTouchesCancelled += (NSInteger)touches.count;
+    for (UITouch *touch in touches) {
+        for (UIGestureRecognizer *g in touch.gestureRecognizers) {
+            if ([g isKindOfClass:[PortalTapRecognizer class]]) continue;
+            UIGestureRecognizerState s = g.state;
+            if (s == UIGestureRecognizerStateBegan || s == UIGestureRecognizerStateChanged || s == UIGestureRecognizerStateEnded)
+                gLastCanceller = PortalRecognizerName(g);
+        }
+    }
+    [super touchesCancelled:touches withEvent:event];
+}
+
 @end
 
 @interface PortalItemControl : PortalCircleControl
@@ -163,7 +282,10 @@
         _orb.accessibilityLabel = @"HCG Portal";
         _orb.accessibilityHint = @"Shows Portal destinations.";
         _orb.accessibilityTraits = UIAccessibilityTraitButton;
-        [_orb addTarget:self action:@selector(orbTapped) forControlEvents:UIControlEventTouchUpInside];
+        __weak PortalOverlayView *weakSelf = self;
+        _orb.activationHandler = ^(PortalCircleControl *control) {
+            [weakSelf orbTapped];
+        };
         [self addSubview:_orb];
 
         _portalView = [[PortalView alloc] initWithFrame:_orb.bounds];
@@ -354,7 +476,10 @@ static NSString *PortalItemsSignature(NSArray<PortalMenuItem *> *items) {
         c.alpha = _expanded ? 1 : 0;
         c.hidden = !_expanded;
         c.center = _orb.center;
-        [c addTarget:self action:@selector(itemTapped:) forControlEvents:UIControlEventTouchUpInside];
+        __weak PortalOverlayView *weakSelf = self;
+        c.activationHandler = ^(PortalCircleControl *control) {
+            [weakSelf itemTapped:(PortalItemControl *)control];
+        };
         [self insertSubview:c belowSubview:_message];
         [_controls addObject:c];
     }

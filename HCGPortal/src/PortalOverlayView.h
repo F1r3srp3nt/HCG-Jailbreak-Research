@@ -43,6 +43,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)portalOverlayWillExpand:(PortalOverlayView *)overlay;
 @end
 
+/// What happened to touches that landed on Portal's controls since SpringBoard started:
+/// down / up / cancelled / taps / activations, and the last recognizer that cancelled one.
+NSDictionary<NSString *, id> *PortalOverlayTouchDiagnostics(void);
+
 @interface PortalOverlayView : UIView
 
 @property (nonatomic, weak, nullable) id<PortalOverlayDelegate> delegate;

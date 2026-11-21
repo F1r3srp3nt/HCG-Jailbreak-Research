@@ -63,7 +63,8 @@ extern NSString *const PortalStatusKeyLayout;
 extern NSString *const PortalStatusKeyPlan;
 extern NSString *const PortalStatusKeyHost;
 extern NSString *const PortalStatusKeyScene;
-extern NSString *const PortalStatusKeyAuthRoute;
+extern NSString *const PortalStatusKeyAccess; // iOS unlock state as Portal last read it, and why
+extern NSString *const PortalStatusKeyTouch;  // what happened to touches on Portal's controls
 extern NSString *const PortalStatusKeyLauncher;
 extern NSString *const PortalStatusKeyCompanions;
 extern NSString *const PortalStatusKeyLastAction;

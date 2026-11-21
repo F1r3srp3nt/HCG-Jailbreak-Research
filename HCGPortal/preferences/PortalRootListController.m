@@ -62,13 +62,16 @@ static void PortalStatusUpdated(CFNotificationCenterRef center, void *observer, 
     NSMutableArray *lines = [NSMutableArray array];
     NSString *detail = status[PortalStatusKeyDetail];
     if ([detail isKindOfClass:[NSString class]] && detail.length) [lines addObject:detail];
-    for (NSString *key in @[ PortalStatusKeyLayout, PortalStatusKeyPlan, PortalStatusKeyLastAction, PortalStatusKeyHost,
-                             PortalStatusKeyPreviousSession ]) {
+    for (NSString *key in @[ PortalStatusKeyAccess, PortalStatusKeyLayout, PortalStatusKeyPlan, PortalStatusKeyLastAction,
+                             PortalStatusKeyHost, PortalStatusKeyTouch, PortalStatusKeyPhase, PortalStatusKeyPreviousSession ]) {
         NSString *v = status[key];
         if (![v isKindOfClass:[NSString class]] || !v.length) continue;
-        NSString *label = [key isEqualToString:PortalStatusKeyLayout]   ? @"Layout"
+        NSString *label = [key isEqualToString:PortalStatusKeyAccess]   ? @"iPhone lock state"
+                          : [key isEqualToString:PortalStatusKeyLayout] ? @"Layout"
                           : [key isEqualToString:PortalStatusKeyPlan]   ? @"Rendering"
-                          : [key isEqualToString:PortalStatusKeyHost]   ? @"Lock Screen container"
+                          : [key isEqualToString:PortalStatusKeyHost]   ? @"Cover Sheet container"
+                          : [key isEqualToString:PortalStatusKeyTouch]  ? @"Touches"
+                          : [key isEqualToString:PortalStatusKeyPhase]  ? @"Breadcrumb"
                           : [key isEqualToString:PortalStatusKeyPreviousSession] ? @"Diagnostics"
                                                                         : @"Last action";
         [lines addObject:[NSString stringWithFormat:@"%@: %@", label, v]];
@@ -79,7 +82,7 @@ static void PortalStatusUpdated(CFNotificationCenterRef center, void *observer, 
                                                         dateStyle:NSDateFormatterShortStyle
                                                         timeStyle:NSDateFormatterMediumStyle];
         [lines addObject:[NSString stringWithFormat:@"Reported by SpringBoard at %@. Settings is an app, so SpringBoard "
-                                                    @"reports the Lock Screen as hidden while you look at this page.",
+                                                    @"reports the Cover Sheet as hidden while you look at this page.",
                                                     time]];
     } else {
         [lines addObject:@"SpringBoard has not reported yet. If you just installed HCG Portal, respring."];
@@ -275,10 +278,11 @@ static void PortalStatusUpdated(CFNotificationCenterRef center, void *observer, 
         @"disabled" : @"Off",
         @"kill-switch" : @"Kill switch",
         @"fault" : @"Removed after a fault",
-        @"no-host" : @"Lock Screen not found",
+        @"locked" : @"Hidden: iPhone locked",
+        @"no-host" : @"Cover Sheet not found",
         @"screen-off" : @"Paused: screen off",
-        @"not-lock-screen" : @"Hidden: not on the Lock Screen",
-        @"authenticating" : @"Hidden: authenticating",
+        @"not-cover-sheet" : @"Hidden: Cover Sheet closed",
+        @"opening" : @"Hidden: opening",
         @"no-room" : @"Hidden: no room",
         @"low-power-hidden" : @"Hidden: Low Power Mode",
     };

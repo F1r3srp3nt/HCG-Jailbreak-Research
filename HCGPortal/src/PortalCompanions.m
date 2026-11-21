@@ -140,8 +140,6 @@ static id NexusActiveInterface(void) {
             return @"No apps chosen. Add them in Settings › HCG Portal › HCG Apps.";
         case PORTAL_AVAIL_LAUNCHER_UNAVAILABLE:
             return @"This iOS version doesn't offer the app launcher Portal uses.";
-        case PORTAL_AVAIL_AUTH_UNAVAILABLE:
-            return @"Unlock your iPhone first: Portal can't request authentication on this iOS version.";
     }
     return @"Unavailable.";
 }

@@ -44,7 +44,6 @@ HCGPortal_FILES = \
 	src/PortalOverlayView.m \
 	src/PortalView.m \
 	src/PortalHost.m \
-	src/PortalAuth.m \
 	src/PortalLauncher.m \
 	src/PortalCompanions.m \
 	src/PortalPreferences.m \

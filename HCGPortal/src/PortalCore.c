@@ -344,14 +344,64 @@ int portal_menu_hit(const PortalMenuLayout *menu, double x, double y) {
 
 // ---- Visibility --------------------------------------------------------------
 
+// ---- Access ---------------------------------------------------------------------
+
+PortalAccess portal_access(const PortalAccessInput *in) {
+    // Any source that reports "locked" wins, whatever the others say.
+    if (in->protectedDataAvailable == PORTAL_SIGNAL_NO || in->lockStateLocked == PORTAL_SIGNAL_YES ||
+        in->uiLocked == PORTAL_SIGNAL_YES || in->inSecureApp == PORTAL_SIGNAL_YES)
+        return PORTAL_ACCESS_LOCKED;
+    // Every required source must have been read, and say "unlocked". Anything else is closed.
+    if (in->protectedDataAvailable != PORTAL_SIGNAL_YES || in->lockStateLocked != PORTAL_SIGNAL_NO ||
+        in->uiLocked != PORTAL_SIGNAL_NO)
+        return PORTAL_ACCESS_UNVERIFIED;
+    if (in->screenOn == PORTAL_SIGNAL_NO) return PORTAL_ACCESS_SCREEN_OFF;
+    return PORTAL_ACCESS_GRANTED;
+}
+
+const char *portal_access_name(int access) {
+    switch (access) {
+        case PORTAL_ACCESS_GRANTED: return "unlocked";
+        case PORTAL_ACCESS_LOCKED: return "locked";
+        case PORTAL_ACCESS_UNVERIFIED: return "unverified";
+        case PORTAL_ACCESS_SCREEN_OFF: return "screen-off";
+        default: return "unknown";
+    }
+}
+
+void portal_access_session_init(PortalAccessSession *s) {
+    s->granted = 0;
+    s->epoch = 1;
+}
+
+int portal_access_session_apply(PortalAccessSession *s, PortalAccess access) {
+    int granted = access == PORTAL_ACCESS_GRANTED;
+    int revoked = s->granted && !granted;
+    if (granted != s->granted) {
+        // Every change starts a new epoch: nothing captured before a relock, and nothing
+        // captured while closed, is ever permitted afterwards.
+        s->epoch++;
+        if (s->epoch == 0) s->epoch = 1;
+    }
+    s->granted = granted;
+    return revoked;
+}
+
+int portal_access_permits(const PortalAccessSession *s, unsigned epoch) {
+    return s->granted && epoch != 0 && epoch == s->epoch;
+}
+
+// ---- Visibility -------------------------------------------------------------------
+
 PortalVisibility portal_visibility(const PortalVisibilityInput *in) {
     if (in->killSwitch) return PORTAL_VIS_KILL_SWITCH;
     if (!in->enabled) return PORTAL_VIS_DISABLED;
     if (in->fault) return PORTAL_VIS_FAULT;
+    if (!in->accessGranted) return PORTAL_VIS_LOCKED;
     if (!in->hostAttached) return PORTAL_VIS_NO_HOST;
     if (!in->screenOn) return PORTAL_VIS_SCREEN_OFF;
-    if (!in->coverSheetVisible || !in->lockScreenSession) return PORTAL_VIS_NOT_LOCK_SCREEN;
-    if (in->authenticationVisible) return PORTAL_VIS_AUTHENTICATING;
+    if (!in->coverSheetVisible) return PORTAL_VIS_NOT_COVER_SHEET;
+    if (in->opening) return PORTAL_VIS_OPENING;
     if (!in->planDraws) return PORTAL_VIS_LOW_POWER_HIDDEN;
     if (in->layoutMode == PORTAL_LAYOUT_HIDDEN) return PORTAL_VIS_NO_ROOM;
     return PORTAL_VIS_VISIBLE;
@@ -365,10 +415,11 @@ const char *portal_visibility_name(int v) {
         case PORTAL_VIS_FAULT: return "fault";
         case PORTAL_VIS_NO_HOST: return "no-host";
         case PORTAL_VIS_SCREEN_OFF: return "screen-off";
-        case PORTAL_VIS_NOT_LOCK_SCREEN: return "not-lock-screen";
-        case PORTAL_VIS_AUTHENTICATING: return "authenticating";
+        case PORTAL_VIS_NOT_COVER_SHEET: return "not-cover-sheet";
+        case PORTAL_VIS_OPENING: return "opening";
         case PORTAL_VIS_NO_ROOM: return "no-room";
         case PORTAL_VIS_LOW_POWER_HIDDEN: return "low-power-hidden";
+        case PORTAL_VIS_LOCKED: return "locked";
         default: return "unknown";
     }
 }
@@ -390,18 +441,17 @@ PortalAvailability portal_destination_availability(int destination, const Portal
         case PORTAL_DEST_APPS:
             if (p->appCount <= 0) return PORTAL_AVAIL_NO_APPS;
             if (!p->launcherAvailable) return PORTAL_AVAIL_LAUNCHER_UNAVAILABLE;
-            return PORTAL_AVAIL_AVAILABLE; // opening the app ring needs no authentication
+            return PORTAL_AVAIL_AVAILABLE;
         case PORTAL_DEST_APP_ITEM:
             if (!p->launcherAvailable) return PORTAL_AVAIL_LAUNCHER_UNAVAILABLE;
             break;
         default:
             return PORTAL_AVAIL_NOT_INSTALLED;
     }
-    if (!p->authAvailable) return PORTAL_AVAIL_AUTH_UNAVAILABLE;
     return PORTAL_AVAIL_AVAILABLE;
 }
 
-int portal_destination_requires_auth(int destination) {
+int portal_destination_performs_action(int destination) {
     switch (destination) {
         case PORTAL_DEST_NEXUS:
         case PORTAL_DEST_BACKGROUNDS:
@@ -427,22 +477,25 @@ void portal_pending_init(PortalPending *p) {
     memset(p, 0, sizeof *p);
 }
 
-unsigned portal_pending_begin(PortalPending *p, int destination, int item, double now) {
-    if (p->awaiting) return 0;
+unsigned portal_pending_begin(PortalPending *p, int destination, int item, double now, unsigned accessEpoch) {
+    if (p->awaiting || accessEpoch == 0) return 0;
     p->generation++;
     if (p->generation == 0) p->generation = 1;
     p->awaiting = 1;
     p->destination = destination;
     p->item = item;
     p->startedAt = now;
+    p->accessEpoch = accessEpoch;
     return p->generation;
 }
 
-PortalPendingOutcome portal_pending_resolve(PortalPending *p, unsigned generation, int success, double now) {
+PortalPendingOutcome portal_pending_resolve(PortalPending *p, unsigned generation, int success, double now,
+                                            const PortalAccessSession *access) {
     PortalPendingOutcome o = {0, -1, -1};
     if (!p->awaiting || generation == 0 || generation != p->generation) return o; // stale or unknown: ignore
     int inTime = isfinite(now) && now >= p->startedAt && now - p->startedAt <= PORTAL_PENDING_TIMEOUT;
-    if (success && inTime) {
+    int permitted = access != NULL && portal_access_permits(access, p->accessEpoch);
+    if (success && inTime && permitted) {
         o.perform = 1;
         o.destination = p->destination;
         o.item = p->item;
@@ -455,6 +508,7 @@ PortalPendingOutcome portal_pending_resolve(PortalPending *p, unsigned generatio
 
 void portal_pending_cancel(PortalPending *p) {
     p->awaiting = 0;
+    p->accessEpoch = 0;
     p->destination = -1;
     p->item = -1;
 }

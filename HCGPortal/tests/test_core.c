@@ -7,11 +7,12 @@
 //  What this proves: the placement solver keeps the portal between the clock and
 //  every obstacle in its column, shrinks / collapses / hides it when space runs
 //  out, keeps it and its radial menu on screen with non-overlapping 64 pt
-//  targets; the render plan honours Reduce Motion and Low Power Mode; the
-//  pending protected action performs exactly the selected action once and only
-//  after a successful authentication of the same request. What it does not
-//  prove: anything about SpringBoard, which needs the Simulator harness and a
-//  device.
+//  targets; the render plan honours Reduce Motion and Low Power Mode; access is
+//  granted only when every required iOS lock-state source reports unlocked
+//  (any "locked" or missing source keeps it closed); a pending action runs
+//  exactly once, only if no relock happened since it was selected. What it
+//  does not prove: what SpringBoard reports on a given iOS version, which needs
+//  the Simulator harness and a device.
 //
 
 #include "PortalCore.h"
@@ -297,6 +298,100 @@ static void test_menu(void) {
     CHECK(m.count == PORTAL_MENU_MAX_ITEMS, "capped");
 }
 
+static PortalAccessSession granted_session(void) {
+    PortalAccessSession s;
+    portal_access_session_init(&s);
+    portal_access_session_apply(&s, PORTAL_ACCESS_GRANTED);
+    return s;
+}
+
+static void test_access(void) {
+    const int values[3] = {PORTAL_SIGNAL_UNKNOWN, PORTAL_SIGNAL_NO, PORTAL_SIGNAL_YES};
+    int granted = 0;
+    // Exhaustive over every source in every state (3^5 inputs).
+    for (int a = 0; a < 3; a++)
+        for (int b = 0; b < 3; b++)
+            for (int c = 0; c < 3; c++)
+                for (int d = 0; d < 3; d++)
+                    for (int e = 0; e < 3; e++) {
+                        PortalAccessInput in = {values[a], values[b], values[c], values[d], values[e]};
+                        PortalAccess got = portal_access(&in);
+                        int expect = in.protectedDataAvailable == PORTAL_SIGNAL_YES && in.lockStateLocked == PORTAL_SIGNAL_NO &&
+                                     in.uiLocked == PORTAL_SIGNAL_NO && in.inSecureApp != PORTAL_SIGNAL_YES &&
+                                     in.screenOn != PORTAL_SIGNAL_NO;
+                        CHECK((got == PORTAL_ACCESS_GRANTED) == expect, "access %d%d%d%d%d -> %s", a, b, c, d, e,
+                              portal_access_name(got));
+                        granted += got == PORTAL_ACCESS_GRANTED;
+                        int anyLocked = in.protectedDataAvailable == PORTAL_SIGNAL_NO || in.lockStateLocked == PORTAL_SIGNAL_YES ||
+                                        in.uiLocked == PORTAL_SIGNAL_YES || in.inSecureApp == PORTAL_SIGNAL_YES;
+                        if (anyLocked) CHECK(got == PORTAL_ACCESS_LOCKED, "a locked source always wins");
+                        if (!anyLocked && (in.protectedDataAvailable == PORTAL_SIGNAL_UNKNOWN ||
+                                           in.lockStateLocked == PORTAL_SIGNAL_UNKNOWN || in.uiLocked == PORTAL_SIGNAL_UNKNOWN))
+                            CHECK(got == PORTAL_ACCESS_UNVERIFIED, "an unreadable required source fails closed");
+                        CHECK(strcmp(portal_access_name(got), "unknown") != 0, "named");
+                    }
+    CHECK(granted == 4, "granted for exactly the 4 inputs (secure app no/unknown x screen on/unknown), got %d", granted);
+
+    // Named scenarios.
+    PortalAccessInput unlocked = {PORTAL_SIGNAL_YES, PORTAL_SIGNAL_NO, PORTAL_SIGNAL_NO, PORTAL_SIGNAL_NO, PORTAL_SIGNAL_YES};
+    CHECK(portal_access(&unlocked) == PORTAL_ACCESS_GRANTED, "Face ID / Touch ID / passcode unlock: every source unlocked");
+    PortalAccessInput lockScreen = {PORTAL_SIGNAL_YES, PORTAL_SIGNAL_YES, PORTAL_SIGNAL_YES, PORTAL_SIGNAL_NO, PORTAL_SIGNAL_YES};
+    CHECK(portal_access(&lockScreen) == PORTAL_ACCESS_LOCKED, "Lock Screen within the keybag grace period: locked");
+    PortalAccessInput authenticatedOnLockScreen = unlocked;
+    authenticatedOnLockScreen.uiLocked = PORTAL_SIGNAL_YES;
+    authenticatedOnLockScreen.lockStateLocked = PORTAL_SIGNAL_YES;
+    CHECK(portal_access(&authenticatedOnLockScreen) == PORTAL_ACCESS_LOCKED,
+          "Face ID matched but the Lock Screen is still up: not yet unlocked");
+    PortalAccessInput beforeFirstUnlock = {PORTAL_SIGNAL_NO, PORTAL_SIGNAL_NO, PORTAL_SIGNAL_NO, PORTAL_SIGNAL_NO, PORTAL_SIGNAL_YES};
+    CHECK(portal_access(&beforeFirstUnlock) == PORTAL_ACCESS_LOCKED, "after a reboot, before the first unlock: locked");
+    PortalAccessInput camera = unlocked;
+    camera.inSecureApp = PORTAL_SIGNAL_YES;
+    CHECK(portal_access(&camera) == PORTAL_ACCESS_LOCKED, "camera opened from the Lock Screen: locked");
+    PortalAccessInput noLockState = unlocked;
+    noLockState.lockStateLocked = PORTAL_SIGNAL_UNKNOWN;
+    CHECK(portal_access(&noLockState) == PORTAL_ACCESS_UNVERIFIED, "lockstate unreadable: closed");
+    PortalAccessInput noManager = unlocked;
+    noManager.uiLocked = PORTAL_SIGNAL_UNKNOWN;
+    CHECK(portal_access(&noManager) == PORTAL_ACCESS_UNVERIFIED, "SBLockScreenManager missing: closed");
+    PortalAccessInput dark = unlocked;
+    dark.screenOn = PORTAL_SIGNAL_NO;
+    CHECK(portal_access(&dark) == PORTAL_ACCESS_SCREEN_OFF, "screen off: closed");
+
+    // Sessions: closed at start; each revocation advances the epoch.
+    PortalAccessSession s;
+    portal_access_session_init(&s);
+    CHECK(!s.granted && !portal_access_permits(&s, s.epoch), "starts closed (SpringBoard restart, reboot)");
+    unsigned closedEpoch = s.epoch;
+    CHECK(!portal_access_session_apply(&s, PORTAL_ACCESS_GRANTED) && s.granted, "grant");
+    CHECK(!portal_access_permits(&s, closedEpoch), "nothing captured while closed is permitted after the unlock");
+    unsigned e = s.epoch;
+    CHECK(portal_access_permits(&s, e), "permits its own epoch");
+    CHECK(!portal_access_permits(&s, 0), "epoch 0 never permitted");
+    CHECK(portal_access_session_apply(&s, PORTAL_ACCESS_LOCKED) && !s.granted && s.epoch != e, "lock revokes, new epoch");
+    CHECK(!portal_access_session_apply(&s, PORTAL_ACCESS_UNVERIFIED), "already closed: no second revocation");
+    portal_access_session_apply(&s, PORTAL_ACCESS_GRANTED);
+    CHECK(s.granted && !portal_access_permits(&s, e), "unlocked again: the old epoch stays invalid");
+    CHECK(portal_access_permits(&s, s.epoch), "the new epoch is valid");
+
+    // Random lock / unlock storms: something captured at epoch E is permitted at a later time
+    // iff access is granted then and no revocation happened in between.
+    portal_access_session_init(&s);
+    for (int iter = 0; iter < 200000; iter++) {
+        PortalAccess first = rnd() < 0.7 ? PORTAL_ACCESS_GRANTED : (PortalAccess)(1 + (int)rrange(0, 3));
+        portal_access_session_apply(&s, first);
+        if (!s.granted) continue;
+        unsigned captured = s.epoch;
+        int revokedSince = 0;
+        int steps = (int)rrange(0, 5);
+        for (int k = 0; k < steps; k++) {
+            PortalAccess next = rnd() < 0.5 ? PORTAL_ACCESS_GRANTED : (PortalAccess)(1 + (int)rrange(0, 3));
+            if (portal_access_session_apply(&s, next)) revokedSince = 1;
+        }
+        int expect = s.granted && !revokedSince;
+        CHECK(portal_access_permits(&s, captured) == expect, "rapid lock/unlock: permitted iff no relock since capture");
+    }
+}
+
 static void test_visibility(void) {
     PortalVisibilityInput v = {1, 0, 0, 1, 1, 1, 1, 0, PORTAL_LAYOUT_FULL, 1};
     CHECK(portal_visibility(&v) == PORTAL_VIS_VISIBLE, "visible");
@@ -309,18 +404,20 @@ static void test_visibility(void) {
         t.hostAttached = (mask >> 3) & 1;
         t.coverSheetVisible = (mask >> 4) & 1;
         t.screenOn = (mask >> 5) & 1;
-        t.lockScreenSession = (mask >> 6) & 1;
-        t.authenticationVisible = (mask >> 7) & 1;
+        t.accessGranted = (mask >> 6) & 1;
+        t.opening = (mask >> 7) & 1;
         t.planDraws = (mask >> 8) & 1;
         for (int mode = PORTAL_LAYOUT_HIDDEN; mode <= PORTAL_LAYOUT_COMPACT; mode++) {
             t.layoutMode = mode;
             int expect = t.enabled && !t.killSwitch && !t.fault && t.hostAttached && t.coverSheetVisible && t.screenOn &&
-                         t.lockScreenSession && !t.authenticationVisible && t.planDraws && mode != PORTAL_LAYOUT_HIDDEN;
+                         t.accessGranted && !t.opening && t.planDraws && mode != PORTAL_LAYOUT_HIDDEN;
             PortalVisibility got = portal_visibility(&t);
             CHECK((got == PORTAL_VIS_VISIBLE) == expect, "visibility mask %d mode %d -> %s", mask, mode,
                   portal_visibility_name(got));
             if (t.killSwitch) CHECK(got == PORTAL_VIS_KILL_SWITCH, "kill switch first");
             if (!t.killSwitch && !t.enabled) CHECK(got == PORTAL_VIS_DISABLED, "disabled next");
+            if (!t.killSwitch && t.enabled && !t.fault && !t.accessGranted)
+                CHECK(got == PORTAL_VIS_LOCKED, "not unlocked: locked, whatever else holds");
             CHECK(strcmp(portal_visibility_name(got), "unknown") != 0, "named");
         }
     }
@@ -328,7 +425,7 @@ static void test_visibility(void) {
 
 static void test_destinations(void) {
     PortalDestinationProbe none = {0};
-    PortalDestinationProbe all = {1, 1, 1, 1, 1, 3};
+    PortalDestinationProbe all = {1, 1, 1, 1, 3};
     CHECK(portal_destination_availability(PORTAL_DEST_DEVICES, &all) == PORTAL_AVAIL_NOT_CONNECTED, "devices never connected");
     CHECK(portal_destination_availability(PORTAL_DEST_NEXUS, &none) == PORTAL_AVAIL_NOT_INSTALLED, "nexus absent");
     PortalDestinationProbe nx = all;
@@ -337,60 +434,58 @@ static void test_destinations(void) {
     CHECK(portal_destination_availability(PORTAL_DEST_NEXUS, &all) == PORTAL_AVAIL_AVAILABLE, "nexus with interface");
     CHECK(portal_destination_availability(PORTAL_DEST_BACKGROUNDS, &none) == PORTAL_AVAIL_NOT_INSTALLED, "AC absent");
     CHECK(portal_destination_availability(PORTAL_DEST_BACKGROUNDS, &all) == PORTAL_AVAIL_AVAILABLE, "AC present");
-    PortalDestinationProbe noauth = all;
-    noauth.authAvailable = 0;
-    CHECK(portal_destination_availability(PORTAL_DEST_BACKGROUNDS, &noauth) == PORTAL_AVAIL_AUTH_UNAVAILABLE, "fail closed without auth");
-    CHECK(portal_destination_availability(PORTAL_DEST_APP_ITEM, &noauth) == PORTAL_AVAIL_AUTH_UNAVAILABLE, "app fails closed");
     CHECK(portal_destination_availability(PORTAL_DEST_APPS, &none) == PORTAL_AVAIL_NO_APPS, "no apps");
     CHECK(portal_destination_availability(PORTAL_DEST_APPS, &all) == PORTAL_AVAIL_AVAILABLE, "apps ring");
     PortalDestinationProbe nolaunch = all;
     nolaunch.launcherAvailable = 0;
     CHECK(portal_destination_availability(PORTAL_DEST_APP_ITEM, &nolaunch) == PORTAL_AVAIL_LAUNCHER_UNAVAILABLE, "no launcher");
-    CHECK(portal_destination_requires_auth(PORTAL_DEST_NEXUS) && portal_destination_requires_auth(PORTAL_DEST_BACKGROUNDS) &&
-              portal_destination_requires_auth(PORTAL_DEST_APP_ITEM),
-          "every launching destination needs authentication");
-    CHECK(!portal_destination_requires_auth(PORTAL_DEST_DEVICES) && !portal_destination_requires_auth(PORTAL_DEST_APPS),
-          "showing a ring or a status needs none");
+    CHECK(portal_destination_performs_action(PORTAL_DEST_NEXUS) && portal_destination_performs_action(PORTAL_DEST_BACKGROUNDS) &&
+              portal_destination_performs_action(PORTAL_DEST_APP_ITEM),
+          "every launching destination is an action");
+    CHECK(!portal_destination_performs_action(PORTAL_DEST_DEVICES) && !portal_destination_performs_action(PORTAL_DEST_APPS),
+          "showing a ring or a status is not");
     CHECK(portal_destination_availability(42, &all) == PORTAL_AVAIL_NOT_INSTALLED, "unknown destination");
     CHECK(strcmp(portal_destination_id(PORTAL_DEST_BACKGROUNDS), "backgrounds") == 0, "ids");
 }
 
 static void test_pending(void) {
     PortalPending p;
+    PortalAccessSession a = granted_session();
+    unsigned E = a.epoch;
     portal_pending_init(&p);
-    unsigned g = portal_pending_begin(&p, PORTAL_DEST_APP_ITEM, 2, 100.0);
+    unsigned g = portal_pending_begin(&p, PORTAL_DEST_APP_ITEM, 2, 100.0, E);
     CHECK(g != 0 && p.awaiting, "begin");
-    CHECK(portal_pending_begin(&p, PORTAL_DEST_BACKGROUNDS, -1, 101.0) == 0, "second request ignored while waiting");
-    PortalPendingOutcome o = portal_pending_resolve(&p, g + 7, 1, 102.0);
+    CHECK(portal_pending_begin(&p, PORTAL_DEST_BACKGROUNDS, -1, 101.0, E) == 0, "second request ignored while waiting");
+    PortalPendingOutcome o = portal_pending_resolve(&p, g + 7, 1, 102.0, &a);
     CHECK(!o.perform && p.awaiting, "stale generation ignored, still waiting");
-    o = portal_pending_resolve(&p, g, 1, 103.0);
+    o = portal_pending_resolve(&p, g, 1, 103.0, &a);
     CHECK(o.perform && o.destination == PORTAL_DEST_APP_ITEM && o.item == 2 && !p.awaiting, "success performs the selected action");
-    o = portal_pending_resolve(&p, g, 1, 104.0);
+    o = portal_pending_resolve(&p, g, 1, 104.0, &a);
     CHECK(!o.perform, "performs only once");
 
-    g = portal_pending_begin(&p, PORTAL_DEST_BACKGROUNDS, -1, 200.0);
-    o = portal_pending_resolve(&p, g, 0, 201.0);
+    g = portal_pending_begin(&p, PORTAL_DEST_BACKGROUNDS, -1, 200.0, E);
+    o = portal_pending_resolve(&p, g, 0, 201.0, &a);
     CHECK(!o.perform && !p.awaiting, "cancellation discards");
-    o = portal_pending_resolve(&p, g, 1, 202.0);
+    o = portal_pending_resolve(&p, g, 1, 202.0, &a);
     CHECK(!o.perform, "late success after cancellation discarded");
 
-    g = portal_pending_begin(&p, PORTAL_DEST_NEXUS, -1, 300.0);
+    g = portal_pending_begin(&p, PORTAL_DEST_NEXUS, -1, 300.0, E);
     portal_pending_cancel(&p); // screen off / disabled
-    o = portal_pending_resolve(&p, g, 1, 301.0);
+    o = portal_pending_resolve(&p, g, 1, 301.0, &a);
     CHECK(!o.perform, "success after screen-off discarded");
 
-    g = portal_pending_begin(&p, PORTAL_DEST_NEXUS, -1, 400.0);
-    o = portal_pending_resolve(&p, g, 1, 400.0 + PORTAL_PENDING_TIMEOUT + 1);
+    g = portal_pending_begin(&p, PORTAL_DEST_NEXUS, -1, 400.0, E);
+    o = portal_pending_resolve(&p, g, 1, 400.0 + PORTAL_PENDING_TIMEOUT + 1, &a);
     CHECK(!o.perform && !p.awaiting, "too late discarded");
-    g = portal_pending_begin(&p, PORTAL_DEST_NEXUS, -1, 500.0);
+    g = portal_pending_begin(&p, PORTAL_DEST_NEXUS, -1, 500.0, E);
     CHECK(!portal_pending_expire(&p, 510.0) && p.awaiting, "not yet expired");
     CHECK(portal_pending_expire(&p, 500.0 + PORTAL_PENDING_TIMEOUT + 0.5) && !p.awaiting, "expired");
-    o = portal_pending_resolve(&p, g, 1, 520.0);
+    o = portal_pending_resolve(&p, g, 1, 520.0, &a);
     CHECK(!o.perform, "expired request never performs");
-    g = portal_pending_begin(&p, PORTAL_DEST_NEXUS, -1, 600.0);
-    o = portal_pending_resolve(&p, g, 1, ((double)NAN));
+    g = portal_pending_begin(&p, PORTAL_DEST_NEXUS, -1, 600.0, E);
+    o = portal_pending_resolve(&p, g, 1, ((double)NAN), &a);
     CHECK(!o.perform, "NaN clock never performs");
-    o = portal_pending_resolve(&p, 0, 1, 600.0);
+    o = portal_pending_resolve(&p, 0, 1, 600.0, &a);
     CHECK(!o.perform, "generation 0 never performs");
 
     // Random sequences: at most one perform per begin, and only for that begin's action.
@@ -398,7 +493,7 @@ static void test_pending(void) {
     for (int iter = 0; iter < 200000; iter++) {
         double now = iter;
         int dest = (int)rrange(0, 4), item = (int)rrange(-1, 6);
-        unsigned gen = portal_pending_begin(&p, dest, item, now);
+        unsigned gen = portal_pending_begin(&p, dest, item, now, E);
         if (!gen) { portal_pending_cancel(&p); continue; }
         int performed = 0;
         int steps = 1 + (int)rrange(0, 4);
@@ -408,7 +503,7 @@ static void test_pending(void) {
             int success = rnd() < 0.6;
             double t = now + rrange(0, PORTAL_PENDING_TIMEOUT * 1.2);
             if (r > 0.9) portal_pending_cancel(&p);
-            PortalPendingOutcome x = portal_pending_resolve(&p, which, success, t);
+            PortalPendingOutcome x = portal_pending_resolve(&p, which, success, t, &a);
             if (x.perform) {
                 performed++;
                 CHECK(which == gen && success && t - now <= PORTAL_PENDING_TIMEOUT, "performs only on own success in time");
@@ -416,6 +511,46 @@ static void test_pending(void) {
             }
         }
         CHECK(performed <= 1, "at most once");
+        portal_pending_cancel(&p);
+    }
+
+    // Relock races: an action selected while unlocked never runs after a lock, even if the
+    // phone is unlocked again before the preparation finishes.
+    portal_pending_init(&p);
+    a = granted_session();
+    unsigned g2 = portal_pending_begin(&p, PORTAL_DEST_BACKGROUNDS, -1, 10.0, a.epoch);
+    portal_access_session_apply(&a, PORTAL_ACCESS_LOCKED);
+    PortalPendingOutcome r = portal_pending_resolve(&p, g2, 1, 10.5, &a);
+    CHECK(!r.perform && !p.awaiting, "locked before it ran: discarded");
+    g2 = portal_pending_begin(&p, PORTAL_DEST_BACKGROUNDS, -1, 20.0, a.epoch);
+    CHECK(g2 != 0, "begin while closed records the closed epoch");
+    r = portal_pending_resolve(&p, g2, 1, 20.1, &a);
+    CHECK(!r.perform, "selected while locked: never runs");
+    portal_access_session_apply(&a, PORTAL_ACCESS_GRANTED);
+    g2 = portal_pending_begin(&p, PORTAL_DEST_APP_ITEM, 1, 30.0, a.epoch);
+    portal_access_session_apply(&a, PORTAL_ACCESS_LOCKED);
+    portal_access_session_apply(&a, PORTAL_ACCESS_GRANTED); // unlocked again within the same second
+    r = portal_pending_resolve(&p, g2, 1, 30.4, &a);
+    CHECK(!r.perform, "lock then unlock before it ran: still discarded");
+    CHECK(portal_pending_begin(&p, PORTAL_DEST_NEXUS, -1, 40.0, 0) == 0, "epoch 0 never starts");
+    r = portal_pending_resolve(&p, 1, 1, 40.0, NULL);
+    CHECK(!r.perform, "no session: never runs");
+
+    // Random storms: a perform happens only if access permitted the begin's epoch at resolve time.
+    portal_pending_init(&p);
+    portal_access_session_init(&a);
+    for (int iter = 0; iter < 200000; iter++) {
+        portal_access_session_apply(&a, rnd() < 0.75 ? PORTAL_ACCESS_GRANTED : PORTAL_ACCESS_LOCKED);
+        unsigned epoch = a.epoch;
+        int wasGranted = a.granted;
+        unsigned gen = portal_pending_begin(&p, PORTAL_DEST_BACKGROUNDS, -1, iter, epoch);
+        int revoked = 0;
+        int steps = (int)rrange(0, 4);
+        for (int k = 0; k < steps; k++)
+            revoked |= portal_access_session_apply(&a, rnd() < 0.6 ? PORTAL_ACCESS_GRANTED : PORTAL_ACCESS_LOCKED);
+        PortalPendingOutcome x = portal_pending_resolve(&p, gen, 1, iter + 0.5, &a);
+        if (x.perform) CHECK(wasGranted && !revoked && a.granted, "storm: performs only without a relock, while unlocked");
+        if (wasGranted && !revoked && a.granted) CHECK(x.perform, "storm: performs when nothing intervened");
         portal_pending_cancel(&p);
     }
 }
@@ -435,6 +570,7 @@ int main(void) {
     test_layout_basic();
     test_layout_fuzz();
     test_menu();
+    test_access();
     test_visibility();
     test_destinations();
     test_pending();

@@ -46,14 +46,15 @@ def slider(key, default, lo, hi):
 
 ITEMS = [
     group("generalGroup", "HCG Portal",
-          "Off after installation. Changes apply immediately, without a respring. HCG Portal never bypasses your passcode: "
-          "opening anything from the Lock Screen asks for Face ID, Touch ID or your passcode first."),
+          "Off after installation. Changes apply immediately, without a respring. HCG Portal works only on an unlocked "
+          "iPhone: it appears on the Cover Sheet when you pull it down after unlocking with Face ID, Touch ID or your "
+          "passcode, and never on the locked Lock Screen. Locking removes it at once."),
     pref("PSSwitchCell", "enabled", "Enable HCG Portal", False),
     value("engineStatus", "Status", "engineStatus:"),
-    value("visibilityStatus", "On the Lock Screen", "visibilityStatus:"),
+    value("visibilityStatus", "On the Cover Sheet", "visibilityStatus:"),
     group("statusDetailGroup"),
     group("placementGroup", "Placement",
-          "By default the portal sits below the clock and widgets and above notifications. It moves, shrinks, collapses to a "
+          "On the Cover Sheet the portal sits below the clock and widgets and above notifications. It moves, shrinks, collapses to a "
           "small orb or hides when notifications, media controls, the flashlight or the camera need the space."),
     button("openPlacement", "Position & Size", "openPlacement:"),
     group("appearanceGroup", "Appearance"),
@@ -70,8 +71,8 @@ ITEMS = [
     slider("intensity", 0.6, 0.0, 1.0),
     button("resetAppearance", "Reset Appearance", "resetAppearance:"),
     group("behaviourGroup", "Behaviour",
-          "The opening animation plays briefly when you unlock. It never delays unlocking. With Reduce Motion on, the portal "
-          "is static and the opening animation is skipped."),
+          "The opening animation plays briefly the first time the portal appears after you unlock. With Reduce Motion on, "
+          "the portal is static and the opening animation is skipped."),
     pref("PSSwitchCell", "unlockAnimation", "Opening Animation on Unlock", True),
     pref("PSLinkListCell", "lowPower", "In Low Power Mode", "static", detail="PSListItemsController",
          validValues=["static", "economy", "hide"],
@@ -82,7 +83,7 @@ ITEMS = [
     value("backgroundsStatus", "Backgrounds", "backgroundsStatus:"),
     value("devicesStatus", "Devices", "devicesStatus:"),
     group("recoveryGroup", "Recovery",
-          "Turning Enable off removes the portal at once and the Lock Screen behaves as if HCG Portal were not installed. "
+          "Turning Enable off removes the portal at once and the Cover Sheet behaves as if HCG Portal were not installed. "
           "If Settings can't be opened: over SSH, touch /var/mobile/Library/Preferences/com.hakmicapitalgroup.portal.disabled "
           "and respring (the kill switch). After three quick SpringBoard crashes in a row HCG Portal turns itself off."),
     button("resetAll", "Reset All HCG Portal Settings", "resetAll:"),

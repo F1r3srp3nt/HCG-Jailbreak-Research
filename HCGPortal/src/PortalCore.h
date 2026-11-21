@@ -13,10 +13,14 @@
 //      notification / media platter / quick action, and when it shrinks,
 //      collapses to a compact orb or hides
 //    - radial menu geometry: item centres that stay on screen and never overlap
+//    - access (0.1.0~beta4): Portal is usable only while iOS itself reports the
+//      device unlocked, by every source available; any "locked" or any
+//      missing source keeps it closed (fail closed). Each revocation starts a
+//      new access epoch, so nothing queued before a lock can run after it
 //    - visibility: when the portal is shown and rendering runs
-//    - the pending protected action: exactly the selected action runs once,
-//      only after a successful authentication of the same generation;
-//      cancellation, a timeout, screen-off or disabling discard it
+//    - the pending action: exactly the selected action runs once, only if its
+//      access epoch is still current when it is about to run; a relock, a
+//      timeout, screen-off or disabling discard it
 //
 
 #ifndef PORTAL_CORE_H
@@ -175,6 +179,44 @@ PortalMenuLayout portal_menu_layout(const PortalLayout *portal, int count, const
 // Index of the item whose disc contains (x, y), or -1.
 int portal_menu_hit(const PortalMenuLayout *menu, double x, double y);
 
+// ---- Access (iOS unlock state) ------------------------------------------------
+// Each source is PORTAL_SIGNAL_YES / _NO, or _UNKNOWN when it could not be read on this iOS.
+
+#define PORTAL_SIGNAL_UNKNOWN (-1)
+#define PORTAL_SIGNAL_NO 0
+#define PORTAL_SIGNAL_YES 1
+
+typedef struct {
+    int protectedDataAvailable; // -[UIApplication isProtectedDataAvailable]: the keybag is unlocked (NO before the first unlock)
+    int lockStateLocked;        // Darwin state com.apple.springboard.lockstate != 0
+    int uiLocked;               // -[SBLockScreenManager isUILocked]
+    int inSecureApp;            // -[SBCoverSheetPresentationManager isInSecureApp] (camera over the Lock Screen)
+    int screenOn;               // Darwin state com.apple.springboard.hasBlankedScreen == 0
+} PortalAccessInput;
+
+typedef enum {
+    PORTAL_ACCESS_GRANTED = 0,  // every required source reports unlocked
+    PORTAL_ACCESS_LOCKED,       // some source reports locked (or before the first unlock)
+    PORTAL_ACCESS_UNVERIFIED,   // a required source is unavailable: closed
+    PORTAL_ACCESS_SCREEN_OFF,   // the display is off
+} PortalAccess;
+
+// Granted only if protectedDataAvailable == YES, lockStateLocked == NO and uiLocked == NO
+// (all three required), the screen is not reported off and no secure app is reported.
+PortalAccess portal_access(const PortalAccessInput *in);
+const char *portal_access_name(int access);
+
+typedef struct {
+    int granted;
+    unsigned epoch; // advances whenever access opens or closes; never 0
+} PortalAccessSession;
+
+void portal_access_session_init(PortalAccessSession *s); // starts closed
+// Applies a fresh decision. Returns 1 if this revoked access (granted -> not granted).
+int portal_access_session_apply(PortalAccessSession *s, PortalAccess access);
+// Whether something captured at `epoch` may run now: access granted and not revoked since.
+int portal_access_permits(const PortalAccessSession *s, unsigned epoch);
+
 // ---- Visibility --------------------------------------------------------------
 
 typedef struct {
@@ -184,8 +226,8 @@ typedef struct {
     int hostAttached;      // the portal view is inside a Cover Sheet view
     int coverSheetVisible; // Cover Sheet on screen
     int screenOn;          // display not blanked
-    int lockScreenSession; // the Cover Sheet is the Lock Screen (not Notification Centre over an app)
-    int authenticationVisible; // the passcode / Face ID UI is up
+    int accessGranted;     // portal_access() == PORTAL_ACCESS_GRANTED (iOS reports the device unlocked)
+    int opening;           // a selected destination is opening (the Cover Sheet is being dismissed)
     int layoutMode;        // PortalLayoutMode
     int planDraws;         // render plan draws something
 } PortalVisibilityInput;
@@ -197,10 +239,11 @@ typedef enum {
     PORTAL_VIS_FAULT,
     PORTAL_VIS_NO_HOST,
     PORTAL_VIS_SCREEN_OFF,
-    PORTAL_VIS_NOT_LOCK_SCREEN,
-    PORTAL_VIS_AUTHENTICATING,
+    PORTAL_VIS_NOT_COVER_SHEET, // the Cover Sheet is not on screen
+    PORTAL_VIS_OPENING,
     PORTAL_VIS_NO_ROOM,
     PORTAL_VIS_LOW_POWER_HIDDEN,
+    PORTAL_VIS_LOCKED,          // access not granted: nothing of Portal exists on screen
 } PortalVisibility;
 
 PortalVisibility portal_visibility(const PortalVisibilityInput *in);
@@ -224,12 +267,10 @@ typedef enum {
     PORTAL_AVAIL_NOT_CONNECTED,       // Devices: no Connector / Origin integration exists yet
     PORTAL_AVAIL_NO_APPS,             // HCG apps: none chosen (or none still installed)
     PORTAL_AVAIL_LAUNCHER_UNAVAILABLE,// this iOS lacks the launcher Portal uses
-    PORTAL_AVAIL_AUTH_UNAVAILABLE,    // this iOS lacks the authentication request Portal uses
 } PortalAvailability;
 
 typedef struct {
     int launcherAvailable;
-    int authAvailable;
     int nexusInstalled;
     int nexusOpenInterface;     // HCGNexusPortalInterface v1 present and active
     int animationCenterInstalled;
@@ -237,12 +278,13 @@ typedef struct {
 } PortalDestinationProbe;
 
 PortalAvailability portal_destination_availability(int destination, const PortalDestinationProbe *probe);
-// Opening a destination launches something outside the Lock Screen, so every
-// destination that does anything needs authentication. Devices does nothing yet.
-int portal_destination_requires_auth(int destination);
+// Whether selecting the destination runs an action (opens something). Devices does nothing
+// yet; HCG Apps only shows its ring. Every action re-checks access right before it runs.
+int portal_destination_performs_action(int destination);
 const char *portal_destination_id(int destination);
 
-#define PORTAL_PENDING_TIMEOUT 90.0
+// Opening dismisses the Cover Sheet first; the action waits for that, then runs.
+#define PORTAL_PENDING_TIMEOUT 10.0
 
 typedef struct {
     int awaiting;
@@ -250,6 +292,7 @@ typedef struct {
     int destination;
     int item;
     double startedAt;
+    unsigned accessEpoch;  // the access epoch the action was selected in
 } PortalPending;
 
 typedef struct {
@@ -259,13 +302,15 @@ typedef struct {
 } PortalPendingOutcome;
 
 void portal_pending_init(PortalPending *p);
-// Starts a request. Returns its generation, or 0 if a request is already waiting
-// (the second tap is ignored rather than replacing the first).
-unsigned portal_pending_begin(PortalPending *p, int destination, int item, double now);
-// The authentication finished. Only the generation that is waiting, finishing
-// with success within the timeout, performs its action; everything else is
+// Starts a request selected while access had `accessEpoch`. Returns its generation, or 0 if
+// a request is already waiting (the second tap is ignored rather than replacing the first).
+unsigned portal_pending_begin(PortalPending *p, int destination, int item, double now, unsigned accessEpoch);
+// The preparation (Cover Sheet dismissal) finished. Only the generation that is waiting,
+// finishing with success within the timeout, while `access` still permits its epoch (no
+// relock since it was selected, and unlocked now), performs its action; everything else is
 // discarded. Any outcome for the waiting generation clears it.
-PortalPendingOutcome portal_pending_resolve(PortalPending *p, unsigned generation, int success, double now);
+PortalPendingOutcome portal_pending_resolve(PortalPending *p, unsigned generation, int success, double now,
+                                            const PortalAccessSession *access);
 // Screen off, Portal disabled, fault: discard whatever is waiting.
 void portal_pending_cancel(PortalPending *p);
 // Expire a request that never completed.

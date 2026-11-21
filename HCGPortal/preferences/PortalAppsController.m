@@ -210,9 +210,8 @@ static NSDictionary<NSString *, NSString *> *PortalEntry(id app) {
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     if (section == PortalAppsSectionChosen)
-        return @"These apps appear in Portal's HCG Apps ring. Their icons and names are visible on the Lock Screen when you "
-               @"open the ring. Opening one always asks for Face ID, Touch ID or your passcode first; if you cancel, "
-               @"nothing opens.";
+        return @"These apps appear in Portal's HCG Apps ring. Portal only works on an unlocked iPhone, so the ring, "
+               @"its icons and its names are never shown on the locked Lock Screen.";
     if (section == PortalAppsSectionAll && !_apps.count)
         return @"The installed-apps list isn't available on this iOS version. Enter a bundle identifier instead.";
     return nil;

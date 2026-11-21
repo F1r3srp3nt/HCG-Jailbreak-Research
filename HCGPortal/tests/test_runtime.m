@@ -16,7 +16,6 @@
 #import <UIKit/UIKit.h>
 #import <objc/message.h>
 
-#import "PortalAuth.h"
 #import "PortalCompanions.h"
 #import "PortalCore.h"
 #import "PortalLauncher.h"
@@ -60,15 +59,17 @@ static BOOL Spin(NSTimeInterval timeout, BOOL (^done)(void)) {
 }
 @end
 
-/// What UIApplication does for a touch-up-inside: deliver each target/action.
-/// (Headless `simctl spawn` processes have no UIApplication, so
-/// -sendActionsForControlEvents: would deliver nothing.)
+/// Activates a Portal control the way its own tap recognizer and VoiceOver do (0.1.0~beta4:
+/// Portal's controls no longer depend on UIControl touch tracking). Real touches through
+/// UIKit's gesture arbitration are exercised by the preview (synthesised touches).
 static void Fire(UIControl *control) {
-    for (id target in control.allTargets) {
-        for (NSString *name in [control actionsForTarget:target forControlEvent:UIControlEventTouchUpInside]) {
-            ((void (*)(id, SEL, id))objc_msgSend)(target, NSSelectorFromString(name), control);
-        }
-    }
+    [control accessibilityActivate];
+}
+
+static UITapGestureRecognizer *PortalTapOf(UIView *control) {
+    for (UIGestureRecognizer *g in control.gestureRecognizers)
+        if ([NSStringFromClass([g class]) isEqualToString:@"PortalTapRecognizer"]) return (UITapGestureRecognizer *)g;
+    return nil;
 }
 
 static PortalRenderPlan Plan(int reduceMotion, int lowPower, int policy) {
@@ -155,6 +156,22 @@ static void TestOverlay(void) {
     Check(o.gestureRecognizers.count == 0, @"the overlay adds no gesture recognisers (unlock and paging gestures untouched)");
     Check(o.accessibilityElements.count == 1, @"collapsed: one accessibility element (the orb)");
 
+    // Touch arbitration (0.1.0~beta4): the orb owns a tap recognizer; SpringBoard's TAP recognizers
+    // that see the same touch must wait for it; pans and long presses are left alone.
+    UITapGestureRecognizer *orbTap = PortalTapOf(hit);
+    Check(orbTap != nil && hit.gestureRecognizers.count == 1, @"the orb has exactly one recognizer: Portal's tap");
+    Check(!orbTap.cancelsTouchesInView && !orbTap.delaysTouchesBegan, @"Portal's tap neither cancels nor delays other touches");
+    id<UIGestureRecognizerDelegate> d = orbTap.delegate;
+    UITapGestureRecognizer *springBoardTap = [[UITapGestureRecognizer alloc] init];
+    UILongPressGestureRecognizer *press = [[UILongPressGestureRecognizer alloc] init];
+    UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] init];
+    Check([d gestureRecognizer:orbTap shouldBeRequiredToFailByGestureRecognizer:springBoardTap],
+          @"an ancestor's tap recognizer (SpringBoard's background tap) waits for Portal's tap");
+    Check(![d gestureRecognizer:orbTap shouldBeRequiredToFailByGestureRecognizer:press] &&
+              ![d gestureRecognizer:orbTap shouldBeRequiredToFailByGestureRecognizer:pan],
+          @"long presses (poster switcher) and pans (scrolling, dismissing) are never held back");
+    Check([d gestureRecognizerShouldBegin:orbTap], @"Portal's tap may begin on a visible orb");
+
     Fire((UIControl *)hit);
     Check(o.expanded && r.expanded == 1, @"tap: the radial menu expands");
     Check(o.itemControls.count == 4, @"four destinations");
@@ -217,52 +234,41 @@ static void TestOverlay(void) {
           @"the message line never takes a touch");
 }
 
-static void TestAuth(void) {
-    SBLockScreenManager *manager = [SBLockScreenManager sharedInstance];
-    manager.coverSheetViewController = [[CSCoverSheetViewController alloc] init];
-    PortalAuthBroker *auth = [[PortalAuthBroker alloc] init];
-    Check(auth.available && [auth.route isEqualToString:@"coverSheetContext"], [NSString stringWithFormat:@"route: %@", auth.route]);
-
-    __block NSMutableArray *outcomes = [NSMutableArray array];
-    manager.authMode = PSIAuthSucceed;
-    [auth requestAuthenticationNamed:@"HCG Portal: test" completion:^(PortalAuthOutcome o) { [outcomes addObject:@(o)]; }];
-    Spin(1, ^BOOL { return outcomes.count > 0; });
-    Check(outcomes.count == 1 && [outcomes[0] integerValue] == PortalAuthOutcomeAuthenticated, @"success reported once");
-    Check(manager.lastRequest.fromContext && [manager.lastRequest.name isEqualToString:@"HCG Portal: test"] &&
-              manager.lastRequest.wantsBiometricPresentation,
-          @"the request comes from CoverSheet's own context, named, biometrics allowed");
-
-    [outcomes removeAllObjects];
-    manager.authMode = PSIAuthCancel;
-    [auth requestAuthenticationNamed:@"x" completion:^(PortalAuthOutcome o) { [outcomes addObject:@(o)]; }];
-    Spin(1, ^BOOL { return outcomes.count > 0; });
-    Check(outcomes.count == 1 && [outcomes[0] integerValue] == PortalAuthOutcomeCancelled, @"cancellation reported");
-
-    [outcomes removeAllObjects];
-    manager.authMode = PSIAuthRefuse;
-    [auth requestAuthenticationNamed:@"x" completion:^(PortalAuthOutcome o) { [outcomes addObject:@(o)]; }];
-    Check(outcomes.count == 1 && [outcomes[0] integerValue] == PortalAuthOutcomeRefused, @"a refused request is reported at once");
-
-    [outcomes removeAllObjects];
-    manager.authMode = PSIAuthHold;
-    [auth requestAuthenticationNamed:@"x" completion:^(PortalAuthOutcome o) { [outcomes addObject:@(o)]; }];
-    Check(outcomes.count == 0 && manager.hasPendingRequest, @"held: nothing reported while the system UI is up");
-    void (^replay)(BOOL) = [manager resolvePending:YES];
-    Check(outcomes.count == 1, @"held request completes on success");
-    if (replay) replay(NO);
-    if (replay) replay(YES);
-    Spin(0.2, ^BOOL { return NO; });
-    Check(outcomes.count == 1, @"the completion is delivered exactly once, even if SpringBoard calls back again");
-
-    manager.coverSheetViewController = nil;
-    [auth refresh];
-    Check([auth.route isEqualToString:@"constructed request"], @"without a Cover Sheet context: constructed request");
-    manager.authMode = PSIAuthSucceed;
-    [outcomes removeAllObjects];
-    [auth requestAuthenticationNamed:@"y" completion:^(PortalAuthOutcome o) { [outcomes addObject:@(o)]; }];
-    Spin(1, ^BOOL { return outcomes.count > 0; });
-    Check(!manager.lastRequest.fromContext && manager.lastRequest.source == 17 && manager.lastRequest.intent == 3,
-          @"constructed request: source 17, intent 3");
+static void TestLauncherGate(void) {
+    NSMutableArray *launched = [NSMutableArray array];
+    [PortalLauncher setPreviewLaunchHandler:^BOOL(NSString *bundle) {
+        [launched addObject:bundle];
+        return YES;
+    }];
+    PortalLauncher *launcher = [[PortalLauncher alloc] init];
+    __block NSInteger gateCalls = 0;
+    __block PortalLaunchResult result = PortalLaunchResultFailed;
+    __block BOOL done = NO;
+    [launcher openApplication:@"com.example.app"
+                         gate:^BOOL {
+                             gateCalls++;
+                             return NO;
+                         }
+                   completion:^(PortalLaunchResult r) {
+                       result = r;
+                       done = YES;
+                   }];
+    Spin(0.3, ^BOOL { return done; });
+    Check(done && result == PortalLaunchResultRefused && launched.count == 0 && gateCalls == 1,
+          @"locked at the action boundary: the launcher asks iOS for nothing");
+    done = NO;
+    [launcher openApplication:@"com.example.app"
+                         gate:^BOOL {
+                             return YES;
+                         }
+                   completion:^(PortalLaunchResult r) {
+                       result = r;
+                       done = YES;
+                   }];
+    Spin(1, ^BOOL { return done; });
+    Check(done && result == PortalLaunchResultOpened && launched.count == 1, @"unlocked: exactly the app asked for opens");
+    [PortalLauncher setPreviewLaunchHandler:nil];
+    Check([PortalLaunchResultText(PortalLaunchResultRefused) containsString:@"locked"], @"refusal is explained");
 }
 
 static void TestLauncherAndPreferences(void) {
@@ -273,7 +279,11 @@ static void TestLauncherAndPreferences(void) {
     }];
     PortalLauncher *launcher = [[PortalLauncher alloc] init];
     __block BOOL done = NO;
-    [launcher openApplication:@"com.example.app" completion:^(BOOL ok) { done = ok; }];
+    [launcher openApplication:@"com.example.app"
+                         gate:^BOOL {
+                             return YES;
+                         }
+                   completion:^(PortalLaunchResult r) { done = r == PortalLaunchResultOpened; }];
     Spin(1, ^BOOL { return done; });
     Check(done && launched.count == 1 && [launched[0] isEqualToString:@"com.example.app"], @"launcher opens exactly the app asked for");
     [PortalLauncher setPreviewLaunchHandler:nil];
@@ -323,7 +333,7 @@ static void TestCompanions(void) {
     [@"" writeToFile:[nx stringByAppendingPathComponent:@"Info.plist"] atomically:YES encoding:NSUTF8StringEncoding error:NULL];
     Check([PortalCompanions nexusInstalled] && ![PortalCompanions nexusOpenInterfaceAvailable],
           @"Nexus installed without the open interface (as 0.3.1~beta1)");
-    PortalDestinationProbe probe = {1, 1, 1, [PortalCompanions nexusOpenInterfaceAvailable], 1, 0};
+    PortalDestinationProbe probe = {1, 1, [PortalCompanions nexusOpenInterfaceAvailable], 1, 0};
     Check(portal_destination_availability(PORTAL_DEST_NEXUS, &probe) == PORTAL_AVAIL_NEEDS_INTERFACE, @"Nexus: needs an update");
     __block BOOL opened = YES;
     __block BOOL answered = NO;
@@ -360,8 +370,8 @@ int main(int argc, char *argv[]) {
         TestPortalView();
         printf("-- TestOverlay\n");
         TestOverlay();
-        printf("-- TestAuth\n");
-        TestAuth();
+        printf("-- TestLauncherGate\n");
+        TestLauncherGate();
         printf("-- TestLauncherAndPreferences\n");
         TestLauncherAndPreferences();
         printf("-- TestCompanions\n");

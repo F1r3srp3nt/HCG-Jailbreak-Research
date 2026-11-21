@@ -54,6 +54,8 @@ void PortalControllerPreviewRelayout(void);
 void PortalControllerPreviewInjectFault(void);
 /// YES while the 1.5 s re-measure timer is scheduled.
 BOOL PortalControllerPreviewMeasureTimerRunning(void);
+/// The Simulator's keybag is always unlocked: 1 / 0 overrides -isProtectedDataAvailable, -1 restores it.
+void PortalControllerPreviewSetProtectedData(int available);
 
 /// The injector's MSHookMessageEx signature.
 typedef void (*PortalHookMessageFunction)(Class cls, SEL selector, IMP replacement, IMP _Nullable *_Nullable original);

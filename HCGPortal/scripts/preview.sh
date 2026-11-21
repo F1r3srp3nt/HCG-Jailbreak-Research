@@ -47,7 +47,7 @@ PROVENANCE="$OUT/PROVENANCE.txt"
 stamp "HCG Portal $VERSION ($(git rev-parse --short=12 HEAD))"
 for f in src/Tweak.m src/PortalController.m src/PortalOverlayView.m src/PortalView.m src/PortalHost.m src/PortalAuth.m \
          src/PortalLauncher.m src/PortalCompanions.m src/PortalPreferences.m src/PortalLog.m src/PortalCore.c \
-         preview/PortalStandIns.m preview/PortalPreviewApp.m; do
+         preview/PortalStandIns.m preview/PortalTouchSynth.m preview/PortalPreviewApp.m; do
 	"${CC[@]}" "${STRICT[@]}" "${DEFS[@]}" "${INC[@]}" -c "$f" -o "$OUT/obj/$(basename "$f").o"
 done
 "${CC[@]}" "$OUT"/obj/*.o -framework UIKit -framework QuartzCore -framework CoreGraphics -o "$APP/PortalPreview"

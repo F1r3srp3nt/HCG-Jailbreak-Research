@@ -39,6 +39,7 @@
 #import "PortalOverlayView.h"
 #import "PortalPreferences.h"
 #import "PortalStandIns.h"
+#import "PortalTouchSynth.h"
 #import "PortalView.h"
 
 #include <dlfcn.h>
@@ -73,6 +74,17 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         if (v == ancestor) return YES;
     return NO;
 }
+
+/// Counts a gesture recognizer's recognitions (touch-path experiments).
+@interface PTSRecorder : NSObject
+@property (nonatomic) NSInteger count;
+- (void)fire:(UIGestureRecognizer *)recognizer;
+@end
+@implementation PTSRecorder
+- (void)fire:(UIGestureRecognizer *)recognizer {
+    if (recognizer.state == UIGestureRecognizerStateEnded || recognizer.state == UIGestureRecognizerStateBegan) self.count++;
+}
+@end
 
 @interface PortalPreviewController : NSObject
 @property (nonatomic, strong) UIWindow *window;
@@ -299,6 +311,78 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         while (!(cond) && [limit_ timeIntervalSinceNow] > 0)                                               \
             [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]]; \
     } while (0)
+
+    // ---- T0. Touch-path experiment (0.1.0~beta4 diagnosis; reported as notes) -------------
+    // iOS 17.0.3 headers: CSCoverSheetView installs SpringBoard's own recognizers ON ITS SCROLL VIEW
+    // (-_setupBackgroundContentGestureOnScrollView:, -_setupQuickNoteGestureOnScrollView:, … ;
+    // UITapGestureRecognizer *backgroundContentGestureRecognizer, *quickNoteGestureRecognizer;
+    // UILongPressGestureRecognizer *complicationGestureRecognizer), i.e. on an ancestor of Portal's
+    // overlay. Question: does a plain UIControl (how 0.1.0~beta1–3 build the orb and the items)
+    // still receive its tap inside such a scroll view?
+    STEP(0.5, {
+        NSString *why = nil;
+        BOOL synth = PTSAvailable(&why);
+        Say(@"PORTAL-PREVIEW-NOTE T0 touch synthesis: %@", synth ? @"available" : why);
+        if (synth) {
+            UIWindow *w = [[UIWindow alloc] initWithWindowScene:self.window.windowScene];
+            w.frame = self.window.bounds;
+            w.windowLevel = UIWindowLevelAlert + 20;
+            w.backgroundColor = UIColor.blackColor;
+            w.rootViewController = [[UIViewController alloc] init];
+            w.hidden = NO;
+            UIView *root = w.rootViewController.view;
+            root.frame = w.bounds;
+            __block NSInteger calButton = 0, calControl = 0, control = 0, button = 0;
+            UIButton *b0 = [UIButton buttonWithType:UIButtonTypeSystem primaryAction:[UIAction actionWithHandler:^(UIAction *a) { calButton++; }]];
+            b0.frame = CGRectMake(20, 80, 120, 60);
+            [root addSubview:b0];
+            UIControl *c0 = [[UIControl alloc] initWithFrame:CGRectMake(180, 80, 120, 60)];
+            c0.backgroundColor = UIColor.darkGrayColor;
+            [c0 addAction:[UIAction actionWithHandler:^(UIAction *a) { calControl++; }] forControlEvents:UIControlEventTouchUpInside];
+            [root addSubview:c0];
+
+            UIScrollView *scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 200, w.bounds.size.width, w.bounds.size.height - 200)];
+            scroll.contentSize = scroll.bounds.size;
+            scroll.alwaysBounceVertical = YES; // as the Cover Sheet's list area
+            [root addSubview:scroll];
+            PTSRecorder *tapRec = [PTSRecorder new], *pressRec = [PTSRecorder new];
+            UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:tapRec action:@selector(fire:)];
+            UILongPressGestureRecognizer *press = [[UILongPressGestureRecognizer alloc] initWithTarget:pressRec action:@selector(fire:)];
+            [scroll addGestureRecognizer:tap];
+            [scroll addGestureRecognizer:press];
+            UIView *page = [[UIView alloc] initWithFrame:scroll.bounds];
+            [scroll addSubview:page];
+            UIControl *c1 = [[UIControl alloc] initWithFrame:CGRectMake(40, 40, 120, 120)];
+            c1.backgroundColor = UIColor.purpleColor;
+            [c1 addAction:[UIAction actionWithHandler:^(UIAction *a) { control++; }] forControlEvents:UIControlEventTouchUpInside];
+            [page addSubview:c1];
+            UIButton *b1 = [UIButton buttonWithType:UIButtonTypeSystem primaryAction:[UIAction actionWithHandler:^(UIAction *a) { button++; }]];
+            b1.frame = CGRectMake(200, 40, 120, 120);
+            [page addSubview:b1];
+            WAIT_UNTIL(0.3, NO);
+
+            PTSTap(w, [b0 convertPoint:CGPointMake(60, 30) toView:w], 0.08);
+            PTSTap(w, [c0 convertPoint:CGPointMake(60, 30) toView:w], 0.08);
+            Say(@"PORTAL-PREVIEW-NOTE T0 calibration (no recognizers): UIButton %ld, plain UIControl %ld (1 each = synthesis delivers taps)",
+                (long)calButton, (long)calControl);
+            NSInteger t0 = tapRec.count;
+            PTSTap(w, [c1 convertPoint:CGPointMake(60, 60) toView:w], 0.08);
+            Say(@"PORTAL-PREVIEW-NOTE T0 plain UIControl inside a scroll view with a tap recognizer: control %ld, scroll-view tap %ld",
+                (long)control, (long)(tapRec.count - t0));
+            t0 = tapRec.count;
+            PTSTap(w, [b1 convertPoint:CGPointMake(60, 60) toView:w], 0.08);
+            Say(@"PORTAL-PREVIEW-NOTE T0 UIButton inside the same scroll view: button %ld, scroll-view tap %ld", (long)button, (long)(tapRec.count - t0));
+            t0 = tapRec.count;
+            PTSTap(w, [page convertPoint:CGPointMake(100, 300) toView:w], 0.08);
+            Say(@"PORTAL-PREVIEW-NOTE T0 empty area of the scroll view: scroll-view tap %ld", (long)(tapRec.count - t0));
+            NSInteger p0 = pressRec.count, c1Before = control;
+            PTSTap(w, [c1 convertPoint:CGPointMake(60, 60) toView:w], 0.9);
+            Say(@"PORTAL-PREVIEW-NOTE T0 long press on the plain UIControl: control %ld, long-press recognizer %ld",
+                (long)(control - c1Before), (long)(pressRec.count - p0));
+            w.hidden = YES;
+            [self.window makeKeyAndVisible];
+        }
+    });
 
     // ---- 0. Installed, off -------------------------------------------------------
     STEP(1.0, {

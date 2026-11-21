@@ -179,6 +179,19 @@ static void TestOverlay(void) {
     });
     Check(!o.expanded && r.collapsed == 1, @"tap outside: the menu collapses");
 
+    // 0.1.0~beta3: a tap-outside collapse still queued when Portal leaves the Lock Screen
+    // must not act on the overlay once it is back (detach, then re-attach and open the menu).
+    [o expand];
+    [o portalHitTest:CGPointMake(30, 120) touch:YES timestamp:51];
+    [o prepareForDetach];
+    [o expand];
+    int collapsedBefore = r.collapsed;
+    Spin(0.5, ^BOOL {
+        return NO;
+    });
+    Check(o.expanded && r.collapsed == collapsedBefore, @"a tap-outside queued before teardown does nothing afterwards");
+    [o collapseAnimated:NO];
+
     [o expand];
     [o showAppItems:@[ [PortalMenuItem itemWithTitle:@"App" symbol:@"app.fill" destination:PORTAL_DEST_APP_ITEM item:0] ]];
     Check([o.ringName isEqualToString:@"apps"] && o.itemControls.count == 1, @"HCG Apps ring replaces the main ring");

@@ -688,6 +688,7 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         __block int bad = 0;
         NSMutableArray *problems = [NSMutableArray array];
         NSInteger attaches0 = [self counter:@"attaches"], detaches0 = [self counter:@"detaches"];
+        BOOL attachedAtStart = [self overlay].superview != nil;
         for (int i = 0; i < 20; i++) {
             [self setLocked:YES];
             [self showCoverSheet:YES];
@@ -726,7 +727,7 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         WAIT_UNTIL(2, [Status(PortalStatusKeyVisibility) isEqualToString:@"visible"]);
         NSInteger attaches = [self counter:@"attaches"] - attaches0, detaches = [self counter:@"detaches"] - detaches0;
         Check(bad == 0, [NSString stringWithFormat:@"20 x lock / wake / menu open-close / unlock: %d problems %@", bad, problems]);
-        Check(attaches == detaches + 1 && detaches >= 20,
+        Check(attaches == detaches + (attachedAtStart ? 0 : 1) && detaches >= 20,
               [NSString stringWithFormat:@"one attach per Lock Screen session, one detach per unlock or sleep (%ld / %ld)", (long)attaches, (long)detaches]);
         Check([Status(PortalStatusKeyState) isEqualToString:PortalEngineStateActive], @"no fault after the cycles");
         Check([Status(PortalStatusKeyPhase) isEqualToString:@"on the Lock Screen"], [NSString stringWithFormat:@"breadcrumb: %@", Status(PortalStatusKeyPhase)]);

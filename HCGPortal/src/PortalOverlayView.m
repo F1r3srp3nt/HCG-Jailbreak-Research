@@ -143,6 +143,7 @@
     NSTimeInterval _lastOutsideEvent;
     NSUInteger _messageGeneration;
     NSUInteger _idleGeneration;
+    NSUInteger _detachGeneration; // bumped by -prepareForDetach: cancels a pending tap-outside collapse
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -230,9 +231,11 @@
         // Tap outside: collapse, and let the touch reach what is underneath.
         _lastOutsideEvent = timestamp;
         __weak PortalOverlayView *weakSelf = self;
+        NSUInteger detachGeneration = _detachGeneration;
         dispatch_async(dispatch_get_main_queue(), ^{
             PortalOverlayView *strongSelf = weakSelf;
-            if (strongSelf.superview) [strongSelf collapseAnimated:YES]; // never acts on a detached overlay
+            // Never acts on an overlay that has left the Lock Screen since the tap.
+            if (strongSelf && detachGeneration == strongSelf->_detachGeneration) [strongSelf collapseAnimated:YES];
         });
     }
     return nil;
@@ -323,7 +326,8 @@ static NSString *PortalItemsSignature(NSArray<PortalMenuItem *> *items) {
 
 - (void)prepareForDetach {
     // Every pending callback (idle collapse, message fade, tap-outside collapse) checks a
-    // generation or the superview, so nothing acts on this view after it leaves the Lock Screen.
+    // generation, so nothing acts on this view after it leaves the Lock Screen.
+    _detachGeneration++;
     _idleGeneration++;
     _messageGeneration++;
     if (_expanded) [self collapseAnimated:NO];
@@ -448,7 +452,7 @@ static NSString *PortalItemsSignature(NSArray<PortalMenuItem *> *items) {
     __weak PortalOverlayView *weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(12 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         PortalOverlayView *strongSelf = weakSelf;
-        if (strongSelf && strongSelf.superview && generation == strongSelf->_idleGeneration) [strongSelf collapseAnimated:YES];
+        if (strongSelf && generation == strongSelf->_idleGeneration) [strongSelf collapseAnimated:YES];
     });
 }
 

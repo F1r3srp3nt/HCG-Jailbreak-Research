@@ -271,6 +271,12 @@ void portal_pending_cancel(PortalPending *p);
 // Expire a request that never completed.
 int portal_pending_expire(PortalPending *p, double now);
 
+// ---- Crash guard ----------------------------------------------------------
+// Counted on every SpringBoard launch with Portal installed (enabled or not). A launch that
+// stays up PORTAL_STABLE_AFTER_SECONDS resets the count. Returns 1 when Portal must do
+// nothing this launch. Negative counts (corrupt preferences) never block.
+int portal_launch_guard_blocks(long consecutiveUnstableLaunches, long maximum);
+
 #ifdef __cplusplus
 }
 #endif

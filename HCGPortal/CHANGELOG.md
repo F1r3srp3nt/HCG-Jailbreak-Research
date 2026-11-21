@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.1.0~beta3
+
+Lock Screen lifecycle hardening after the SpringBoard Safe Mode incident with 0.1.0~beta1. **Test build only. The
+cause is not confirmed:** no SpringBoard crash report from the incident has been reviewed yet. This build removes every
+lifecycle hazard found in review and records where SpringBoard was in Portal's lifecycle when it last stopped, so the
+next device test can tell the possible causes apart (`docs/INCIDENT_0.1.0-beta1.md`).
+
+- **Attach once, detach on leave.** Portal joins the Lock Screen's main page once per Lock Screen session and leaves it
+  when the Cover Sheet disappears, the screen turns off, the phone unlocks or Portal is turned off. Before, every
+  update and every layout pass re-inserted the overlay and brought it to the front, inside SpringBoard's own layout.
+  Bringing it to the front now happens at most once a second.
+- **No fallback container.** If the Lock Screen's main page is missing, not loaded, not the expected class or not in a
+  window, Portal stays hidden and the Lock Screen carries on; Settings shows *Lock Screen container unavailable* and
+  why. 0.1.0~beta1/2 fell back to the Cover Sheet's own view.
+- **Callbacks cannot outlive the view.** The idle collapse (12 s), message fade (3.5 s), tap-outside collapse and
+  relayout timers hold Portal weakly and do nothing once it has left the Lock Screen. The measure timer stops on detach.
+- **Layout storms are coalesced** (one relayout per 250 ms) and an update can no longer re-enter itself.
+- **The radial menu is rebuilt only when its items change**, not on every update.
+- **Crash guard counts every launch**, enabled or not (0.1.0~beta1/2 counted only while enabled, so a crash on the
+  disabled path never tripped it).
+- **Breadcrumbs.** Portal records its lifecycle step (*bootstrap*, *installing hooks*, *attaching to the Lock Screen*,
+  *on the Lock Screen*, *off the Lock Screen*, *requesting authentication*, …) in its status file when it changes.
+  After the next launch Settings › HCG Portal › *Diagnostics* shows the step the previous launch ended on and whether
+  it ended within 30 s.
+- Simulator preview: 20 lock / wake / menu / unlock cycles, a 300-pass layout storm, SpringBoard rebuilding the main
+  page, the container unavailable, late callbacks after teardown, 10 disable / re-enable cycles and an authentication
+  completing after Portal was turned off.
+
 ## 0.1.0~beta2
 
 Startup hardening after an observed SpringBoard Safe Mode incident (Sileo reached *Setting up HCG Portal*, then

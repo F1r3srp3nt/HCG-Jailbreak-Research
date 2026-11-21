@@ -43,6 +43,9 @@ NSString *const PortalStatusKeyBuildID = @"buildID";
 NSString *const PortalStatusKeySystemVersion = @"systemVersion";
 NSString *const PortalStatusKeyTimestamp = @"timestamp";
 NSString *const PortalStatusKeyUnstableLaunches = @"unstableLaunches";
+NSString *const PortalStatusKeyPreviousSession = @"previousSession";
+NSString *const PortalStatusKeyPhase = @"phase";
+static NSString *const kPhaseRecordKey = @"breadcrumb";
 
 NSString *const PortalEngineStateDisabled = @"disabled";
 NSString *const PortalEngineStateWaiting = @"waiting";
@@ -251,6 +254,31 @@ static NSString *String(NSDictionary *d, NSString *key) {
     CFPreferencesSetAppValue((__bridge CFStringRef)kStatusRecordKey, (__bridge CFPropertyListRef)status,
                              (__bridge CFStringRef)PortalStatusDomain);
     CFPreferencesAppSynchronize((__bridge CFStringRef)PortalStatusDomain);
+}
+
++ (void)recordPhase:(NSString *)phase {
+    NSDictionary *record = @{@"phase" : phase ?: @"", @"time" : [NSDate date], @"version" : @PORTAL_VERSION};
+    CFPreferencesSetAppValue((__bridge CFStringRef)kPhaseRecordKey, (__bridge CFPropertyListRef)record,
+                             (__bridge CFStringRef)PortalStatusDomain);
+    CFPreferencesAppSynchronize((__bridge CFStringRef)PortalStatusDomain);
+}
+
++ (NSString *)previousSessionSummary {
+    CFPreferencesAppSynchronize((__bridge CFStringRef)PortalStatusDomain);
+    id record = CFBridgingRelease(
+        CFPreferencesCopyAppValue((__bridge CFStringRef)kPhaseRecordKey, (__bridge CFStringRef)PortalStatusDomain));
+    NSInteger unstable = [self consecutiveUnstableLaunches];
+    if (![record isKindOfClass:[NSDictionary class]]) return @"no earlier Portal launch recorded";
+    NSString *phase = [record[@"phase"] isKindOfClass:[NSString class]] ? record[@"phase"] : @"?";
+    NSDate *time = [record[@"time"] isKindOfClass:[NSDate class]] ? record[@"time"] : nil;
+    NSString *version = [record[@"version"] isKindOfClass:[NSString class]] ? record[@"version"] : @"?";
+    NSString *when = time ? [NSDateFormatter localizedStringFromDate:time dateStyle:NSDateFormatterShortStyle
+                                                            timeStyle:NSDateFormatterMediumStyle]
+                          : @"unknown time";
+    return [NSString stringWithFormat:@"previous launch (Portal %@): last step \"%@\" at %@%@", version, phase, when,
+                                      unstable > 0 ? [NSString stringWithFormat:@"; it ended within %.0f s of starting (%ld in a row)",
+                                                                                PORTAL_STABLE_AFTER_SECONDS, (long)unstable]
+                                                   : @""];
 }
 
 + (NSInteger)consecutiveUnstableLaunches {

@@ -420,6 +420,15 @@ static void test_pending(void) {
     }
 }
 
+static void test_launch_guard(void) {
+    CHECK(!portal_launch_guard_blocks(0, 3), "first launch runs");
+    CHECK(!portal_launch_guard_blocks(2, 3), "two quick exits: still runs");
+    CHECK(portal_launch_guard_blocks(3, 3), "three quick exits in a row: blocked");
+    CHECK(portal_launch_guard_blocks(99, 3), "more: blocked");
+    CHECK(!portal_launch_guard_blocks(-5, 3), "corrupt negative count never blocks");
+    CHECK(portal_launch_guard_blocks(1, 0), "a maximum below one is treated as one");
+}
+
 int main(void) {
     test_appearance();
     test_render_plan();
@@ -429,6 +438,7 @@ int main(void) {
     test_visibility();
     test_destinations();
     test_pending();
+    test_launch_guard();
     if (gFailures) {
         printf("%ld of %ld checks FAILED\n", gFailures, gChecks);
         return 1;

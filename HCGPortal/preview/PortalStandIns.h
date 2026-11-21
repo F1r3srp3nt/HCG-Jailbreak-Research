@@ -68,6 +68,11 @@ typedef NS_ENUM(NSInteger, PSIAuthMode) {
 @property (nonatomic, readonly) CSQuickActionsButton *flashlight;
 @property (nonatomic, readonly) CSQuickActionsButton *camera;
 @property (nonatomic, readonly) UILabel *caption;
+/// SpringBoard rebuilding the Lock Screen's main page: a new controller and view take over its
+/// content (Portal's own views are left behind, as SpringBoard would not know about them).
+- (void)rebuildMainPage;
+/// NO: -mainPageContentViewController returns nil (the expected container is unavailable).
+@property (nonatomic) BOOL mainPageAvailable;
 - (void)setNotificationCount:(NSUInteger)count;
 - (void)setShowsMedia:(BOOL)shows;
 @end

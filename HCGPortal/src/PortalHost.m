@@ -29,23 +29,38 @@ static BOOL PortalViewIsShown(UIView *view) {
 @implementation PortalHost
 
 + (UIView *)hostViewForCoverSheet:(UIViewController *)coverSheet reason:(NSString **)reason {
+    // Only the Lock Screen's main page is an acceptable container. There is deliberately
+    // no fallback (0.1.0~beta1/2 fell back to the Cover Sheet's own root view): if the
+    // expected container is unavailable, Portal stays hidden and the Lock Screen is untouched.
     if (!coverSheet) {
-        if (reason) *reason = @"no Cover Sheet view controller yet";
+        if (reason) *reason = @"Lock Screen container unavailable: no Cover Sheet view controller";
         return nil;
     }
-    if ([coverSheet respondsToSelector:@selector(mainPageContentViewController)]) {
-        id main = [coverSheet mainPageContentViewController];
-        if ([main isKindOfClass:[UIViewController class]] && [main isViewLoaded]) {
-            if (reason) *reason = [NSString stringWithFormat:@"%@.view", NSStringFromClass([main class])];
-            return [main view];
-        }
+    if (![coverSheet respondsToSelector:@selector(mainPageContentViewController)]) {
+        if (reason) *reason = @"Lock Screen container unavailable: no mainPageContentViewController on this iOS";
+        return nil;
     }
-    if (coverSheet.isViewLoaded) {
-        if (reason) *reason = [NSString stringWithFormat:@"%@.view (fallback)", NSStringFromClass([coverSheet class])];
-        return coverSheet.view;
+    id main = [coverSheet mainPageContentViewController];
+    if (![main isKindOfClass:[UIViewController class]]) {
+        if (reason) *reason = @"Lock Screen container unavailable: no main page controller";
+        return nil;
     }
-    if (reason) *reason = @"Cover Sheet view not loaded";
-    return nil;
+    Class expected = NSClassFromString(@"CSMainPageContentViewController");
+    if (expected && ![main isKindOfClass:expected]) {
+        if (reason) *reason = [NSString stringWithFormat:@"Lock Screen container unavailable: unexpected %@", NSStringFromClass([main class])];
+        return nil;
+    }
+    if (![main isViewLoaded]) {
+        if (reason) *reason = @"Lock Screen container unavailable: main page not loaded";
+        return nil;
+    }
+    UIView *view = [main view];
+    if (!view.window || view.window.hidden || view.bounds.size.width < 1 || view.bounds.size.height < 1) {
+        if (reason) *reason = @"Lock Screen container unavailable: main page not on screen";
+        return nil;
+    }
+    if (reason) *reason = [NSString stringWithFormat:@"%@.view", NSStringFromClass([main class])];
+    return view;
 }
 
 static BOOL NameHas(NSString *name, NSArray<NSString *> *tokens) {

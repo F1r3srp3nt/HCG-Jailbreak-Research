@@ -467,3 +467,8 @@ int portal_pending_expire(PortalPending *p, double now) {
     }
     return 0;
 }
+
+int portal_launch_guard_blocks(long consecutiveUnstableLaunches, long maximum) {
+    if (maximum < 1) maximum = 1;
+    return consecutiveUnstableLaunches >= maximum;
+}

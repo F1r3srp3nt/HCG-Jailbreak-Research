@@ -92,6 +92,13 @@ static NSString *const kOverlayIdentifier = @"com.hakmicapitalgroup.portal.overl
     PortalAuthBroker *_auth;
     PortalLauncher *_launcher;
     PortalPending _pending;
+    BOOL _updating;                 // update is not re-entrant
+    CFTimeInterval _lastRaise;      // last bringSubviewToFront (rate-limited)
+    NSUInteger _attachRetries;      // per Lock Screen session
+    NSString *_phase;               // last breadcrumb written
+    NSString *_previousSession;     // what the previous SpringBoard launch last recorded
+    PortalDestinationProbe _probeCache;
+    BOOL _probeValid;
     NSArray<PortalAppShortcut *> *_installedApps;
     NSString *_lastAction;
     NSMutableDictionary<NSString *, NSNumber *> *_counters;
@@ -160,6 +167,8 @@ static void PortalStatusRequested(CFNotificationCenterRef c, void *o, CFStringRe
 
     _settings = [PortalPreferences loadSettings];
     PortalDiagnosticLoggingEnabled = _settings.diagnosticLogging;
+    _previousSession = [PortalPreferences previousSessionSummary];
+    [self breadcrumb:@"bootstrap"];
 
     if (!NSClassFromString(@"CSCoverSheetViewController") || !NSClassFromString(@"SBLockScreenManager")) {
         [self block:PortalEngineStateIncompatible
@@ -167,13 +176,15 @@ static void PortalStatusRequested(CFNotificationCenterRef c, void *o, CFStringRe
         return;
     }
 
-    if (_settings.enabled) {
+    // Crash guard, counted on EVERY SpringBoard launch with Portal installed, enabled or not
+    // (0.1.0~beta1/2 counted only while enabled, so a crash in the disabled path never tripped it).
+    {
         NSInteger unstable = [PortalPreferences consecutiveUnstableLaunches];
-        if (unstable >= PORTAL_MAX_UNSTABLE_LAUNCHES) {
+        if (portal_launch_guard_blocks(unstable, PORTAL_MAX_UNSTABLE_LAUNCHES)) {
             [self block:PortalEngineStateAutoDisabled
-                 detail:[NSString stringWithFormat:@"%ld SpringBoard launches in a row ended within %.0f s while HCG "
-                                                   @"Portal was enabled. Nothing is shown. Turn Enable off and on, "
-                                                   @"then respring, to try again.",
+                 detail:[NSString stringWithFormat:@"%ld SpringBoard launches in a row ended within %.0f s with HCG "
+                                                   @"Portal installed. Portal does nothing this launch. Turn Enable off "
+                                                   @"and on (or reset), then respring, to try again.",
                                                    (long)unstable, PORTAL_STABLE_AFTER_SECONDS]];
             return;
         }
@@ -274,7 +285,9 @@ static void PortalStatusRequested(CFNotificationCenterRef c, void *o, CFStringRe
 
 - (BOOL)activate {
     if (!_hooksInstalled && _hookInstaller) {
+        [self breadcrumb:@"installing hooks"];
         NSString *failure = _hookInstaller();
+        [self breadcrumb:failure ? @"hooks unavailable" : @"hooks installed"];
         if (failure) {
             // Nothing was hooked or attached: SpringBoard and the Lock Screen are untouched.
             [self noteHooks:[NSString stringWithFormat:@"none: %@", failure]];
@@ -292,8 +305,8 @@ static void PortalStatusRequested(CFNotificationCenterRef c, void *o, CFStringRe
         _active = YES;
         [self startSystemObservers];
     }
+    _probeValid = NO;
     [self refreshApps];
-    [self adoptCoverSheet:nil];
     [self update];
     return YES;
 }
@@ -310,9 +323,8 @@ static void PortalStatusRequested(CFNotificationCenterRef c, void *o, CFStringRe
     [_measureTimer invalidate];
     _measureTimer = nil;
     if (_overlay) {
-        [_overlay collapseAnimated:NO];
-        _overlay.portalView.paused = YES;
-        [_overlay removeFromSuperview];
+        [self detachOverlay];
+        _overlay.delegate = nil;
         _overlay = nil;
         [PortalCompanions postLightingEvent:@"hidden" palette:_settings.appearance.palette intensity:0];
     }
@@ -369,7 +381,10 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
     @try {
         uint64_t state = 0;
         _screenOn = PortalReadNotifyState(_blankToken, &state) ? state == 0 : YES;
-        if (_screenOn) [self refreshApps]; // an app may have been removed meanwhile
+        if (_screenOn) {
+            [self refreshApps]; // an app may have been removed meanwhile
+            _probeValid = NO;
+        }
         if (!_screenOn) {
             [_overlay collapseAnimated:NO];
             if (_pending.awaiting) {
@@ -447,29 +462,64 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
 }
 
 - (void)adoptCoverSheet:(UIViewController *)coverSheet {
-    if (coverSheet) _coverSheet = coverSheet;
-    if (!_active) return;
+    if (coverSheet) _coverSheet = coverSheet; // weak: never keeps SpringBoard's controller alive
+}
+
+/// Attaches the single overlay to the Lock Screen's main page, once per host. Called only
+/// while the Lock Screen is on screen as the Lock Screen (see -update). Returns the host,
+/// or nil: then Portal stays hidden and the Lock Screen is left exactly as it is.
+- (UIView *)attachIfPossible {
     UIViewController *cs = [self currentCoverSheet];
     NSString *reason = nil;
     UIView *host = [PortalHost hostViewForCoverSheet:cs reason:&reason];
     if (!host) {
-        _hostSummary = reason ?: @"none";
-        if (_overlay.superview) [_overlay removeFromSuperview];
-        return;
+        _hostSummary = reason ?: @"Lock Screen container unavailable";
+        [self detachOverlay];
+        return nil;
     }
     if (!_overlay) {
         _overlay = [[PortalOverlayView alloc] initWithFrame:host.bounds];
         _overlay.accessibilityIdentifier = kOverlayIdentifier;
         _overlay.delegate = self;
+        _overlay.hidden = YES;
     }
     if (_overlay.superview != host) {
-        [_overlay removeFromSuperview];
+        [self breadcrumb:@"attaching to the Lock Screen"];
+        if (_overlay.superview) [self detachOverlay];
+        _overlay.hidden = YES; // shown by -update once measured
         _overlay.frame = host.bounds;
         [host addSubview:_overlay];
-    } else if (host.subviews.lastObject != _overlay) {
+        _lastRaise = CACurrentMediaTime();
+        [self count:@"attaches"];
+        [self breadcrumb:@"on the Lock Screen"];
+    } else if (host.subviews.lastObject != _overlay && CACurrentMediaTime() - _lastRaise > 1.0) {
+        // Something was added above the portal: raise it, at most once a second, so it
+        // never fights the Lock Screen's own layout.
         [host bringSubviewToFront:_overlay];
+        _lastRaise = CACurrentMediaTime();
+        [self count:@"raises"];
     }
-    _hostSummary = reason ?: NSStringFromClass([host class]);
+    _hostSummary = reason;
+    return host;
+}
+
+/// Removes the overlay from SpringBoard's view hierarchy and cancels everything that could
+/// call back into it. Between Lock Screen sessions Portal leaves nothing inside the Cover Sheet.
+- (void)detachOverlay {
+    [_measureTimer invalidate];
+    _measureTimer = nil;
+    if (!_overlay.superview) return;
+    [_overlay prepareForDetach];
+    _overlay.hidden = YES;
+    [_overlay removeFromSuperview];
+    [self count:@"detaches"];
+    [self breadcrumb:@"off the Lock Screen"];
+}
+
+- (void)breadcrumb:(NSString *)phase {
+    if ([phase isEqualToString:_phase]) return;
+    _phase = [phase copy];
+    [PortalPreferences recordPhase:phase];
 }
 
 - (void)coverSheetWillAppear:(id)coverSheet {
@@ -477,6 +527,7 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
     @try {
         _coverSheetVisibleByHook = YES;
         if (_locked) _lockScreenSession = YES;
+        _attachRetries = 0;
         [self adoptCoverSheet:[coverSheet isKindOfClass:[UIViewController class]] ? coverSheet : nil];
         [self update];
     } @catch (NSException *exception) {
@@ -489,7 +540,7 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
     @try {
         _coverSheetVisibleByHook = NO;
         _lockScreenSession = _locked; // a new session starts at the next lock
-        [_overlay collapseAnimated:NO];
+        [self detachOverlay];         // whatever SpringBoard's own state says, leave the Cover Sheet now
         [self update];
     } @catch (NSException *exception) {
         [self fault:[NSString stringWithFormat:@"disappear: %@", exception.reason]];
@@ -502,11 +553,16 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
 }
 
 - (void)scheduleRelayout {
-    if (_relayoutScheduled) return;
+    // Lock Screen layout passes (dozens per second during transitions) are coalesced into at
+    // most one update every 250 ms, always outside SpringBoard's own layout pass.
+    if (_relayoutScheduled || !_active) return;
     _relayoutScheduled = YES;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        self->_relayoutScheduled = NO;
-        [self update];
+    __weak PortalController *weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        PortalController *strongSelf = weakSelf;
+        if (!strongSelf) return;
+        strongSelf->_relayoutScheduled = NO;
+        [strongSelf update];
     });
 }
 
@@ -514,16 +570,32 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
 
 - (void)update {
     if (!_active) return;
+    if (_updating) { // never re-entered from a callback it triggers
+        [self scheduleRelayout];
+        return;
+    }
+    _updating = YES;
+    [self count:@"updates"];
     @try {
-        [self adoptCoverSheet:nil];
         PortalAppearance appearance = _settings.appearance;
         _plan = portal_render_plan(&appearance, [self reduceMotion], [self lowPower], _settings.lowPowerPolicy,
                                    _settings.unlockAnimation);
         BOOL coverSheetVisible = [self coverSheetVisible];
         if (!coverSheetVisible && !_locked) _lockScreenSession = NO;
 
-        UIView *host = _overlay.superview;
-        if (host && _screenOn && coverSheetVisible) {
+        // Attached only while the Lock Screen is on screen as the Lock Screen; detached otherwise.
+        BOOL eligible = _launched && _screenOn && coverSheetVisible && _lockScreenSession;
+        UIView *host = nil;
+        if (eligible) {
+            host = [self attachIfPossible];
+            if (!host && _attachRetries < 6) { // the main page may not be in its window yet
+                _attachRetries++;
+                [self scheduleRelayout];
+            }
+        } else {
+            [self detachOverlay];
+        }
+        if (host) {
             _overlay.frame = host.bounds;
             _measurement = [PortalHost measureHost:host coverSheet:[self currentCoverSheet] exclude:_overlay];
             PortalLayoutInput input = _measurement.input;
@@ -536,7 +608,7 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
         v.enabled = _settings.enabled;
         v.killSwitch = 0;
         v.fault = _faulted;
-        v.hostAttached = host != nil;
+        v.hostAttached = host != nil || !eligible; // when not eligible, report the real reason
         v.coverSheetVisible = coverSheetVisible;
         v.screenOn = _screenOn;
         v.lockScreenSession = _lockScreenSession;
@@ -547,7 +619,7 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
         _visibility = portal_visibility(&v);
         BOOL visible = _visibility == PORTAL_VIS_VISIBLE;
 
-        if (_overlay) {
+        if (_overlay.superview) {
             _overlay.animationsAllowed = _plan.animate;
             _overlay.palette = _settings.appearance.palette;
             [_overlay.portalView applyAppearance:_settings.appearance plan:_plan];
@@ -590,13 +662,18 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
             _lastAction = @"Authentication did not finish in time: the pending action was discarded";
         }
     } @catch (NSException *exception) {
+        _updating = NO;
         [self fault:[NSString stringWithFormat:@"update: %@", exception.reason]];
+        return;
     }
+    _updating = NO;
 }
 
 #pragma mark - Destinations
 
 - (PortalDestinationProbe)probe {
+    // File and class checks are cached; refreshed on enable, screen on and when the menu opens.
+    if (_probeValid) return _probeCache;
     PortalDestinationProbe p;
     memset(&p, 0, sizeof p);
     p.launcherAvailable = _launcher.available;
@@ -605,6 +682,8 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
     p.nexusOpenInterface = [PortalCompanions nexusOpenInterfaceAvailable];
     p.animationCenterInstalled = [PortalCompanions animationCenterInstalled];
     p.appCount = (int)_installedApps.count;
+    _probeCache = p;
+    _probeValid = YES;
     return p;
 }
 
@@ -613,6 +692,7 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
     for (PortalAppShortcut *app in _settings.apps)
         if ([_launcher isApplicationInstalled:app.bundleIdentifier]) [apps addObject:app];
     _installedApps = apps;
+    _probeValid = NO;
 }
 
 static NSString *PortalStatusText(PortalAvailability a) {
@@ -667,6 +747,7 @@ static NSString *PortalStatusText(PortalAvailability a) {
 
 - (void)portalOverlayDidExpand:(PortalOverlayView *)overlay {
     [self count:@"expansions"];
+    _probeValid = NO;
     [PortalCompanions postLightingEvent:@"expanded" palette:_settings.appearance.palette intensity:_settings.appearance.intensity];
 }
 
@@ -709,6 +790,7 @@ static NSString *PortalStatusText(PortalAvailability a) {
     unsigned generation = portal_pending_begin(&_pending, item.destination, item.item, CACurrentMediaTime());
     if (!generation) return;
     [self count:@"authRequests"];
+    [self breadcrumb:@"requesting authentication"];
     _authenticationVisible = YES;
     _overlay.portalView.waiting = YES;
     [_overlay collapseAnimated:NO];
@@ -755,6 +837,7 @@ static NSString *PortalStatusText(PortalAvailability a) {
 
 - (void)perform:(PortalPendingOutcome)o {
     [self count:@"actionsPerformed"];
+    [self breadcrumb:[NSString stringWithFormat:@"opening %s", portal_destination_id(o.destination)]];
     [PortalCompanions postLightingEvent:@"opened" palette:_settings.appearance.palette intensity:_settings.appearance.intensity];
     __weak PortalController *weakSelf = self;
     switch (o.destination) {
@@ -843,6 +926,8 @@ static NSString *PortalStatusText(PortalAvailability a) {
         PortalStatusKeyLastAction : _lastAction ?: @"none",
         PortalStatusKeyCounters : [_counters copy],
         PortalStatusKeyHooks : _hooksSummary ?: @"",
+        PortalStatusKeyPreviousSession : _previousSession ?: @"",
+        PortalStatusKeyPhase : _phase ?: @"",
         PortalStatusKeyTweakVersion : @PORTAL_VERSION,
         PortalStatusKeyBuildID : @PORTAL_BUILD_ID,
         PortalStatusKeySystemVersion : [NSProcessInfo processInfo].operatingSystemVersionString ?: @"",
@@ -886,6 +971,9 @@ static NSString *PortalStatusText(PortalAvailability a) {
 #ifdef PORTAL_PREVIEW_HOST
 - (PortalOverlayView *)previewOverlay {
     return _overlay;
+}
+- (BOOL)previewMeasureTimerRunning {
+    return _measureTimer.isValid;
 }
 - (void)previewSetReduceMotion:(int)rm lowPower:(int)lp {
     _previewReduceMotion = rm;
@@ -950,5 +1038,9 @@ void PortalControllerPreviewRelayout(void) {
 
 void PortalControllerPreviewInjectFault(void) {
     [[PortalController shared] fault:@"preview-injected exception"];
+}
+
+BOOL PortalControllerPreviewMeasureTimerRunning(void) {
+    return [[PortalController shared] previewMeasureTimerRunning];
 }
 #endif

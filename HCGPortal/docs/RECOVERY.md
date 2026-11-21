@@ -5,6 +5,31 @@ and no other product's settings. Recovery is always "stop drawing" or "stop load
 including the unlock gesture, notifications, media controls, the flashlight and the camera — is exactly as before.
 Use the first option that is available.
 
+## 0. From Safe Mode (do this before installing anything else)
+
+SpringBoard's Safe Mode starts without tweaks, so HCG Portal is not running while you are in it.
+
+1. Tap **Exit Safe Mode** (or **Restart SpringBoard**) only **after** step 2, or SpringBoard may load Portal again.
+2. Turn Portal off for good, in whichever way is available:
+   - **Sileo / Zebra:** open it (it still works in Safe Mode), remove **HCG Portal (Beta)**, confirm.
+   - **NewTerm / SSH:** `sudo apt remove com.hakmicapitalgroup.portal`
+   - **Keep the package, load nothing:** `touch /var/mobile/Library/Preferences/com.hakmicapitalgroup.portal.disabled`
+3. Now exit Safe Mode / respring. The Lock Screen is the normal one.
+4. Before trying another build, save the crash report (see *Crash reports* below) and run
+   `dpkg-query -W com.hakmicapitalgroup.portal` so the exact version installed at the time is known.
+
+If SpringBoard keeps returning to Safe Mode after Portal is removed, Portal is not the cause of that loop: remove the
+most recently installed or updated tweak next.
+
+## Crash reports
+
+- **On the phone:** Settings › Privacy & Security › Analytics & Improvements › Analytics Data. Open the newest
+  `SpringBoard-<date>.ips` from around the incident, tap Share, and save or send it.
+- **Over SSH:** `ls -lt /var/mobile/Library/Logs/CrashReporter/ | head` and copy the `SpringBoard-*.ips` files from
+  around the incident.
+- After the next launch, Settings › HCG Portal › *Diagnostics* shows the step Portal was on when SpringBoard last
+  stopped (0.1.0~beta3 and later).
+
 ## 1. In Settings (the usual way)
 
 Settings › HCG Portal:
@@ -29,8 +54,8 @@ Settings then shows *Kill switch on*. Delete the file and respring to undo.
 
 ## 4. Automatic stop (launch guard)
 
-Three SpringBoard launches in a row that each end within 30 s while Portal is enabled → Portal stops and Settings shows
-*Auto-disabled*. Collect `SpringBoard-…` crash logs (Settings › Privacy & Security › Analytics & Improvements ›
+Three SpringBoard launches in a row that each end within 30 s with Portal installed (0.1.0~beta3: enabled or not;
+earlier builds: only while enabled) → Portal does nothing and Settings shows *Auto-disabled*. Collect `SpringBoard-…` crash logs (Settings › Privacy & Security › Analytics & Improvements ›
 Analytics Data) first, then turn Enable off and on and respring to try again.
 
 ## 5. SpringBoard will not start

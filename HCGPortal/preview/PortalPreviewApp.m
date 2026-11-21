@@ -235,6 +235,24 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
     return [parts componentsJoinedByString:@" | "];
 }
 
+/// Portal overlays anywhere in the Lock Screen window (there must never be more than one).
+- (NSUInteger)portalViewsInWindow {
+    NSUInteger n = 0;
+    NSMutableArray<UIView *> *stack = [NSMutableArray arrayWithObject:self.window];
+    while (stack.count) {
+        UIView *v = stack.lastObject;
+        [stack removeLastObject];
+        if ([v isKindOfClass:[PortalOverlayView class]]) n++;
+        [stack addObjectsFromArray:v.subviews];
+    }
+    return n;
+}
+
+- (NSInteger)counter:(NSString *)name {
+    NSDictionary *c = PortalControllerPreviewStatus()[PortalStatusKeyCounters];
+    return [c[name] integerValue];
+}
+
 - (BOOL)orbClearOfObstacles {
     PortalOverlayView *o = [self overlay];
     CGRect orb = [o convertRect:o.orbFrame toView:_window];
@@ -663,6 +681,147 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         [self showCoverSheet:YES];
         WAIT_UNTIL(1, [Status(PortalStatusKeyVisibility) isEqualToString:@"visible"]);
         Check(![self overlay].hidden, @"locked again: the portal is back");
+    });
+
+    // ---- 12b. Lifecycle regression (0.1.0~beta3): repeated lock / wake / unlock with the menu ----
+    STEP(0.5, {
+        __block int bad = 0;
+        NSMutableArray *problems = [NSMutableArray array];
+        NSInteger attaches0 = [self counter:@"attaches"], detaches0 = [self counter:@"detaches"];
+        for (int i = 0; i < 20; i++) {
+            [self setLocked:YES];
+            [self showCoverSheet:YES];
+            [self relayout];
+            WAIT_UNTIL(2, [Status(PortalStatusKeyVisibility) isEqualToString:@"visible"]);
+            if (![Status(PortalStatusKeyVisibility) isEqualToString:@"visible"]) { bad++; [problems addObject:[NSString stringWithFormat:@"%d: not visible (%@)", i, Status(PortalStatusKeyVisibility)]]; }
+            if ([self portalViewsInWindow] != 1 || [self overlay].superview != self.coverSheet.mainPageContentViewController.view) { bad++; [problems addObject:[NSString stringWithFormat:@"%d: %lu overlays", i, (unsigned long)[self portalViewsInWindow]]]; }
+            if (![self tapOrb]) { bad++; [problems addObject:[NSString stringWithFormat:@"%d: orb not reachable", i]]; }
+            WAIT_UNTIL(1, [self overlay].expanded);
+            if (![self overlay].expanded) { bad++; [problems addObject:[NSString stringWithFormat:@"%d: menu did not open", i]]; }
+            PortalOverlayView *o = [self overlay];
+            [o portalHitTest:[o convertPoint:CGPointMake(60, 120) fromView:self.window] touch:YES timestamp:CACurrentMediaTime()];
+            WAIT_UNTIL(1, ![self overlay].expanded);
+            if ([self overlay].expanded) { bad++; [problems addObject:[NSString stringWithFormat:@"%d: menu did not close", i]]; }
+            if (i % 4 == 1) { // display sleeps and wakes on the Lock Screen
+                [self tapOrb];
+                [self setScreenOn:NO];
+                WAIT_UNTIL(1, [Status(PortalStatusKeyVisibility) isEqualToString:@"screen-off"]);
+                if ([self portalViewsInWindow] != 0 || [self overlay].expanded || PortalControllerPreviewMeasureTimerRunning()) { bad++; [problems addObject:[NSString stringWithFormat:@"%d: screen off left Portal attached/expanded/timed", i]]; }
+                [self setScreenOn:YES];
+                WAIT_UNTIL(2, [Status(PortalStatusKeyVisibility) isEqualToString:@"visible"]);
+                if ([self portalViewsInWindow] != 1) { bad++; [problems addObject:[NSString stringWithFormat:@"%d: not back after wake", i]]; }
+            }
+            if (i % 3 == 2) [self tapOrb]; // unlock with the menu open
+            [self setLocked:NO];
+            WAIT_UNTIL(0.3, NO);
+            [SBCoverSheetPresentationManager standIn].visible = NO;
+            self.window.hidden = YES;
+            PortalControllerCoverSheetDidDisappear(self.coverSheet);
+            if ([self portalViewsInWindow] != 0 || [self overlay].superview != nil || PortalControllerPreviewMeasureTimerRunning()) { bad++; [problems addObject:[NSString stringWithFormat:@"%d: still attached after unlock", i]]; }
+            self.window.hidden = NO;
+        }
+        [self setLocked:YES];
+        [self showCoverSheet:YES];
+        [self relayout];
+        WAIT_UNTIL(2, [Status(PortalStatusKeyVisibility) isEqualToString:@"visible"]);
+        NSInteger attaches = [self counter:@"attaches"] - attaches0, detaches = [self counter:@"detaches"] - detaches0;
+        Check(bad == 0, [NSString stringWithFormat:@"20 x lock / wake / menu open-close / unlock: %d problems %@", bad, problems]);
+        Check(attaches == detaches + 1 && detaches >= 20,
+              [NSString stringWithFormat:@"one attach per Lock Screen session, one detach per unlock or sleep (%ld / %ld)", (long)attaches, (long)detaches]);
+        Check([Status(PortalStatusKeyState) isEqualToString:PortalEngineStateActive], @"no fault after the cycles");
+        Check([Status(PortalStatusKeyPhase) isEqualToString:@"on the Lock Screen"], [NSString stringWithFormat:@"breadcrumb: %@", Status(PortalStatusKeyPhase)]);
+        [self state:@"17b-after-cycles" caption:@"After 20 lock / wake / unlock cycles"];
+        [self shot:@"17b-after-20-cycles"];
+    });
+    STEP(0.4, {
+        NSInteger updates = [self counter:@"updates"], raises = [self counter:@"raises"];
+        for (int i = 0; i < 300; i++) PortalControllerCoverSheetDidLayout(self.coverSheet); // a layout storm
+        WAIT_UNTIL(1.0, NO);
+        NSInteger delta = [self counter:@"updates"] - updates;
+        Check(delta <= 6, [NSString stringWithFormat:@"300 Lock Screen layout passes coalesced into %ld updates", (long)delta]);
+        Check([self counter:@"raises"] == raises, @"no hierarchy changes while nothing covers the portal");
+        Check([self portalViewsInWindow] == 1, @"still exactly one overlay");
+    });
+    STEP(0.4, {
+        __weak UIView *oldHost = self.coverSheet.mainPageContentViewController.view;
+        [self.coverSheet rebuildMainPage];
+        [self relayout];
+        WAIT_UNTIL(1.5, [self overlay].superview == self.coverSheet.mainPageContentViewController.view);
+        Check([self overlay].superview == self.coverSheet.mainPageContentViewController.view && [self portalViewsInWindow] == 1,
+              @"SpringBoard rebuilt the main page: Portal moved to the new one, exactly one overlay");
+        BOOL leftover = NO;
+        for (UIView *v in oldHost.subviews) if ([v isKindOfClass:[PortalOverlayView class]]) leftover = YES;
+        Check(!leftover, @"nothing of Portal's left in the old main page");
+        Check([Status(PortalStatusKeyVisibility) isEqualToString:@"visible"], @"visible again after the rebuild");
+    });
+    STEP(0.4, {
+        self.coverSheet.mainPageAvailable = NO;
+        [self relayout];
+        WAIT_UNTIL(2.5, [self portalViewsInWindow] == 0);
+        Check([self portalViewsInWindow] == 0 && [Status(PortalStatusKeyVisibility) isEqualToString:@"no-host"],
+              [NSString stringWithFormat:@"container unavailable: Portal hidden and detached (%@)", Status(PortalStatusKeyVisibility)]);
+        Check([Status(PortalStatusKeyHost) hasPrefix:@"Lock Screen container unavailable"], [NSString stringWithFormat:@"reason: %@", Status(PortalStatusKeyHost)]);
+        UIView *camera = self.coverSheet.camera;
+        Check([self hit:[camera.superview convertPoint:camera.center toView:self.window]] == camera,
+              @"container unavailable: the normal Lock Screen keeps its touches (camera)");
+        BOOL foreign = NO;
+        for (UIView *v in self.coverSheet.view.subviews) if ([v isKindOfClass:[PortalOverlayView class]]) foreign = YES;
+        Check(!foreign, @"no fallback: nothing added to the Cover Sheet's own view");
+        [self state:@"17c-no-container" caption:@"Lock Screen container unavailable: Portal hidden, Lock Screen normal"];
+        [self shot:@"17c-container-unavailable"];
+        self.coverSheet.mainPageAvailable = YES;
+        [self relayout];
+        WAIT_UNTIL(2, [Status(PortalStatusKeyVisibility) isEqualToString:@"visible"]);
+        Check([self portalViewsInWindow] == 1, @"container available again: Portal back");
+    });
+    STEP(0.4, {
+        // Arm every delayed callback (idle collapse 12 s, message fade 3.5 s), then tear down.
+        [self tapOrb];
+        WAIT_UNTIL(1, [self overlay].expanded);
+        [self tapItemTitled:@"Devices"];
+        PortalOverlayView *detached = [self overlay];
+        [self setLocked:NO];
+        [SBCoverSheetPresentationManager standIn].visible = NO;
+        self.window.hidden = YES;
+        PortalControllerCoverSheetDidDisappear(self.coverSheet);
+        WAIT_UNTIL(13, NO); // every pending callback fires now
+        Check(detached.superview == nil && !detached.expanded && [self portalViewsInWindow] == 0,
+              @"callbacks that fire after teardown do nothing (no re-attach, no menu)");
+        Check([Status(PortalStatusKeyState) isEqualToString:PortalEngineStateActive], @"no fault from late callbacks");
+        self.window.hidden = NO;
+        [self setLocked:YES];
+        [self showCoverSheet:YES];
+        [self relayout];
+        WAIT_UNTIL(2, [Status(PortalStatusKeyVisibility) isEqualToString:@"visible"]);
+    });
+    STEP(0.4, {
+        NSString *hooks = Status(PortalStatusKeyHooks);
+        int bad = 0;
+        for (int i = 0; i < 10; i++) {
+            [self setPrefs:@{PortalKeyEnabled : @NO}];
+            if ([self overlay] != nil || [self portalViewsInWindow] != 0) bad++;
+            [self setPrefs:@{PortalKeyEnabled : @YES}];
+            [self relayout];
+            WAIT_UNTIL(2, [self portalViewsInWindow] == 1);
+            if ([self portalViewsInWindow] != 1) bad++;
+        }
+        Check(bad == 0, [NSString stringWithFormat:@"10 x disable / re-enable on the Lock Screen: %d problems", bad]);
+        Check([Status(PortalStatusKeyHooks) isEqualToString:hooks], @"hooks installed once, not again on re-enable");
+        // An authentication that finishes after Portal was turned off opens nothing.
+        [SBLockScreenManager standIn].authMode = PSIAuthHold;
+        [gLaunches removeAllObjects];
+        [self tapOrb];
+        WAIT_UNTIL(1, [self overlay].expanded);
+        [self tapItemTitled:@"Backgrounds"];
+        WAIT_UNTIL(1, [SBLockScreenManager standIn].hasPendingRequest);
+        [self setPrefs:@{PortalKeyEnabled : @NO}];
+        [[SBLockScreenManager standIn] resolvePending:YES];
+        WAIT_UNTIL(0.5, NO);
+        Check(gLaunches.count == 0, @"authentication completing after Portal was turned off opens nothing");
+        [self setPrefs:@{PortalKeyEnabled : @YES}];
+        [self relayout];
+        WAIT_UNTIL(2, [self portalViewsInWindow] == 1);
+        [SBLockScreenManager standIn].authMode = PSIAuthSucceed;
     });
 
     // ---- 13. Recovery ----------------------------------------------------------

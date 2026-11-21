@@ -33,6 +33,12 @@ first** — the normal iOS request — and only the action you chose runs after 
 
 ## Status
 
+> **0.1.0~beta3 (test build, branch `claude/portal-0.1.0-beta3-lifecycle`)**: Lock Screen lifecycle hardening after
+> the Safe Mode incident with 0.1.0~beta1 (`CHANGELOG.md`, `docs/INCIDENT_0.1.0-beta1.md`). Cause **not confirmed**
+> (no crash report reviewed yet). Kept as a CI test artifact until the short device test passes
+> (`docs/DEVICE_TEST_CHECKLIST.md`, P1–P7). Not imported into HCG Repo. If the phone is in Safe Mode, see
+> `docs/RECOVERY.md` §0 first.
+>
 > **0.1.0~beta2 (test build, branch `claude/portal-0.1.0-beta2-startup`)**: startup hardening after a SpringBoard Safe
 > Mode incident with 0.1.0~beta1 (see `CHANGELOG.md`). Kept as a CI test artifact until it has been tried on the phone
 > from the recording (`docs/DEVICE_TEST_CHECKLIST.md`, rows B0–B8). Not imported into HCG Repo.
@@ -86,7 +92,7 @@ HCGPortal/
 - [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md): device facts, iOS range, every SpringBoard interface and its fallback
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): typed commands and voice, device selection, Agent Runtime approvals, themes (not implemented)
 - [`docs/TESTING.md`](docs/TESTING.md): what each test proves; Simulator vs device
-- [`docs/RECOVERY.md`](docs/RECOVERY.md), [`docs/DEVICE_TEST_CHECKLIST.md`](docs/DEVICE_TEST_CHECKLIST.md), [`docs/BUILD.md`](docs/BUILD.md)
+- [`docs/RECOVERY.md`](docs/RECOVERY.md) (incl. Safe Mode), [`docs/INCIDENT_0.1.0-beta1.md`](docs/INCIDENT_0.1.0-beta1.md), [`docs/DEVICE_TEST_CHECKLIST.md`](docs/DEVICE_TEST_CHECKLIST.md), [`docs/BUILD.md`](docs/BUILD.md)
 - [`distribution/README.md`](distribution/README.md): HCG Repo candidate kit · [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Licence

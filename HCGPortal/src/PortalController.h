@@ -52,6 +52,8 @@ void PortalControllerPreviewSetSystemInputs(int reduceMotion, int lowPower);
 void PortalControllerPreviewRelayout(void);
 /// Raises the fault fallback, as an Objective-C exception inside SpringBoard would.
 void PortalControllerPreviewInjectFault(void);
+/// YES while the 1.5 s re-measure timer is scheduled.
+BOOL PortalControllerPreviewMeasureTimerRunning(void);
 
 /// The injector's MSHookMessageEx signature.
 typedef void (*PortalHookMessageFunction)(Class cls, SEL selector, IMP replacement, IMP _Nullable *_Nullable original);

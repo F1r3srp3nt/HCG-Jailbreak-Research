@@ -56,6 +56,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)expand;
 - (void)collapseAnimated:(BOOL)animated;
 - (void)showMessage:(NSString *)message;
+/// Cancels pending callbacks, collapses, hides the message and pauses rendering; called
+/// before the overlay is removed from the Lock Screen.
+- (void)prepareForDetach;
 
 /// The decision -hitTest:withEvent: makes; `touch` is YES for a real touch
 /// event (only those collapse an open menu when they land outside).

@@ -74,6 +74,8 @@ extern NSString *const PortalStatusKeyBuildID;
 extern NSString *const PortalStatusKeySystemVersion;
 extern NSString *const PortalStatusKeyTimestamp;
 extern NSString *const PortalStatusKeyUnstableLaunches;
+extern NSString *const PortalStatusKeyPreviousSession; // last step the previous SpringBoard launch recorded
+extern NSString *const PortalStatusKeyPhase;           // last step this launch recorded
 
 // Engine states
 extern NSString *const PortalEngineStateDisabled;     // "disabled"
@@ -122,6 +124,12 @@ extern NSString *const PortalEngineStateFault;        // "fault"
 
 + (NSDictionary<NSString *, id> *)readStatus;
 + (void)writeStatus:(NSDictionary<NSString *, id> *)status;
+/// Crash breadcrumb: the step Portal is about to take or has just taken (bootstrap,
+/// installing hooks, attaching to the Lock Screen, …), with the time. Written only on change
+/// and synchronised, so it survives a SpringBoard crash (cfprefsd is a separate process).
++ (void)recordPhase:(NSString *)phase;
+/// Read once at bootstrap, before the first new breadcrumb: what the previous launch recorded.
++ (NSString *)previousSessionSummary;
 + (NSInteger)consecutiveUnstableLaunches;
 + (void)setConsecutiveUnstableLaunches:(NSInteger)count;
 

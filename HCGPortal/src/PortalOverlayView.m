@@ -229,8 +229,10 @@
     if (_expanded && touch && timestamp != _lastOutsideEvent) {
         // Tap outside: collapse, and let the touch reach what is underneath.
         _lastOutsideEvent = timestamp;
+        __weak PortalOverlayView *weakSelf = self;
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self collapseAnimated:YES];
+            PortalOverlayView *strongSelf = weakSelf;
+            if (strongSelf.superview) [strongSelf collapseAnimated:YES]; // never acts on a detached overlay
         });
     }
     return nil;
@@ -304,9 +306,31 @@
 
 #pragma mark Items
 
+static NSString *PortalItemsSignature(NSArray<PortalMenuItem *> *items) {
+    NSMutableString *sig = [NSMutableString string];
+    for (PortalMenuItem *i in items)
+        [sig appendFormat:@"%d/%d/%d/%@/%@|", i.destination, i.item, (int)i.availability, i.title, i.statusText];
+    return sig;
+}
+
 - (void)setMainItems:(NSArray<PortalMenuItem *> *)items {
+    // Rebuild the controls only when something a user can see changed (0.1.0~beta2
+    // rebuilt all four on every update, i.e. after every Lock Screen layout pass).
+    if (_mainItems.count && [PortalItemsSignature(items) isEqualToString:PortalItemsSignature(_mainItems)]) return;
     _mainItems = [items copy];
     if ([_ringName isEqualToString:@"main"]) [self installItems:_mainItems];
+}
+
+- (void)prepareForDetach {
+    // Every pending callback (idle collapse, message fade, tap-outside collapse) checks a
+    // generation or the superview, so nothing acts on this view after it leaves the Lock Screen.
+    _idleGeneration++;
+    _messageGeneration++;
+    if (_expanded) [self collapseAnimated:NO];
+    _message.alpha = 0;
+    _portalView.paused = YES;
+    [self.layer removeAllAnimations];
+    for (UIView *v in self.subviews) [v.layer removeAllAnimations];
 }
 
 - (void)showAppItems:(NSArray<PortalMenuItem *> *)items {
@@ -421,8 +445,10 @@
 
 - (void)armIdleCollapse {
     NSUInteger generation = ++_idleGeneration;
+    __weak PortalOverlayView *weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(12 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        if (generation == self->_idleGeneration) [self collapseAnimated:YES];
+        PortalOverlayView *strongSelf = weakSelf;
+        if (strongSelf && strongSelf.superview && generation == strongSelf->_idleGeneration) [strongSelf collapseAnimated:YES];
     });
 }
 
@@ -444,12 +470,15 @@
     if (_animationsAllowed) [UIView animateWithDuration:0.18 animations:show];
     else show();
     if (message.length) UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, message);
+    __weak PortalOverlayView *weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        if (generation != self->_messageGeneration) return;
+        PortalOverlayView *strongSelf = weakSelf;
+        if (!strongSelf || generation != strongSelf->_messageGeneration) return;
+        UILabel *message = strongSelf->_message;
         void (^hide)(void) = ^{
-            self->_message.alpha = 0;
+            message.alpha = 0;
         };
-        if (self->_animationsAllowed) [UIView animateWithDuration:0.3 animations:hide];
+        if (strongSelf->_animationsAllowed && strongSelf.superview) [UIView animateWithDuration:0.3 animations:hide];
         else hide();
     });
 }

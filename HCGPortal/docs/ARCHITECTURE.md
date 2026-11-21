@@ -40,10 +40,26 @@ from Portal's own state and installed files only. Nothing in SpringBoard's Lock 
 SpringBoard has finished launching. Then `MSHookMessageEx` is resolved with `dlsym`; if it is missing, Portal stays
 inactive (*Incompatible: inactive*, with the reason in Settings) and nothing is hooked or attached.
 
+## Lock Screen lifecycle (0.1.0~beta3)
+
+- **Eligible** = SpringBoard launched, screen on, Cover Sheet visible, phone locked. Only then does Portal attach.
+- **Attach** once per host: `addSubview:` into the main page, breadcrumb *on the Lock Screen*. Later updates only lay
+  out; `bringSubviewToFront:` runs at most once a second and only if something else is above the portal. If the host
+  is not ready yet, up to 6 retries 250 ms apart, then *no-host*.
+- **Detach** when no longer eligible (Cover Sheet gone, screen off, unlocked, disabled, fault): stop the measure timer,
+  `-prepareForDetach` (bump the callback generations, collapse, hide the message, pause, remove animations), remove
+  from the superview, breadcrumb *off the Lock Screen*.
+- **Delayed work** (idle collapse, message fade, tap-outside collapse, relayout) holds the overlay or controller
+  weakly, checks a generation number, and does nothing without a superview.
+- **Re-entrancy:** `-update` ignores calls made while it runs; layout passes are coalesced to one per 250 ms.
+- **Breadcrumbs:** each lifecycle step is written to the status domain on change (`breadcrumb` = step, time,
+  version). The next launch reads it before writing its own and shows it in Settings as *Diagnostics*.
+
 ## Where the portal lives
 
-`PortalHost` uses, in order, `CSCoverSheetViewController.mainPageContentViewController.view` (the Lock Screen's main
-page) and `CSCoverSheetViewController.view`. The Cover Sheet controller comes from the hook or from
+`PortalHost` uses `CSCoverSheetViewController.mainPageContentViewController.view` (the Lock Screen's main page) only.
+If it is missing, not loaded, not a `CSMainPageContentViewController` or not in a visible window, Portal stays hidden
+with the reason *Lock Screen container unavailable: …*; there is no fallback to `CSCoverSheetViewController.view`. The Cover Sheet controller comes from the hook or from
 `+[SBLockScreenManager sharedInstance].coverSheetViewController`. Living inside the main page means the portal
 scrolls away with the camera and Today pages and slides up with the unlock gesture, with no work from Portal.
 

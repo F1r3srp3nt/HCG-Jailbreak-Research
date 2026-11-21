@@ -5,11 +5,10 @@
 //  Where the portal lives on the Lock Screen, and what it must not cover.
 //  Nothing is hooked here: views are found and measured read-only.
 //
-//  Host (first that exists, checked every time):
-//    1. CSCoverSheetViewController.mainPageContentViewController.view
-//       (the Lock Screen's main page: scrolls away with the camera / Today
-//       pages and slides up with the unlock gesture)
-//    2. CSCoverSheetViewController.view
+//  Host (the only one; checked every time): CSCoverSheetViewController
+//    .mainPageContentViewController.view, the Lock Screen's main page, loaded and in a
+//    visible window. It scrolls away with the camera / Today pages and slides up with the
+//    unlock gesture. If it is unavailable, Portal stays hidden (no fallback container).
 //
 //  Anchor (the portal goes below it): the lowest visible edge of
 //    -dateView (SBFLockScreenDateView), -dateViewController.view,
@@ -41,7 +40,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface PortalHost : NSObject
 
-/// The view the overlay is added to, or nil (with a reason).
+/// The view the overlay is added to, or nil with a reason ("Lock Screen container unavailable: ...").
 + (nullable UIView *)hostViewForCoverSheet:(nullable UIViewController *)coverSheet reason:(NSString *_Nullable *_Nullable)reason;
 /// Measures the clock / widgets and the obstacles in `host` coordinates,
 /// skipping `exclude` (the portal's own overlay).

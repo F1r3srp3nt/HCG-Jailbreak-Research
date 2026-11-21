@@ -119,6 +119,7 @@ void PSIHookMessageEx(Class cls, SEL selector, IMP replacement, IMP *original) {
 - (instancetype)init {
     if ((self = [super initWithNibName:nil bundle:nil])) {
         _main = [[CSMainPageContentViewController alloc] init];
+        _mainPageAvailable = YES;
         _widgets = [[CSComplicationContainerViewController alloc] init];
         _context = [[SBDefaultCoverSheetContext alloc] init];
         _cells = [NSMutableArray array];
@@ -127,7 +128,25 @@ void PSIHookMessageEx(Class cls, SEL selector, IMP replacement, IMP *original) {
 }
 
 - (CSMainPageContentViewController *)mainPageContentViewController {
-    return _main;
+    return _mainPageAvailable ? _main : nil;
+}
+
+- (void)rebuildMainPage {
+    CSMainPageContentViewController *fresh = [[CSMainPageContentViewController alloc] init];
+    UIView *old = _main.view;
+    [self addChildViewController:fresh];
+    fresh.view.frame = old.frame;
+    for (UIView *v in [old.subviews copy]) {
+        if ([NSStringFromClass([v class]) hasPrefix:@"Portal"]) continue;
+        [fresh.view addSubview:v];
+    }
+    [self.view insertSubview:fresh.view aboveSubview:old];
+    [fresh didMoveToParentViewController:self];
+    [_main willMoveToParentViewController:nil];
+    [old removeFromSuperview];
+    [_main removeFromParentViewController];
+    _main = fresh;
+    [self.view setNeedsLayout];
 }
 - (CSComplicationContainerViewController *)complicationContainerViewController {
     return _widgets;

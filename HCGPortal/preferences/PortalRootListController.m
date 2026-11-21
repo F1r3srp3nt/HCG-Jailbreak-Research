@@ -62,12 +62,15 @@ static void PortalStatusUpdated(CFNotificationCenterRef center, void *observer, 
     NSMutableArray *lines = [NSMutableArray array];
     NSString *detail = status[PortalStatusKeyDetail];
     if ([detail isKindOfClass:[NSString class]] && detail.length) [lines addObject:detail];
-    for (NSString *key in @[ PortalStatusKeyLayout, PortalStatusKeyPlan, PortalStatusKeyLastAction ]) {
+    for (NSString *key in @[ PortalStatusKeyLayout, PortalStatusKeyPlan, PortalStatusKeyLastAction, PortalStatusKeyHost,
+                             PortalStatusKeyPreviousSession ]) {
         NSString *v = status[key];
         if (![v isKindOfClass:[NSString class]] || !v.length) continue;
-        NSString *label = [key isEqualToString:PortalStatusKeyLayout] ? @"Layout"
-                          : [key isEqualToString:PortalStatusKeyPlan] ? @"Rendering"
-                                                                      : @"Last action";
+        NSString *label = [key isEqualToString:PortalStatusKeyLayout]   ? @"Layout"
+                          : [key isEqualToString:PortalStatusKeyPlan]   ? @"Rendering"
+                          : [key isEqualToString:PortalStatusKeyHost]   ? @"Lock Screen container"
+                          : [key isEqualToString:PortalStatusKeyPreviousSession] ? @"Diagnostics"
+                                                                        : @"Last action";
         [lines addObject:[NSString stringWithFormat:@"%@: %@", label, v]];
     }
     NSDate *when = status[PortalStatusKeyTimestamp];

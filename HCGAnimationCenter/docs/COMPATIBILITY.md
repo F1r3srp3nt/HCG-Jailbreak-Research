@@ -13,6 +13,16 @@
 status. SpringBoard interfaces are checked at run time (`SPRINGBOARD_RESEARCH.md`); when one is missing, that surface
 draws nothing and says why.
 
+## Verification status (0.2.0~alpha1, development build)
+
+| Item | Status |
+|---|---|
+| Host tests (C core incl. transforms 137,986 checks; schema 59; 1.0 core unchanged) | Pass |
+| Simulator runtime tests (orientation, placements, packs, performance) | Pass, 236 checks (run 44885278113) |
+| Package build + validation (`--require-new-abi`), CI and independent re-check | Pass, 0 failures / 0 warnings (commit `4fbebd2`) |
+| HCG Animation Center for Mac readers on the iOS-exported pack | Pass (`validate_pack.py`, `hcgpack validate`) |
+| Device installation / runtime | **Not performed** |
+
 ## Verification status (0.1.0~beta1)
 
 See `TESTING.md` for the numbers and run links.

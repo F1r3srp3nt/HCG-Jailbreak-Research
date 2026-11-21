@@ -1,7 +1,67 @@
-# Testing — what has and has not been verified (0.1.0~beta1)
+# Testing — what has and has not been verified
 
 Build validation, Simulator evidence and device testing are reported **separately**. Only the last one says anything
-about SpringBoard on a phone, and **it has not happened yet.**
+about SpringBoard on a phone, and **it has not happened yet** (for either version).
+
+# 0.2.0~alpha1 — orientation and transformation (development build)
+
+## A. Build validation — PASSED
+
+| Check | Where | Result |
+|---|---|---|
+| C core incl. transformed layout: 11 media sizes (portrait, landscape, square, 32:9, 1:512, 512:1, 8K…), 6 containers, rotations −90…450, flips, Fit / Fill / Crop / Stretch, regions; determinant, corners = frame, cover / inside, aspect kept, identity = 1.0 layout; zoom ↔ region round trips | `tests/test_core.c`, GCC + Clang (ASan/UBSan), Linux and macOS | **137,986 checks passed** |
+| C core 1.0 unchanged (1.1 appended; stripped file = the SHA-256s HCG Animation Center for Mac vendors) | `tests/test_core_compat.py` | **pass** |
+| Schema ↔ examples ↔ C constants; the **1.0 schema** (fixture, = Mac's vendored copy) still accepts every example including `Skyline-Rotated`; refusals of non-quarter rotations / non-boolean flips | `tests/test_schema.py` | **59 checks passed** |
+| Canonical build, macOS 15 / Xcode | run [44885278113](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44885278113), commit `4fbebd2` | **success** |
+| `validate.sh --require-new-abi` (in CI) | same run | **0 failures, 0 warnings** |
+| Independent re-check: artifact downloaded (zip digest = GitHub's), `.deb` SHA-256 recomputed, `validate.sh --require-new-abi` re-run from a clean worktree of `4fbebd2` | development container | **same SHA-256; 0 failures, 0 warnings**; build ID `4fbebd2e89ce`, native arm64e ABI `0x80000002`, no wallpaper-changing API |
+
+Package: `com.hakmicapitalgroup.animationcenter_0.2.0~alpha1_iphoneos-arm64.deb`, 417,674 bytes, SHA-256
+`d9bb375e78ee728a84ea93d7350562da309cc7b9ddef1c7b7dbae4f29f762e20` (provenance:
+`distribution/dev-builds/0.2.0-alpha1/PROVENANCE.md`).
+
+## B. iOS Simulator — runtime tests — PASSED (236 checks)
+
+Job *simulator-tests* of run 44885278113. Generated media with a red marker in the stored frame's top-left corner.
+
+| Case | Result |
+|---|---|
+| Portrait 360×640, landscape 640×360, square 480×480, ultrawide 1280×360, **rotated metadata 90° / 180° / 270°** (640×360 stored) | imported **without transcoding** (`.mov`, stored frame and orientation metadata unchanged); display size and `sourceRotation` detected correctly; still = displayed frame (size and marker corner correct) |
+| 3840 × 1080 | stored as is (0.21 s import) |
+| 3840 × 2160 with 90° metadata | converted once (4.47 s), upright, 1536 × 2730 (aspect kept, budget kept), marker where the metadata puts it |
+| Renderer, 7 clips × 4 rotations × 4 flip combinations × Fit / Fill-Crop / Stretch × zoom 1 / 1.6 + moved | **672 layouts = the C core** (frame, bounds, matrix), still layer = video layer |
+| Rendered pixels (Stretch, every rotation × flip, 7 clips) | **112 cases**: the marker is in the corner rotation + flips predict |
+| Library thumbnail orientation (`HACOrientedImage`) | same corner as the renderer, sides swapped |
+| Playback with a transform | looped at 1.5×, trim 0.3–1.3 s kept, video layer carries the matrix; rotation / stretch edits keep the same decoder; play-once still works |
+| Placements | Home / Lock saved separately (each its own still); survive reload; `library.json` v2 entry still reads as a v1 preset (Home) without warnings; assignments follow each placement; shared name; *Use Home Screen Settings* deletes the Lock still; a 0.1 `library.json` loads |
+| Export / import | Lock placement `.hcgbackground` carries its transform; `.hcgpack` manifest, `preset.json` = default placement, sizes listed; re-import restores both placements; damaged still and newer pack version refused; removing an item removes both stills |
+| Compatibility | presets that never used a transform have no `transform` / `sourceRotation` keys; `Skyline-Rotated` example reads and round-trips |
+| Performance | `hcgbg_layout_transformed` **0.76 µs**; layout-only edit on a playing 3840×1080 clip **0.29 ms** (2,000 edits, one decoder) |
+| Memory (`phys_footprint`, Simulator) | playing 3840×1080: +1.0 MB upright; +10.1 MB after 2,000 rotation / flip / crop edits (bound 25 MB). Rotation itself allocates no decode buffers (same decoder, same item); the difference is within run-to-run noise of Core Animation transactions and was not investigated further |
+
+## C. HCG Animation Center for Mac readers — PASSED
+
+The pack and preset exported by the iOS code in the Simulator (artifact `hcg-animationcenter-sim-exports`), checked with
+the Mac project's own tools at `F1r3srp3nt/animation-centre@5382265` (read-only):
+
+| Tool | Result |
+|---|---|
+| `scripts/validate_pack.py` (CI and again in the development container) | **OK**; notes: `home-screen` / `lock-screen` not known to version 1 readers (ignored) — expected |
+| `hcgpack validate` / `info` (Swift reader, built in CI) | **OK: pack.json, preset.json and every checksum verified**; shows `app-background` (Fit, upright — the transform is ignored as documented) |
+| Exported `.hcgbackground` (Lock placement: 270°, flip V, Stretch) vs the Mac's preset schema | **valid** |
+
+## D. Battery — NOT MEASURED
+
+Not measurable in the Simulator. By construction: the transform is one Core Animation affine transform on the layer
+that already shows the video (no extra decoding, no offscreen pass, no re-encoding), so per-frame cost should equal
+the untransformed clip's. Videos up to 4.19 MP now play at their own resolution where 0.1 downscaled above 2688 px —
+for those clips decode cost is higher than in 0.1. Device rows O9 / O10 in `DEVICE_TEST_CHECKLIST.md`.
+
+## E. Device testing — NOT DONE
+
+---
+
+# 0.1.0~beta1
 
 ## 1. Build validation (package and source) — PASSED
 

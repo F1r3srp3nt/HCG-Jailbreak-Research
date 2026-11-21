@@ -396,8 +396,8 @@ DYLIB="$JB/Library/MobileSubstrate/DynamicLibraries/HCGPortal.dylib"
 PREFS="$JB/Library/PreferenceBundles/HCGPortalPrefs.bundle/HCGPortalPrefs"
 printable_runs "$DYLIB" > "$WORK/dylib.strings"
 printable_runs "$PREFS" > "$WORK/prefs.strings"
-for s in CSCoverSheetViewController SBLockScreenManager SBLockScreenUnlockRequest SBCoverSheetPresentationManager \
-         'unlockWithRequest:completion:' createUnlockRequest coverSheetContext mainPageContentViewController \
+for s in CSCoverSheetViewController SBLockScreenManager SBCoverSheetPresentationManager \
+         isUILocked isInSecureApp isProtectedDataAvailable 'setCoverSheetPresented:animated:withCompletion:' mainPageContentViewController \
          'viewWillAppear:' 'viewDidDisappear:' viewDidLayoutSubviews MSHookMessageEx _dlsym \
          LSApplicationWorkspace 'openApplicationWithBundleID:' com.apple.Preferences \
          com.apple.springboard.hasBlankedScreen com.apple.springboard.lockstate \
@@ -405,10 +405,14 @@ for s in CSCoverSheetViewController SBLockScreenManager SBLockScreenUnlockReques
          com.hakmicapitalgroup.portal.lighting-event HCGNexusPortalInterface 'openPanelFromSource:completion:'; do
 	grep -qxF -- "$s" "$WORK/dylib.strings" && pass "tweak references $s" || fail "tweak lacks $s"
 done
-# Authentication is only ever REQUESTED from SpringBoard: no passcode handling, no unlock without authentication.
+# 0.1.0~beta4: Portal never requests, performs or handles authentication. It only READS the lock state
+# iOS reports (isUILocked, Darwin lockstate, isProtectedDataAvailable) and stays closed unless all say unlocked.
+REQUEST='unlockWithRequest|createUnlockRequest|SBLockScreenUnlockRequest|unlockUIFromSource'
+hits=$(grep -E "$REQUEST" "$WORK/dylib.strings" "$WORK/prefs.strings" | sort -u || true)
+[ -z "$hits" ] && pass "no authentication or unlock request is made (Portal only reads iOS's lock state)" || fail "unlock-request references: $hits"
 BYPASS='attemptUnlockWithPasscode|_attemptUnlockWithPasscode|attemptUnlockWithMesa|unlockUIFromSource|_finishUIUnlockFromSource|setPasscode|MCPasscodeManager|MCProfileConnection|SBFUserAuthenticationController|_setAuthenticated|keybag|MKBUnlockDevice|LAContext|evaluatePolicy'
 hits=$(grep -E "$BYPASS" "$WORK/dylib.strings" "$WORK/prefs.strings" | sort -u || true)
-[ -z "$hits" ] && pass "no passcode, keybag or unlock-without-authentication API is referenced (authentication is requested from SpringBoard only)" || fail "authentication-bypass references: $hits"
+[ -z "$hits" ] && pass "no passcode, keybag or unlock-without-authentication API is referenced" || fail "authentication-bypass references: $hits"
 # No notification content is read (obstacles are measured by frame only).
 PRIVATE='NCNotificationRequest|BBBulletin|bulletinID|NCNotificationContent|UNNotificationContent|sectionIdentifier|NCNotificationDispatcher'
 hits=$(grep -E "$PRIVATE" "$WORK/dylib.strings" "$WORK/prefs.strings" | sort -u || true)

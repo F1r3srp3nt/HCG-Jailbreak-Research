@@ -545,7 +545,7 @@ static BOOL IsInside(UIView *view, UIView *ancestor) {
         [self pullDownCoverSheet];
         WAIT_UNTIL(0.6, NO);
         Check([self portalViewsInWindow] == 0 && [Status(PortalStatusKeyAccess) hasPrefix:@"locked"] &&
-                  [Status(PortalStatusKeyAccess) containsString:@"keybag locked"],
+                  [Status(PortalStatusKeyAccess) containsString:@"protected data unavailable"],
               [NSString stringWithFormat:@"keybag locked (before the first unlock): closed, whatever else says (%@)",
                                          Status(PortalStatusKeyAccess)]);
         PortalControllerPreviewSetProtectedData(-1);

@@ -393,7 +393,7 @@ static BOOL PortalReadNotifyState(int token, uint64_t *state) {
                                                        object:nil
                                                         queue:[NSOperationQueue mainQueue]
                                                    usingBlock:^(NSNotification *note) {
-                                                       [weakSelf accessSourceChanged:@"keybag"];
+                                                       [weakSelf accessSourceChanged:@"protected data"];
                                                    }]];
     }
     for (NSNotificationName name in @[
@@ -478,7 +478,7 @@ static int PortalSignal(BOOL known, BOOL value) {
     if (_previewProtectedData >= 0) protectedData = _previewProtectedData != 0;
 #endif
     in.protectedDataAvailable = protectedData ? PORTAL_SIGNAL_YES : PORTAL_SIGNAL_NO;
-    if (!protectedData) [notes addObject:@"keybag locked (protected data unavailable)"];
+    if (!protectedData) [notes addObject:@"protected data unavailable (locked, or not unlocked since restart)"];
 
     uint64_t state = 0;
     BOOL readable = PortalReadNotifyState(_lockToken, &state);
@@ -1174,7 +1174,7 @@ static NSString *PortalStatusText(PortalAvailability a) {
 }
 - (void)previewSetProtectedData:(int)available {
     _previewProtectedData = available;
-    [self accessSourceChanged:@"keybag"];
+    [self accessSourceChanged:@"protected data"];
 }
 #endif
 

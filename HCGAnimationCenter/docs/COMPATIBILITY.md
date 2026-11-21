@@ -21,6 +21,7 @@ draws nothing and says why.
 | Simulator runtime tests (orientation, placements, packs, performance) | Pass, 236 checks (run 44885278113) |
 | Package build + validation (`--require-new-abi`), CI and independent re-check | Pass, 0 failures / 0 warnings (commit `4fbebd2`) |
 | HCG Animation Center for Mac readers on the iOS-exported pack | Pass (`validate_pack.py`, `hcgpack validate`) |
+| Simulator preview with the real editor (orientation scenes) | Pass, 68 checks (run 44885527130) |
 | Device installation / runtime | **Not performed** |
 
 ## Verification status (0.1.0~beta1)

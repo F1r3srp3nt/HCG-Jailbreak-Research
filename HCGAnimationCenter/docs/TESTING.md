@@ -39,6 +39,23 @@ Job *simulator-tests* of run 44885278113. Generated media with a red marker in t
 | Performance | `hcgbg_layout_transformed` **0.76 µs**; layout-only edit on a playing 3840×1080 clip **0.29 ms** (2,000 edits, one decoder) |
 | Memory (`phys_footprint`, Simulator) | playing 3840×1080: +1.0 MB upright; +10.1 MB after 2,000 rotation / flip / crop edits (bound 25 MB). Rotation itself allocates no decode buffers (same decoder, same item); the difference is within run-to-run noise of Core Animation transactions and was not investigated further |
 
+## B2. iOS Simulator — preview with the real editor — PASSED (68 checks, 22 screenshots)
+
+Workflow *HCG Animation Center preview*, run [44885527130](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44885527130)
+(commit `0ddd69e`: package sources = `4fbebd2`, plus preview-harness fixes). All 0.1 scenes still pass; new scenes
+drive the real Settings editor on generated clips (red marker = the stored frame's top-left):
+
+| Scene | Checked |
+|---|---|
+| 08 landscape clip, Rotate 90°, Fill / Crop | preview matrix is a clockwise quarter turn; covers the portrait screen; marker top-right |
+| 09 + Flip horizontally, Stretch | fills the screen exactly; marker back top-left |
+| 10 Fit, zoom 1.6×, moved left | stored as `layout.transform` + region; bars below |
+| 11 Lock Screen placement, 270° | starts from the Home settings; gets its own; both saved (Home: Fit 0°, Lock: Fill / Crop 270°) |
+| 12 Reset Transformations, controls | identity, Fill, no transform; Orientation / Framing controls shown |
+| 13 phone clip stored landscape with 90° metadata | 720 × 1280 detected, not transcoded, upright with no editor rotation |
+
+![Editor orientation scenes](preview/orientation-0.2.0-alpha1.jpg)
+
 ## C. HCG Animation Center for Mac readers — PASSED
 
 The pack and preset exported by the iOS code in the Simulator (artifact `hcg-animationcenter-sim-exports`), checked with

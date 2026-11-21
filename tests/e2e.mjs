@@ -153,9 +153,11 @@ await check("checker: Unsupported (iPhone 12, 17.4)", async () => {
 await check("checker: cannot be verified (iPhone X, 17.0 never released for it)", async () => {
   const t = await runChecker("iPhone X", "17.0"); assert(/cannot yet be verified/.test(t), t); return t;
 });
-await check("checker: 16.7 asks for the build number", async () => {
+await check("checker: 16.7 asks for the build number (and only 16.7)", async () => {
   await page.click('#checker button[type="reset"]');
   await page.selectOption("#cc-device", { label: "iPhone 11" });
+  await page.fill("#cc-version", "16.5");
+  assert(await page.isHidden("#cc-build-row"), "build row visible for 16.5");
   await page.fill("#cc-version", "16.7");
   assert(await page.isVisible("#cc-build-row"), "build row hidden");
   return "build row shown";

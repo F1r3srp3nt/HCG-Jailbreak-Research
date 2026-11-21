@@ -1,4 +1,4 @@
-From 7e96170336ba8b7628344c39179d1586ceedfbdf Mon Sep 17 00:00:00 2001
+From 419fd68eac8fe21bcbdf6b6b301d05985894be00 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Sat, 21 Nov 2026 08:57:52 +0000
 Subject: [PATCH] HCG Jailbreak Academy: publish academy/ behind [academy]
@@ -18,7 +18,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01QS5EmhpxQHv4LAEhMadUA6
 ---
  academy/README.md                       |  14 +
- academy/assets/academy.css              | 323 +++++++++
+ academy/assets/academy.css              | 327 +++++++++
  academy/assets/academy.js               | 267 ++++++++
  academy/assets/compat-data.js           |   2 +
  academy/assets/compat.js                | 280 ++++++++
@@ -43,7 +43,7 @@ Claude-Session: https://claude.ai/code/session_01QS5EmhpxQHv4LAEhMadUA6
  tools/hcgrepo/assets/site.css           |   7 +
  tools/hcgrepo/config.py                 |  10 +
  tools/hcgrepo/site.py                   |  46 +-
- 26 files changed, 2248 insertions(+), 9 deletions(-)
+ 26 files changed, 2252 insertions(+), 9 deletions(-)
  create mode 100644 academy/README.md
  create mode 100644 academy/assets/academy.css
  create mode 100644 academy/assets/academy.js
@@ -89,14 +89,18 @@ index 0000000..a29f2b8
 +  statuses in chapter 15, and removal of `<meta name="robots" content="noindex, nofollow">` if the page should be indexed.
 diff --git a/academy/assets/academy.css b/academy/assets/academy.css
 new file mode 100644
-index 0000000..5aeaa4d
+index 0000000..0e5bf1b
 --- /dev/null
 +++ b/academy/assets/academy.css
-@@ -0,0 +1,323 @@
+@@ -0,0 +1,327 @@
++@charset "utf-8";
 +/* HCG Jailbreak Academy. Loads AFTER the HCG Repo stylesheet (assets/site.css, "HCG Futuristic") and only extends it:
 +   same tokens, clipped corners, cyan edge light and badges. Adds a light appearance by redefining the colour tokens
 +   (site.css stays dark-only and unchanged), a chapter layout, and the interactive parts of the guide.
 +   Every surface colour below is a variable, so the theme blocks only swap variables. */
++
++/* The hidden attribute must win over component display rules such as .field { display: grid }. */
++.academy-page [hidden] { display: none !important; }
 +
 +/* ------------------------------------------------------------------ theme tokens */
 +:root {
@@ -1453,7 +1457,7 @@ index 0000000..f39a19a
 +</svg>
 diff --git a/academy/jailbreak/index.html b/academy/jailbreak/index.html
 new file mode 100644
-index 0000000..5f477fe
+index 0000000..a03711a
 --- /dev/null
 +++ b/academy/jailbreak/index.html
 @@ -0,0 +1,846 @@
@@ -2298,9 +2302,9 @@ index 0000000..5f477fe
 +  <p><a href="https://github.com/F1r3srp3nt/HCG-repo">Repository source on GitHub</a></p>
 +</footer>
 +<div class="sr-only" role="status" aria-live="polite" id="live"></div>
-+<script src="../assets/compat-data.js" defer></script>
-+<script src="../assets/compat.js" defer></script>
-+<script src="../assets/academy.js" defer></script>
++<script src="../assets/compat-data.js" charset="utf-8" defer></script>
++<script src="../assets/compat.js" charset="utf-8" defer></script>
++<script src="../assets/academy.js" charset="utf-8" defer></script>
 +</body>
 +</html>
 diff --git a/config/repo.toml b/config/repo.toml

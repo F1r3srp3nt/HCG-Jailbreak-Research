@@ -1,7 +1,11 @@
+@charset "utf-8";
 /* HCG Jailbreak Academy. Loads AFTER the HCG Repo stylesheet (assets/site.css, "HCG Futuristic") and only extends it:
    same tokens, clipped corners, cyan edge light and badges. Adds a light appearance by redefining the colour tokens
    (site.css stays dark-only and unchanged), a chapter layout, and the interactive parts of the guide.
    Every surface colour below is a variable, so the theme blocks only swap variables. */
+
+/* The hidden attribute must win over component display rules such as .field { display: grid }. */
+.academy-page [hidden] { display: none !important; }
 
 /* ------------------------------------------------------------------ theme tokens */
 :root {

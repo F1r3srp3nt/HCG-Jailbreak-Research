@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-21T08:56:53.811Z",
+  "date": "2026-11-21T16:46:06.455Z",
   "chromium": true,
   "passed": 22,
   "failed": 0,
@@ -60,7 +60,7 @@
       "detail": "Not verified Compatibility cannot yet be verified"
     },
     {
-      "name": "checker: 16.7 asks for the build number",
+      "name": "checker: 16.7 asks for the build number (and only 16.7)",
       "ok": true,
       "detail": "build row shown"
     },

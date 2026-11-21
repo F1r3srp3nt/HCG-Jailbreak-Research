@@ -39,6 +39,14 @@ HCGBackgroundView *background = [[HCGBackgroundView alloc] initWithFrame:self.vi
 background.display = HCGBackgroundDisplayPlaying;
 ```
 
+## Orientation and transformation (1.1)
+
+A preset may carry `layout.transform` (rotate 0 / 90 / 180 / 270, flip, stretch; `PRESET-FORMAT.md`). The view
+applies it as one affine transform to the still and the video layer, on top of the file's own orientation metadata —
+nothing is re-encoded and layout edits never reload the decoder. In code: `preset.rotation`, `flipHorizontal`,
+`flipVertical`, `stretch`, `resetTransform()`; the view reports `mediaFrame`, `mediaBounds` and `mediaTransform`.
+Kit 1.0 (and apps built with it) ignore the transform and show the clip upright, so adopting 1.1 is optional.
+
 ## Responsibilities of the host app
 
 | | |
@@ -53,8 +61,8 @@ background.display = HCGBackgroundDisplayPlaying;
 
 ```
 Package.swift
-Sources/HCGBackgroundKit/include/HCGBackgroundKit.h      umbrella header (HCG_BACKGROUND_KIT_VERSION "1.0.0")
-Sources/HCGBackgroundKit/include/HCGBackgroundCore.h     C rules: limits, layout, sanitising, GIF timing
+Sources/HCGBackgroundKit/include/HCGBackgroundKit.h      umbrella header (HCG_BACKGROUND_KIT_VERSION "1.1.0")
+Sources/HCGBackgroundKit/include/HCGBackgroundCore.h     C rules: limits, layout (and transformed layout, 1.1), sanitising, GIF timing
 Sources/HCGBackgroundKit/include/HCGBackgroundPreset.h   the preset model (read / validate / write)
 Sources/HCGBackgroundKit/include/HCGBackgroundView.h     the renderer
 Schema/hcg-background-preset-v1.schema.json

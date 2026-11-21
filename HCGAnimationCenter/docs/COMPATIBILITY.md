@@ -26,6 +26,39 @@ See `TESTING.md` for the numbers and run links.
 | Device installation | **Not performed** |
 | Runtime behaviour on a device | **Not verified** |
 
+## Orientation and transformation (0.2.0~alpha1) — format and app compatibility
+
+| Item | 0.2 behaviour | Older readers |
+|---|---|---|
+| Presets with no transform (everything made by 0.1, the Mac app, or 0.2 without using the new controls) | Read and written **byte-identically** (`transform` / `sourceRotation` are only written when used) | unchanged |
+| Presets with `layout.transform` (`formatVersion` stays 1) | rotation, flips, stretch, region in every mode | **0.1 tweak, kit 1.0, HCG Animation Center for Mac (current)**: accepted (unknown keys ignored, the 1.0 schema validates them); shown **upright, unflipped**, Stretch as **fill**, Fit ignores zoom/position. Never refused |
+| `library.json` | version 2: entries stay plain v1 presets + `placements.lock-screen` | 0.1 reads it (Home settings; Lock own settings ignored) |
+| `.hcgbackground` export | one placement, with its transform | readable by every preset reader (see row 2) |
+| `.hcgpack` export | `app-background` (default, = Home) + `home-screen` + `lock-screen`; `preset.json` = default; sizes and SHA-256 for every file | Mac app / `hcgpack` / `validate_pack.py`: `app-background` is a known placement; the two new ids are ignored with a note. A placement with a transform shows upright on the Mac (row 2) |
+| `.hcgpack` import (from the Mac app) | `home-screen`, else the default placement, else the first known (`app-background`, `desktop`, `loading-screen`, `banner`) → Home; `lock-screen` → Lock | — |
+| C core | `HCGBackgroundCore.c/.h` 1.0 code unchanged; 1.1 is an appended section (`tests/test_core_compat.py` strips it and compares with the SHA-256s the Mac app vendors) | the Mac app's vendored 1.0 core stays valid; re-vendoring 1.1 is needed only for the Mac to *render* transforms |
+
+### HCG Animation Center for Mac — notes for its maintainers
+
+- To show iOS transforms on the Mac: re-vendor `HCGBackgroundCore.c/.h` 1.1 and the schema (additions only), read
+  `layout.transform` in the Swift preset reader, and lay out with `hcgbg_layout_transformed`. Until then the Mac shows
+  those placements upright (safe fallback).
+- **Re-saving** a transformed preset or pack in the current Mac app **drops `transform`** (it writes only the keys it
+  knows). Keep the iOS export if the transformation matters.
+- `home-screen` / `lock-screen` could be added to the Mac's known placements as a minor addition (portrait canvas,
+  same rules as `app-background`).
+
+### Media handling
+
+- No transcoding for orientation: the file's metadata is applied at display time, the editor's transform by Core
+  Animation. Passthrough budget: long side ≤ 4096 px and ≤ 4.19 MP; larger clips are converted once, upright, aspect
+  kept (previously: long side ≤ 2688 px, else boxed to 1920 × 1080).
+- Unusual aspect ratios: the layout core is tested from 16 × 8192 (1:512) to 8192 × 16 and up to 8K, every rotation,
+  flip and mode. Zoom/position round trips are exact except beyond the 1.0 crop minimum (0.1 of a side), where the
+  region is clamped and stays valid.
+- Mirrored orientation metadata (rare; some front-camera files) is honoured by AVFoundation as before; it is not
+  recorded in the preset (`sourceRotation` records the quarter turn only).
+
 ## Surfaces
 
 | Surface | Default | Status |

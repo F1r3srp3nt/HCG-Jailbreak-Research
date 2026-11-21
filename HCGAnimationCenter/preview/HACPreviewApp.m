@@ -787,6 +787,8 @@ static UIImage *WallpaperImage(NSString *title, double hue) {
     STEP(2.0, {
         editor = [[NSClassFromString(@"HACEditorViewController") alloc] initWithItem:landscapeItem preferredSurface:HACSurfaceHome];
         [self->_settingsNav pushViewController:editor animated:NO];
+        [self->_settingsNav.view layoutIfNeeded];
+        [editor.view layoutIfNeeded];
         [editor setRotation:90];
         [editor setFramingMode:HACFramingModeFillCrop];
         CGAffineTransform t = editor.previewView.mediaTransform;
@@ -802,7 +804,9 @@ static UIImage *WallpaperImage(NSString *title, double hue) {
         [editor setFlipHorizontal:YES vertical:NO];
         [editor setFramingMode:HACFramingModeStretch];
         HCGBackgroundPreset *d = editor.draft;
-        Check(d.flipHorizontal && d.stretch && CGRectEqualToRect(CGRectIntegral(editor.previewView.mediaFrame), editor.previewView.bounds),
+        CGRect sf = editor.previewView.mediaFrame, sb = editor.previewView.bounds;
+        Check(d.flipHorizontal && d.stretch && fabs(sf.origin.x) < 0.01 && fabs(sf.origin.y) < 0.01 &&
+                  fabs(sf.size.width - sb.size.width) < 0.01 && fabs(sf.size.height - sb.size.height) < 0.01,
               @"Flip + Stretch: the picture fills the screen exactly");
         [self state:@"09-editor-flip-stretch" caption:@"Editor: rotated 90°, flipped horizontally, Stretch"];
         [self shot:@"09-editor-flip-stretch"];
@@ -848,6 +852,8 @@ static UIImage *WallpaperImage(NSString *title, double hue) {
         [self->_settingsNav popViewControllerAnimated:NO];
         editor = [[NSClassFromString(@"HACEditorViewController") alloc] initWithItem:metadataItem preferredSurface:HACSurfaceHome];
         [self->_settingsNav pushViewController:editor animated:NO];
+        [self->_settingsNav.view layoutIfNeeded];
+        [editor.view layoutIfNeeded];
         Check(CGAffineTransformIsIdentity(editor.previewView.mediaTransform) && editor.previewView.mediaBounds.height > editor.previewView.mediaBounds.width,
               @"metadata rotation applied automatically: upright portrait, no editor rotation");
         [self state:@"13-editor-metadata" caption:@"Editor: a phone clip stored landscape with 90° metadata shows upright"];

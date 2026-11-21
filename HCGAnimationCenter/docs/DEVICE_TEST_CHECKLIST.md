@@ -1,4 +1,4 @@
-# Device test checklist — HCG Animation Center 0.1.0~beta1
+# Device test checklist — HCG Animation Center 0.1.0~beta1 / 0.2.0~alpha1
 
 **Nothing here has been done yet.** Record each row as *pass*, *fail* (with what you saw) or *not run*. A row passes
 only when you saw it on the phone; Simulator results do not count here. Install and runtime are recorded separately.
@@ -80,6 +80,24 @@ Stop if pre-checks fail. Send the report for review.
 | K4 | Swipe to unlock; pull down Notification Centre while unlocked | record what the Lock background does during the animation | |
 | K5 | Loop off on the Lock background | plays once each wake, then holds | |
 | K6 | Same as Home | the Home background shows on the Lock Screen too | |
+
+## 5b. Orientation and transformation (0.2.0~alpha1)
+
+Use real camera files: a portrait video, a landscape video, a square one, a screen recording, and one filmed with the
+phone held sideways. Note each file's size and what the editor's *Source* row says.
+
+| # | Step | Expected | Result |
+|---|---|---|---|
+| O1 | Import each file | *Source* row shows the size and the detected metadata rotation; preview upright without touching anything | |
+| O2 | Rotate 90° / 180° / 270°, flip H / V, on a landscape clip | preview turns clockwise / mirrors at once; still (Reduce Motion on) matches the video | |
+| O3 | Fit, Fill / Crop, Stretch; zoom and drag in each | Fit: bars, whole region; Fill: covers; Stretch: exact fill, distorted | |
+| O4 | Apply to Home Screen | SpringBoard shows exactly the preview (orientation, framing); icons unaffected | |
+| O5 | Switch to *Lock Screen* in the editor, change rotation, apply to Lock | Lock Screen shows its own settings; Home unchanged | |
+| O6 | Trim, speed 2×, loop off, still frame on a rotated background | all still apply; still is turned like the video | |
+| O7 | Reset Transformations | back to the source as recorded | |
+| O8 | Export a pack (*Export… › Animation Pack*), import it back | both placements return | |
+| O9 | 4K landscape and 3840 × 1080 clips | 3840 × 1080 imported without *converted*; 4K converted, upright, same aspect | |
+| O10 | 10 minutes playing a rotated 4K-converted clip | note battery, heat, any stutter (compare with H9) | |
 
 ## 6. Coexistence (each pair, then all together)
 

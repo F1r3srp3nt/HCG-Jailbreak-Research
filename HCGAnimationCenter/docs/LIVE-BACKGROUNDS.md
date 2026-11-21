@@ -1,4 +1,4 @@
-# What counts as a “live background” (0.1.0~beta1)
+# What counts as a “live background” (0.2.0~alpha1)
 
 A **live background** in HCG Animation Center is: **one muted video clip, looped (or played once), drawn behind the
 Home Screen icons or the Lock Screen clock, with a still image as its fallback.** It is stored as an HCG background
@@ -8,7 +8,7 @@ preset (format version 1, `PRESET-FORMAT.md`).
 
 | Input | What happens at import | Limits |
 |---|---|---|
-| Video: `.mov`, `.mp4`, `.m4v` with H.264 or HEVC video (any codec AVFoundation can decode on the phone) | The **video track only** is copied (passthrough, no quality loss). Rotation metadata is kept. If a side is larger than 2688 px, or passthrough fails, it is converted to H.264 at 1920 × 1080 (aspect kept) | ≤ 512 MB, ≥ 0.5 s, ≤ 10 min, 16–8192 px per side |
+| Video: `.mov`, `.mp4`, `.m4v` with H.264 or HEVC video (any codec AVFoundation can decode on the phone) | The **video track only** is copied (passthrough, no quality loss). Orientation metadata is kept, applied when shown, and recorded (`media.sourceRotation`). If the long side is over 4096 px or the frame over 4.19 MP (2048 × 2048), or passthrough fails, it is converted once to H.264 **upright, with the same aspect ratio**, inside that budget (1920 × 1080 only as a last resort) | ≤ 512 MB, ≥ 0.5 s, ≤ 10 min, 16–8192 px per side |
 | Animated GIF (2 or more frames) | Converted once to an H.264 `.mp4`: frames drawn on black (GIF transparency becomes black), longer side ≤ 1080 px, even dimensions, browser frame timing (a delay of 10 ms or less, or none, plays as 100 ms), repeated until it lasts at least 1 s | ≤ 3000 frames, ≤ 10 min |
 
 Every item also gets a **still** (JPEG frame at the chosen time; the static fallback) and a **thumbnail**.

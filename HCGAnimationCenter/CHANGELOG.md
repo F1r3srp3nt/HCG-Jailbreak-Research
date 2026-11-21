@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.2.0~alpha1 (development build — for manual approval; not published)
+
+**Video orientation and transformation.** Development build for review; not a candidate, not in HCG Repo, not
+device-tested. 0.1.0~beta1 is unchanged.
+
+- **Editor — Orientation:** rotate 0° / 90° / 180° / 270° (segment or ↻ button), flip horizontally / vertically, and a
+  *Source* row showing the file's size and the orientation metadata that was detected and applied automatically.
+- **Editor — Framing:** *Fit*, *Fill / Crop* and *Stretch*; zoom 1–5× and X / Y position (sliders, or drag the preview)
+  in every mode; *Reset Transformations* returns to the source as recorded. Every change is live in the preview, which
+  is the renderer SpringBoard uses, and is applied to the still and the video alike.
+- **Per placement:** the editor switches between *Home Screen* and *Lock Screen*. Each keeps its own trim, loop, speed,
+  still, framing and orientation; the Lock Screen follows the Home Screen until changed (*Use Home Screen Settings*
+  goes back). Applying a background to a screen uses that screen's settings.
+- **Non-destructive:** the media file is never re-encoded or changed for any of this.
+- **Import:** orientation metadata is detected and recorded (`media.sourceRotation`). Videos are stored **as is**
+  (passthrough) up to 4096 px on the long side and 4.19 MP (was: 2688 px), so 4K-wide ultrawide clips (3840 × 1080)
+  keep their quality; larger clips are converted upright to H.264 **with their aspect ratio** inside that budget (was:
+  boxed to 1920 × 1080).
+- **Formats (compatible):** HCGBackgroundKit 1.1 — `layout.transform` and `media.sourceRotation`, a version 1 minor
+  addition written only when used (presets without it are byte-identical; older readers ignore it). `library.json`
+  version 2 (still readable by 0.1). *Export…* offers one placement as `.hcgbackground` or all placements as an HCG
+  animation pack (`.hcgpack`, the HCG Animation Center for Mac format); *Import* accepts both.
+- Thumbnails in the library show the Home Screen orientation.
+
 ## 0.1.0~beta1 (candidate)
 
 **Free public beta demo — build-validated and Simulator-tested; real-device testing pending.** First release.

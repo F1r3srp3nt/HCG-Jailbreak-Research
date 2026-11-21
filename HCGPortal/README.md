@@ -122,6 +122,7 @@ HCGPortal/
 - [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md): device facts, iOS range, every SpringBoard interface and its fallback
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): typed commands and voice, device selection, Agent Runtime approvals, themes (not implemented)
 - [`docs/TESTING.md`](docs/TESTING.md): what each test proves; Simulator vs device
+- [`docs/QUALIFICATION_0.1.0-beta4.md`](docs/QUALIFICATION_0.1.0-beta4.md) (physical-device qualification, `scripts/qualify-beta4.sh`), [`docs/PROMOTION_PROPOSAL_0.1.0-beta4.md`](docs/PROMOTION_PROPOSAL_0.1.0-beta4.md) (draft), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/DIAGNOSIS_0.1.0-beta3-unresponsive.md`](docs/DIAGNOSIS_0.1.0-beta3-unresponsive.md)
 - [`docs/RECOVERY.md`](docs/RECOVERY.md) (incl. Safe Mode), [`docs/INCIDENT_0.1.0-beta1.md`](docs/INCIDENT_0.1.0-beta1.md), [`docs/DEVICE_TEST_CHECKLIST.md`](docs/DEVICE_TEST_CHECKLIST.md), [`docs/BUILD.md`](docs/BUILD.md)
 - [`distribution/README.md`](distribution/README.md): HCG Repo candidate kit · [`CHANGELOG.md`](CHANGELOG.md)
 

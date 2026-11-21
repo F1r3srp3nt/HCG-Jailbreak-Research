@@ -2,6 +2,9 @@
 
 ## 0.1.0~beta4 (do this first, only after the owner approves installing it)
 
+The full procedure with exact commands, preflight and recovery is `QUALIFICATION_0.1.0-beta4.md` (rows Q1–Q16). The
+rows below are the same scenarios in short form.
+
 Before installing:
 - If the iPhone is in Safe Mode, follow `RECOVERY.md` §0 first and save the SpringBoard crash report.
 - Record at the top of your notes:

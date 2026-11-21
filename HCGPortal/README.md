@@ -33,6 +33,27 @@ first** — the normal iOS request — and only the action you chose runs after 
 
 ## Status
 
+> **0.1.0~beta4 (development build, branch `claude/portal-0.1.0-beta4-unlock-gate`): unlock gating and touch repair.**
+>
+> - Portal works only on an unlocked iPhone, on the Cover Sheet pulled down after unlocking. It shows nothing on the
+>   locked Lock Screen, and locking removes it at once. Its access fails closed (`docs/SECURITY.md`).
+> - Its controls now respond to fingers despite SpringBoard's own Cover Sheet recognizers
+>   (`docs/DIAGNOSIS_0.1.0-beta3-unresponsive.md`).
+> - **Simulator validated; physical iPhone verification pending** (`docs/DEVICE_TEST_CHECKLIST.md`, D1–D16).
+> - Not imported into HCG Repo. Publication and device installation wait for the owner's approval.
+>
+> Test artifact: `com.hakmicapitalgroup.portal_0.1.0~beta4_iphoneos-arm64.deb`, 293,942 bytes, SHA-256
+> `8a186d99a63d38c2bc4fb25d40bcfd773bbc042e5309063e0a87fc4d584164e4`, commit `1298ded`, *HCG Portal build* run
+> [44871433709](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44871433709) (artifact 14693943993).
+>
+> - `validate.sh --require-new-abi`: 0 failures / 0 warnings, also outside CI on the downloaded bytes. It confirms no
+>   unlock request and no passcode or keybag API.
+> - No Substrate load command in either slice.
+> - Host tests: 2,927,359 checks (macOS).
+> - Simulator runtime: 65/65.
+> - Preview [44871433770](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44871433770): 122/122,
+>   with real UIKit touch events.
+
 > **0.1.0~beta3 (test build, branch `claude/portal-0.1.0-beta3-lifecycle`)**: Lock Screen lifecycle hardening after
 > the Safe Mode incident with 0.1.0~beta1 (`CHANGELOG.md`, `docs/INCIDENT_0.1.0-beta1.md`). Cause **not confirmed**
 > (no crash report reviewed yet). Kept as a CI test artifact until the short device test passes

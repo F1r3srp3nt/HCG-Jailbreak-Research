@@ -10,13 +10,13 @@ Record at the top of your notes: **iPhone model, iOS version, jailbreak and vers
 
 | # | Step | Expected |
 |---|---|---|
-| P1 | Install the 0.1.0~beta3 `.deb`; **respring with Portal off**; respring again | normal, no Safe Mode. Settings › HCG Portal: *Off*; *Diagnostics* empty or a clean previous launch |
+| P1 | **The original trigger:** install the 0.1.0~beta3 `.deb` the same way as in the recording (Sileo, *Setting up HCG Portal*, then Sileo's respring). Portal is off after installation. Respring once more | normal, no Safe Mode. Settings › HCG Portal: *Off* |
 | P2 | Enable HCG Portal; lock; wake | Status *Active*; portal below the clock |
 | P3 | **The triggering sequence:** 10× lock → wake → tap the portal (menu opens) → tap outside (closes) → unlock with Face ID / swipe. Every 3rd time unlock with the menu still open. Twice, let the screen sleep on the Lock Screen and wake it | no respring, no Safe Mode; portal back each time; unlock gesture normal |
 | P4 | On the Lock Screen: open the menu, tap Backgrounds, cancel the authentication; then tap it again and authenticate | cancel opens nothing; authenticating opens Settings once |
 | P5 | Settings › HCG Portal: Enable off and on 5× (then lock and look) | portal gone at once when off, back when on; only one portal |
 | P6 | Respring with Portal **on**; lock; wake | normal; portal back |
-| P7 | Settings › HCG Portal: note *Lock Screen container* and *Diagnostics* | send both lines |
+| P7 | Respring once more, then Settings › HCG Portal: screenshot the status section (*Lock Screen container* and *Diagnostics* = the previous launch's last step) | send the screenshot |
 
 **Then one companion at a time.** Enable (or install) **one** of HCG Halo, HCG Animation Center, HCG Nexus, respring,
 repeat P2–P3, then turn it off again before the next: Halo → Animation Center → Nexus.

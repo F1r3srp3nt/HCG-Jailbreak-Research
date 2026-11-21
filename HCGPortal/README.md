@@ -39,6 +39,15 @@ first** — the normal iOS request — and only the action you chose runs after 
 > (`docs/DEVICE_TEST_CHECKLIST.md`, P1–P7). Not imported into HCG Repo. If the phone is in Safe Mode, see
 > `docs/RECOVERY.md` §0 first.
 >
+> Test artifact: `com.hakmicapitalgroup.portal_0.1.0~beta3_iphoneos-arm64.deb`, 284,190 bytes, SHA-256
+> `9af1575a368d53537c7c094240d030704c1b45d3bc0b7616de945abe9a8dcb34`, commit `579213e`, *HCG Portal build* run
+> [44861951914](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44861951914) (artifact 14690321654).
+> `validate.sh --require-new-abi` 0 failures / 0 warnings (also outside CI on the downloaded bytes); no Substrate load
+> command in either slice; host tests 2,620,829 checks; Simulator runtime 67/67; preview
+> [44861951916](https://github.com/F1r3srp3nt/HCG-Jailbreak-Research/actions/runs/44861951916) 115/115, including
+> 20 lock / wake / menu / unlock cycles, a layout storm, main-page rebuild, container unavailable, late callbacks and
+> 10 disable / re-enable cycles. Simulator only.
+>
 > **0.1.0~beta2 (test build, branch `claude/portal-0.1.0-beta2-startup`)**: startup hardening after a SpringBoard Safe
 > Mode incident with 0.1.0~beta1 (see `CHANGELOG.md`). Kept as a CI test artifact until it has been tried on the phone
 > from the recording (`docs/DEVICE_TEST_CHECKLIST.md`, rows B0–B8). Not imported into HCG Repo.

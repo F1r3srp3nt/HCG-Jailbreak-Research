@@ -1,6 +1,6 @@
 Package: com.hakmicapitalgroup.animationcenter
 Name: HCG Animation Center (Beta)
-Version: 0.1.0~beta1
+Version: 0.2.0~alpha1
 Architecture: iphoneos-arm64
 Description: Free public beta demo. HCG Animation Center plays your own videos and GIFs as animated backgrounds behind the Home Screen icons and, experimentally, on the Lock Screen. Import from Photos or Files, trim, choose fill, fit or crop, loop, speed and a still fallback, and preview before applying. Always muted; pauses when hidden or the screen is off; follows Reduce Motion and Low Power Mode. Off after installation; enable it in Settings. Your system wallpaper is never changed: turning it off or removing it shows your normal wallpaper again. Not yet device-tested.
 Maintainer: Hakmi Capital Group

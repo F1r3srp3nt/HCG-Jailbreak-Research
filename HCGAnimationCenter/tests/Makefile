@@ -8,7 +8,7 @@ KIT := ../HCGBackgroundKit/Sources/HCGBackgroundKit
 CORE := $(KIT)/HCGBackgroundCore.c ../src/HACPolicy.c
 HEADERS := $(KIT)/include/HCGBackgroundCore.h ../src/HACPolicy.h
 
-.PHONY: test schema deb-format clean
+.PHONY: test schema compat deb-format clean
 test: $(BUILD)/test_core
 	$(abspath $(BUILD))/test_core
 
@@ -19,6 +19,10 @@ $(BUILD)/test_core: test_core.c $(CORE) $(HEADERS)
 # The preset schema, the example presets and the code's constants agree.
 schema:
 	python3 -I test_schema.py
+
+# Kit 1.0's C code is unchanged (the Mac app vendors it by checksum); 1.1 only appends.
+compat:
+	python3 -I test_core_compat.py
 
 # Packaging regression check (gzip-only .deb members). Python standard library.
 deb-format:

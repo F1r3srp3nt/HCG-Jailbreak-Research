@@ -208,7 +208,7 @@ static NSString *const kLivePhotoType = @"com.apple.live-photo";
                                                       handler:^(UIAction *a) {
                                                           [weakSelf pickFromFiles:NO];
                                                       }],
-                                    [UIAction actionWithTitle:@"HCG Preset (.hcgbackground)"
+                                    [UIAction actionWithTitle:@"HCG Preset or Pack (.hcgbackground, .hcgpack)"
                                                         image:[UIImage systemImageNamed:@"shippingbox"]
                                                    identifier:nil
                                                       handler:^(UIAction *a) {
@@ -244,10 +244,14 @@ static NSString *const kLivePhotoType = @"com.apple.live-photo";
 }
 
 - (UIImage *)thumbnailFor:(HCGBackgroundPreset *)item {
-    UIImage *image = [_thumbnails objectForKey:item.identifier];
+    // The thumbnail is the source frame; show it the way the Home Screen
+    // placement turns and flips it.
+    NSString *key = [NSString stringWithFormat:@"%@/%ld%d%d", item.identifier, (long)item.rotation, item.flipHorizontal,
+                                               item.flipVertical];
+    UIImage *image = [_thumbnails objectForKey:key];
     if (image) return image;
-    image = [UIImage imageWithContentsOfFile:[[HACLibrary shared] thumbnailURLForItem:item].path];
-    if (image) [_thumbnails setObject:image forKey:item.identifier];
+    image = HACOrientedImage([UIImage imageWithContentsOfFile:[[HACLibrary shared] thumbnailURLForItem:item].path], item);
+    if (image) [_thumbnails setObject:image forKey:key];
     return image;
 }
 

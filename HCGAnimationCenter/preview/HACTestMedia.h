@@ -15,6 +15,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// H.264 + AAC (silence) QuickTime movie; `hue` shifts the palette.
 BOOL HACWriteTestVideo(NSURL *url, CGSize size, double seconds, double hue, BOOL withAudio, NSError **error);
+/// The same, with orientation metadata (`transform`, as a camera writes it)
+/// and, if `marker`, a red square in the stored frame's top-left corner.
+BOOL HACWriteTestVideoWithOrientation(NSURL *url, CGSize size, double seconds, double hue, BOOL withAudio,
+                                      CGAffineTransform transform, BOOL marker, NSError **error);
+/// A camera-style preferred transform that turns a `natural` frame clockwise
+/// by 90 / 180 / 270 degrees.
+CGAffineTransform HACTestRotationTransform(CGSize natural, NSInteger degrees);
 /// Animated GIF, one frame per delay (seconds; 0 = "unspecified").
 BOOL HACWriteTestGIF(NSURL *url, CGSize size, NSArray<NSNumber *> *delays, NSError **error);
 /// Writes random.mov (noise), truncated.mp4 (cut from `validVideo`), still.png,

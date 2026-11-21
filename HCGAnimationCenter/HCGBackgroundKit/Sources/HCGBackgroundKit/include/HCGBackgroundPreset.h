@@ -71,6 +71,37 @@ typedef NS_ENUM(NSInteger, HCGBackgroundScaling) {
 @property (nonatomic) CGRect crop; ///< normalised to the media frame; used by "crop"
 @property (nonatomic, copy) NSString *backgroundColor; ///< "#RRGGBB", behind "fit"
 
+// Orientation and transformation — format v1 minor addition "layout.transform"
+// (HCGBackgroundKit 1.1). Non-destructive: the media file is never changed;
+// renderers apply these on top of the source's own orientation metadata.
+// Readers before 1.1 ignore "layout.transform" and show the clip upright,
+// unflipped and unstretched (with "fill" as the stretch fallback).
+
+/// Clockwise quarter turns after the source's metadata: 0, 90, 180 or 270.
+@property (nonatomic) NSInteger rotation;
+/// Mirror left / right, then top / bottom — in screen axes, after rotating.
+@property (nonatomic) BOOL flipHorizontal;
+@property (nonatomic) BOOL flipVertical;
+/// Fill the container exactly, ignoring the aspect ratio ("Stretch").
+@property (nonatomic) BOOL stretch;
+/// The preset carries a "layout.transform" object (read from one, or set by an
+/// editor). With it, zoom and position (the crop rectangle) apply to "fit" and
+/// stretch too. It is written whenever this is YES or the transform is not the
+/// identity, so presets that never used a transform stay byte-identical.
+@property (nonatomic) BOOL hasTransform;
+/// YES if fit / stretch use the crop rectangle (hasTransform, or a non-identity transform).
+@property (nonatomic, readonly) BOOL usesRegionInAllModes;
+@property (nonatomic, readonly) BOOL isTransformIdentity;
+/// The media's display size after `rotation` (sides swapped for 90 / 270).
+@property (nonatomic, readonly) CGSize orientedMediaSize;
+/// Informational "media.sourceRotation": the quarter turn the source's own
+/// orientation metadata applies (0 / 90 / 180 / 270), or -1 if unknown.
+@property (nonatomic) NSInteger sourceRotation;
+
+/// Back to the source as recorded: no rotation, flips or stretch, Fill, the
+/// whole frame, and no transform object.
+- (void)resetTransform;
+
 // Generator (informational: how the media was made)
 @property (nonatomic, copy, nullable) NSDictionary<NSString *, id> *generator;
 

@@ -105,6 +105,28 @@ for bad in ["../x.mov", "a/b.mov", ".hidden", "x:y", "a\\b"]:
 for good in ["media.mov", "6F0B-still.jpg", "Clip 1.mp4"]:
     check(re.search(pattern, good) is not None, f"file-name pattern refuses {good!r}")
 
+# The 1.0 schema (byte-identical to the copy HCG Animation Center for Mac vendors)
+# is kept as a fixture: every example, including transformed ones, must still
+# validate against it, so older validators accept 1.1 presets.
+OLD_SCHEMA_PATH = os.path.join(ROOT, "tests", "fixtures", "hcg-background-preset-v1.0.schema.json")
+import hashlib
+check(hashlib.sha256(open(OLD_SCHEMA_PATH, "rb").read()).hexdigest()
+      == "6eac9062fd3c6a694555776b15a23b1fc97e22d0eeee082b24521fa234fef3f7",
+      "the 1.0 schema fixture is not the Mac-vendored 1.0 schema")
+OLD_SCHEMA = json.load(open(OLD_SCHEMA_PATH))
+
+# The 1.1 additions are optional and change nothing else.
+transform = props["layout"]["properties"].get("transform", {})
+check(transform.get("properties", {}).get("rotation", {}).get("enum") == [0, 90, 180, 270], "transform.rotation enum")
+for key in ("flipHorizontal", "flipVertical", "stretch"):
+    check(transform.get("properties", {}).get(key, {}).get("type") == "boolean", f"transform.{key} boolean")
+check("transform" not in SCHEMA["properties"]["layout"].get("required", []), "transform must stay optional")
+old_props = OLD_SCHEMA["properties"]
+for section in ("media", "still", "playback", "layout"):
+    for key, rule in old_props[section].get("properties", {}).items():
+        check(SCHEMA["properties"][section]["properties"].get(key) == rule, f"1.0 rule {section}.{key} changed")
+check(OLD_SCHEMA["required"] == SCHEMA["required"], "required keys changed")
+
 # Every example validates, and its trim / still are inside the clip.
 examples = []
 for dirpath, _, files in os.walk(os.path.join(KIT, "Examples")):
@@ -114,6 +136,8 @@ for path in examples:
     doc = json.load(open(path))
     problems = validate(doc, SCHEMA)
     check(not problems, f"{os.path.relpath(path, ROOT)}: {problems}")
+    old_problems = validate(doc, OLD_SCHEMA)
+    check(not old_problems, f"{os.path.relpath(path, ROOT)} is refused by the 1.0 schema: {old_problems}")
     pb = doc.get("playback", {})
     end = pb.get("trimEnd", 0) or doc["media"]["duration"]
     check(0 <= pb.get("trimStart", 0) < end <= doc["media"]["duration"], f"{path}: trim outside the clip")
@@ -128,6 +152,9 @@ for mutate, why in [
     (lambda d: d["playback"].update(speed=8), "speed out of range"),
     (lambda d: d["layout"].update(scaling="stretch"), "unknown scaling"),
     (lambda d: d.pop("media"), "no media"),
+    (lambda d: d["layout"].update(transform={"rotation": 45}), "a rotation that is not a quarter turn"),
+    (lambda d: d["layout"].update(transform={"flipHorizontal": "yes"}), "a non-boolean flip"),
+    (lambda d: d["media"].update(sourceRotation=30), "a source rotation that is not a quarter turn"),
 ]:
     doc = json.loads(json.dumps(base))
     mutate(doc)

@@ -4,6 +4,7 @@
 //
 
 #import "HACTheme.h"
+#import "HCGBackgroundCore.h"
 
 UIColor *HACAccentColor(void) {
     return [UIColor colorWithRed:0.53 green:0.42 blue:1.0 alpha:1]; // #876BFF
@@ -48,6 +49,51 @@ NSString *HACDescribePreset(HCGBackgroundPreset *preset) {
                                                                : @"video";
     return [NSString stringWithFormat:@"%.0f × %.0f · %@ · %@", preset.mediaSize.width, preset.mediaSize.height,
                                       HACFormatSeconds(preset.duration), origin];
+}
+
+NSString *HACDescribeTransform(HCGBackgroundPreset *preset) {
+    NSMutableArray *parts = [NSMutableArray array];
+    if (preset.rotation) [parts addObject:[NSString stringWithFormat:@"rotated %ld°", (long)preset.rotation]];
+    if (preset.flipHorizontal) [parts addObject:@"flipped horizontally"];
+    if (preset.flipVertical) [parts addObject:@"flipped vertically"];
+    if (preset.stretch) [parts addObject:@"stretch"];
+    if (!parts.count) return @"Original orientation";
+    NSString *text = [parts componentsJoinedByString:@" · "];
+    return [[text substringToIndex:1].uppercaseString stringByAppendingString:[text substringFromIndex:1]];
+}
+
+NSString *HACDescribeSource(HCGBackgroundPreset *preset) {
+    NSString *size = [NSString stringWithFormat:@"%.0f × %.0f", preset.mediaSize.width, preset.mediaSize.height];
+    NSString *metadata = preset.sourceRotation > 0
+                             ? [NSString stringWithFormat:@"metadata rotation %ld° applied", (long)preset.sourceRotation]
+                         : preset.sourceRotation == 0 ? @"no metadata rotation"
+                                                      : @"orientation as recorded";
+    BOOL converted = [preset.generator[@"converted"] isEqual:@YES];
+    return [NSString stringWithFormat:@"%@ · %@%@", size, metadata, converted ? @" · converted on import" : @""];
+}
+
+UIImage *HACOrientedImage(UIImage *image, HCGBackgroundPreset *preset) {
+    if (!image || preset.isTransformIdentity || (!preset.rotation && !preset.flipHorizontal && !preset.flipVertical))
+        return image;
+    CGSize size = image.size;
+    HCGBGSize media = {size.width, size.height};
+    HCGBGSize oriented = hcgbg_oriented_size(media, (int)preset.rotation);
+    HCGBGTransform t = hcgbg_transform_identity();
+    t.rotation = (int)preset.rotation;
+    t.flipHorizontal = preset.flipHorizontal;
+    t.flipVertical = preset.flipVertical;
+    HCGBGPlacement p = hcgbg_layout_transformed(oriented, media, HCGBGScalingFill, (HCGBGRect){0, 0, 1, 1}, t);
+    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
+    format.scale = image.scale;
+    format.opaque = YES;
+    UIGraphicsImageRenderer *renderer =
+        [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(oriented.width, oriented.height) format:format];
+    return [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+        CGContextRef ctx = context.CGContext;
+        CGContextTranslateCTM(ctx, p.frame.x + p.frame.width / 2, p.frame.y + p.frame.height / 2);
+        CGContextConcatCTM(ctx, CGAffineTransformMake(p.a, p.b, p.c, p.d, 0, 0));
+        [image drawInRect:CGRectMake(-p.bounds.width / 2, -p.bounds.height / 2, p.bounds.width, p.bounds.height)];
+    }];
 }
 
 @implementation HACPreviewStage {

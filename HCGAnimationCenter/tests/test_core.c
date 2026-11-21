@@ -362,6 +362,210 @@ static void test_policy_ids(void) {
     CHECK(strcmp(hac_show_id(HACShowPaused), "paused") == 0, "show id");
 }
 
+
+// ---- Orientation and transformation ---------------------------------------------
+
+static bool near_eps(double a, double b, double eps) {
+    return fabs(a - b) <= eps * fmax(1.0, fmax(fabs(a), fabs(b)));
+}
+
+/// Maps a point of the untransformed layer (relative to its centre) through the placement.
+static void map_point(HCGBGPlacement p, double x, double y, double *ox, double *oy) {
+    *ox = p.frame.x + p.frame.width / 2 + x * p.a + y * p.c;
+    *oy = p.frame.y + p.frame.height / 2 + x * p.b + y * p.d;
+}
+
+static void test_rotation_helpers(void) {
+    bool exact = false;
+    CHECK(hcgbg_rotation_normalize(0, &exact) == 0 && exact, "0");
+    CHECK(hcgbg_rotation_normalize(90, &exact) == 90 && exact, "90");
+    CHECK(hcgbg_rotation_normalize(450, &exact) == 90 && exact, "450 -> 90");
+    CHECK(hcgbg_rotation_normalize(-90, &exact) == 270 && exact, "-90 -> 270");
+    CHECK(hcgbg_rotation_normalize(-360, &exact) == 0 && exact, "-360 -> 0");
+    CHECK(hcgbg_rotation_normalize(100, &exact) == 90 && !exact, "100 -> 90, not exact");
+    CHECK(hcgbg_rotation_normalize(135.1, &exact) == 180 && !exact, "135.1 -> 180");
+    CHECK(hcgbg_rotation_normalize(DNAN, &exact) == 0 && !exact, "NaN -> 0");
+    CHECK(hcgbg_rotation_normalize(DINF, NULL) == 0, "inf -> 0");
+
+    // Video track preferred transforms (a, b, c, d) as cameras write them.
+    bool mirrored = true;
+    CHECK(hcgbg_rotation_from_matrix(1, 0, 0, 1, &mirrored) == 0 && !mirrored, "identity");
+    CHECK(hcgbg_rotation_from_matrix(0, 1, -1, 0, &mirrored) == 90 && !mirrored, "portrait recording (90)");
+    CHECK(hcgbg_rotation_from_matrix(-1, 0, 0, -1, &mirrored) == 180 && !mirrored, "upside down (180)");
+    CHECK(hcgbg_rotation_from_matrix(0, -1, 1, 0, &mirrored) == 270 && !mirrored, "270");
+    CHECK(hcgbg_rotation_from_matrix(-1, 0, 0, 1, &mirrored) >= 0 && mirrored, "front camera mirror reported");
+    CHECK(hcgbg_rotation_from_matrix(0.7071, 0.7071, -0.7071, 0.7071, NULL) == -1, "45° is not a quarter turn");
+    CHECK(hcgbg_rotation_from_matrix(2, 0, 0, 2, NULL) == -1, "scaled refused");
+    CHECK(hcgbg_rotation_from_matrix(DNAN, 0, 0, 1, NULL) == -1, "NaN refused");
+
+    HCGBGSize land = {1920, 1080};
+    HCGBGSize o = hcgbg_oriented_size(land, 90);
+    CHECK(near(o.width, 1080) && near(o.height, 1920), "90 swaps");
+    o = hcgbg_oriented_size(land, 180);
+    CHECK(near(o.width, 1920), "180 keeps");
+    o = hcgbg_oriented_size(land, -90);
+    CHECK(near(o.width, 1080), "-90 swaps");
+    CHECK(hcgbg_transform_is_identity(hcgbg_transform_identity()), "identity is identity");
+    HCGBGTransform t = hcgbg_transform_identity();
+    t.rotation = 360;
+    CHECK(hcgbg_transform_is_identity(t), "360 is identity");
+    t.flipVertical = true;
+    CHECK(!hcgbg_transform_is_identity(t), "flip is not identity");
+}
+
+static void test_transform_direction(void) {
+    // A 1920×1080 landscape picture rotated 90° clockwise into a portrait screen
+    // fills it exactly: its top-left corner goes to the top-RIGHT.
+    HCGBGSize screen = {1080, 1920}, land = {1920, 1080};
+    HCGBGTransform t = hcgbg_transform_identity();
+    t.rotation = 90;
+    HCGBGPlacement p = hcgbg_layout_transformed(screen, land, HCGBGScalingFill, kWhole, t);
+    CHECK(near(p.frame.x, 0) && near(p.frame.y, 0) && near(p.frame.width, 1080) && near(p.frame.height, 1920),
+          "90° landscape fills portrait exactly (%g %g %g %g)", p.frame.x, p.frame.y, p.frame.width, p.frame.height);
+    CHECK(near(p.bounds.width, 1920) && near(p.bounds.height, 1080), "layer keeps the source shape");
+    double x, y;
+    map_point(p, -p.bounds.width / 2, -p.bounds.height / 2, &x, &y);
+    CHECK(near(x, 1080) && near(y, 0), "top-left -> top-right (%g, %g)", x, y);
+    t.rotation = 270;
+    p = hcgbg_layout_transformed(screen, land, HCGBGScalingFill, kWhole, t);
+    map_point(p, -p.bounds.width / 2, -p.bounds.height / 2, &x, &y);
+    CHECK(near(x, 0) && near(y, 1920), "270: top-left -> bottom-left (%g, %g)", x, y);
+    t.rotation = 180;
+    p = hcgbg_layout_transformed(land, land, HCGBGScalingFill, kWhole, t);
+    map_point(p, -960, -540, &x, &y);
+    CHECK(near(x, 1920) && near(y, 1080), "180: top-left -> bottom-right");
+    t.rotation = 0;
+    t.flipHorizontal = true;
+    p = hcgbg_layout_transformed(land, land, HCGBGScalingFill, kWhole, t);
+    map_point(p, -960, -540, &x, &y);
+    CHECK(near(x, 1920) && near(y, 0), "flip H: top-left -> top-right");
+    t.flipHorizontal = false;
+    t.flipVertical = true;
+    p = hcgbg_layout_transformed(land, land, HCGBGScalingFill, kWhole, t);
+    map_point(p, -960, -540, &x, &y);
+    CHECK(near(x, 0) && near(y, 1080), "flip V: top-left -> bottom-left");
+    // Flips act in screen axes AFTER rotation: 90° + flip H moves top-left to top-left.
+    t.rotation = 90;
+    t.flipVertical = false;
+    t.flipHorizontal = true;
+    p = hcgbg_layout_transformed(screen, land, HCGBGScalingFill, kWhole, t);
+    map_point(p, -p.bounds.width / 2, -p.bounds.height / 2, &x, &y);
+    CHECK(near(x, 0) && near(y, 0), "90° then flip H: top-left stays top-left (%g, %g)", x, y);
+
+    // Stretch: exactly the container, whatever the aspect.
+    t = hcgbg_transform_identity();
+    t.stretch = true;
+    HCGBGSize ultra = {3840, 1080};
+    p = hcgbg_layout_transformed(screen, ultra, HCGBGScalingFill, kWhole, t);
+    CHECK(near(p.frame.x, 0) && near(p.frame.y, 0) && near(p.frame.width, 1080) && near(p.frame.height, 1920), "stretch");
+    // Stretch with a region: the region maps exactly onto the container.
+    t.regionAllModes = true;
+    HCGBGRect region = {0.25, 0.1, 0.5, 0.8};
+    p = hcgbg_layout_transformed(screen, ultra, HCGBGScalingFill, region, t);
+    CHECK(near(p.frame.x + 0.25 * p.frame.width, 0) && near(p.frame.x + 0.75 * p.frame.width, 1080) &&
+              near(p.frame.y + 0.1 * p.frame.height, 0) && near(p.frame.y + 0.9 * p.frame.height, 1920),
+          "stretch region -> container");
+    // Fit with a region: the region is inside, touching one axis, centred.
+    t.stretch = false;
+    p = hcgbg_layout_transformed(screen, ultra, HCGBGScalingFit, region, t);
+    double rx0 = p.frame.x + 0.25 * p.frame.width, rx1 = p.frame.x + 0.75 * p.frame.width;
+    double ry0 = p.frame.y + 0.1 * p.frame.height, ry1 = p.frame.y + 0.9 * p.frame.height;
+    CHECK(rx0 >= -1e-6 && rx1 <= 1080 + 1e-6 && ry0 >= -1e-6 && ry1 <= 1920 + 1e-6, "fit region inside");
+    CHECK(near(rx1 - rx0, 1080) || near(ry1 - ry0, 1920), "fit region touches an edge");
+    CHECK(near((rx0 + rx1) / 2, 540) && near((ry0 + ry1) / 2, 960), "fit region centred");
+}
+
+static void test_transform_exhaustive(void) {
+    const HCGBGSize media[] = {
+        {1080, 1920}, {1920, 1080}, {1080, 1080}, {2560, 1080}, {3840, 1080}, {1080, 3840},
+        {4096, 2160}, {7680, 4320}, {16, 8192}, {8192, 16}, {641, 359},
+    };
+    const HCGBGSize containers[] = {{414, 896}, {896, 414}, {375, 812}, {1024, 1366}, {1179, 2556}, {1500, 500}};
+    const HCGBGRect crops[] = {{0, 0, 1, 1}, {0.2, 0.3, 0.5, 0.4}, {0.9, 0.9, 0.1, 0.1}, {0, 0.6, 0.3, 0.4}};
+    int bad = 0, cases = 0;
+    for (size_t m = 0; m < sizeof media / sizeof media[0]; m++)
+        for (size_t k = 0; k < sizeof containers / sizeof containers[0]; k++)
+            for (int rot = -90; rot <= 450; rot += 90)
+                for (int flips = 0; flips < 4; flips++)
+                    for (int sc = 0; sc < 3; sc++)
+                        for (int stretch = 0; stretch < 2; stretch++)
+                            for (int region = 0; region < 2; region++)
+                                for (size_t q = 0; q < sizeof crops / sizeof crops[0]; q++) {
+                                    cases++;
+                                    HCGBGSize md = media[m], ct = containers[k];
+                                    HCGBGTransform t = {rot, flips & 1, (flips & 2) != 0, stretch, region};
+                                    HCGBGPlacement p = hcgbg_layout_transformed(ct, md, (HCGBGScaling)sc, crops[q], t);
+                                    int r = hcgbg_rotation_normalize(rot, NULL);
+                                    HCGBGSize o = hcgbg_oriented_size(md, r);
+                                    // Matrix: a signed permutation, determinant = product of the flips.
+                                    double det = p.a * p.d - p.b * p.c;
+                                    double fdet = ((flips & 1) ? -1 : 1) * ((flips & 2) ? -1 : 1);
+                                    if (!near(det, fdet)) bad++;
+                                    // Bounds = frame, swapped for quarter turns; mapped corners give the frame back.
+                                    bool swap = r == 90 || r == 270;
+                                    if (!near(p.bounds.width, swap ? p.frame.height : p.frame.width)) bad++;
+                                    double minx = DINF, maxx = -DINF, miny = DINF, maxy = -DINF;
+                                    for (int c = 0; c < 4; c++) {
+                                        double x, y;
+                                        map_point(p, (c & 1 ? 0.5 : -0.5) * p.bounds.width, (c & 2 ? 0.5 : -0.5) * p.bounds.height,
+                                                  &x, &y);
+                                        minx = fmin(minx, x), maxx = fmax(maxx, x), miny = fmin(miny, y), maxy = fmax(maxy, y);
+                                    }
+                                    if (!near_eps(minx, p.frame.x, 1e-9) || !near_eps(maxx, p.frame.x + p.frame.width, 1e-9) ||
+                                        !near_eps(miny, p.frame.y, 1e-9) || !near_eps(maxy, p.frame.y + p.frame.height, 1e-9))
+                                        bad++;
+                                    if (stretch) {
+                                        HCGBGRect c = region ? hcgbg_crop_clamp(crops[q]) : kWhole;
+                                        if (!near_eps(p.frame.x + c.x * p.frame.width, 0, 1e-9) ||
+                                            !near_eps(p.frame.x + (c.x + c.width) * p.frame.width, ct.width, 1e-9) ||
+                                            !near_eps(p.frame.y + (c.y + c.height) * p.frame.height, ct.height, 1e-9))
+                                            bad++;
+                                        continue;
+                                    }
+                                    // Not stretched: the oriented aspect is kept.
+                                    if (!near_eps(p.frame.width / p.frame.height, o.width / o.height, 1e-9)) bad++;
+                                    if (sc != HCGBGScalingFit && !covers(p.frame, ct)) bad++;
+                                    if (sc == HCGBGScalingFit && !region &&
+                                        (p.frame.x < -1e-6 || p.frame.y < -1e-6 || p.frame.x + p.frame.width > ct.width + 1e-6 ||
+                                         p.frame.y + p.frame.height > ct.height + 1e-6))
+                                        bad++;
+                                    // No transform → exactly the 1.0 layout and an identity matrix.
+                                    if (r == 0 && flips == 0 && !region) {
+                                        HCGBGRect old = hcgbg_layout(ct, md, (HCGBGScaling)sc, crops[q]);
+                                        if (memcmp(&old, &p.frame, sizeof old) != 0 || p.a != 1 || p.d != 1 || p.b != 0 || p.c != 0) bad++;
+                                    }
+                                }
+    CHECK(bad == 0, "%d transform invariant violations over %d layouts", bad, cases);
+    checks += cases - 1;
+
+    // Zoom / position round trips in every mode, on the oriented frame.
+    int rt = 0;
+    for (size_t m = 0; m < sizeof media / sizeof media[0]; m++)
+        for (int sc = 0; sc < 3; sc++)
+            for (int stretch = 0; stretch < 2; stretch++)
+                for (int zi = 0; zi < 5; zi++) {
+                    double zoom = 1 + zi * 0.75;
+                    HCGBGSize o = hcgbg_oriented_size(media[m], 90);
+                    HCGBGRect r = hcgbg_region_from_zoom((HCGBGScaling)sc, stretch, containers[0], o, zoom, 0.3, 0.7);
+                    if (r.x < -1e-12 || r.y < -1e-12 || r.x + r.width > 1 + 1e-12 || r.y + r.height > 1 + 1e-12) rt++;
+                    // Beyond ~10:1 against the screen, the 1.0 minimum crop side (HCGBG_CROP_MIN)
+                    // makes the region wider than a fill would show; the region is still valid
+                    // (checked above) but zoom is not recoverable from it, as in 1.0.
+                    double oa = o.width / o.height, ca = containers[0].width / containers[0].height;
+                    if (!stretch && sc != HCGBGScalingFit && fmin(oa / ca, ca / oa) < HCGBG_CROP_MIN) continue;
+                    double back = hcgbg_zoom_for_region((HCGBGScaling)sc, stretch, containers[0], o, r);
+                    HCGBGRect again = hcgbg_region_from_zoom((HCGBGScaling)sc, stretch, containers[0], o, back,
+                                                             r.x + r.width / 2, r.y + r.height / 2);
+                    if (fabs(again.x - r.x) > 1e-9 || fabs(again.width - r.width) > 1e-9) rt++;
+                }
+    CHECK(rt == 0, "%d zoom/region round-trip failures", rt);
+    HCGBGRect deg = hcgbg_region_from_zoom(HCGBGScalingFit, false, containers[0], media[0], DNAN, DNAN, DNAN);
+    CHECK(near(deg.width, 1) && near(deg.x, 0), "NaN zoom -> whole frame");
+    HCGBGSize zero = {0, 0};
+    HCGBGPlacement z = hcgbg_layout_transformed(containers[0], zero, HCGBGScalingFill, kWhole, hcgbg_transform_identity());
+    CHECK(near(z.frame.width, 414) && z.a == 1 && z.d == 1, "degenerate media -> container, identity");
+}
+
 int main(void) {
     test_identifiers();
     test_layout();
@@ -371,6 +575,9 @@ int main(void) {
     test_policy_examples();
     test_policy_exhaustive();
     test_policy_ids();
+    test_rotation_helpers();
+    test_transform_direction();
+    test_transform_exhaustive();
     if (failures) {
         printf("%d of %d checks FAILED\n", failures, checks);
         return 1;

@@ -73,8 +73,12 @@ typedef NS_ENUM(NSInteger, HCGBackgroundDisplay) {
 /// Restarts the trimmed clip from its start (keeps the current display).
 - (void)restartClip;
 
-/// For tests: the frame the media is laid out in (view coordinates).
+/// The transformed picture's bounding box (view coordinates).
 @property (nonatomic, readonly) CGRect mediaFrame;
+/// The untransformed layer size (the picture in the source's display orientation).
+@property (nonatomic, readonly) CGSize mediaBounds;
+/// The rotation / flip applied about the frame's centre (same for still and video).
+@property (nonatomic, readonly) CGAffineTransform mediaTransform;
 
 @end
 

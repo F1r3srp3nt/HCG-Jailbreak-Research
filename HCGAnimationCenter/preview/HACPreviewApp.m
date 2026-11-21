@@ -749,6 +749,113 @@ static UIImage *WallpaperImage(NSString *title, double hue) {
         [self dismissAlerts];
         [self->_settingsNav popToRootViewControllerAnimated:NO];
     });
+
+    // Orientation and transformation (0.2): a landscape clip and a phone clip
+    // whose file is landscape with 90° orientation metadata.
+    __block HCGBackgroundPreset *landscapeItem = nil, *metadataItem = nil;
+    STEP(1.0, {
+        NSURL *source = [[NSURL fileURLWithPath:NSTemporaryDirectory()] URLByAppendingPathComponent:@"import-orientation"];
+        [[NSFileManager defaultManager] createDirectoryAtURL:source withIntermediateDirectories:YES attributes:nil error:NULL];
+        NSURL *landscape = [source URLByAppendingPathComponent:@"Harbour Pan.mov"];
+        NSURL *rotated = [source URLByAppendingPathComponent:@"Phone Clip.mov"];
+        CGSize natural = CGSizeMake(1280, 720);
+        Check(HACWriteTestVideoWithOrientation(landscape, natural, 4, 0.08, NO, CGAffineTransformIdentity, YES, NULL),
+              @"generated a 1280×720 landscape clip (red marker top-left)");
+        Check(HACWriteTestVideoWithOrientation(rotated, natural, 4, 0.35, NO, HACTestRotationTransform(natural, 90), YES, NULL),
+              @"generated a 1280×720 clip with 90° orientation metadata");
+        HACLibraryViewController *lib = [[NSClassFromString(@"HACLibraryViewController") alloc] initBrowsing];
+        [self->_settingsNav pushViewController:lib animated:NO];
+        __block BOOL finished = NO;
+        [lib importFileURLs:@[ landscape, rotated ]
+                 completion:^(NSUInteger imported, NSArray *problems) {
+                     Check(imported == 2, [NSString stringWithFormat:@"imported both orientation clips (%lu)", (unsigned long)imported]);
+                     finished = YES;
+                 }];
+        WAIT_UNTIL(90, finished);
+        [[HACLibrary shared] reload];
+        for (HCGBackgroundPreset *p in [HACLibrary shared].items) {
+            if ([p.name isEqualToString:@"Harbour Pan"]) landscapeItem = p;
+            if ([p.name isEqualToString:@"Phone Clip"]) metadataItem = p;
+        }
+        Check(landscapeItem && CGSizeEqualToSize(landscapeItem.mediaSize, CGSizeMake(1280, 720)) && landscapeItem.sourceRotation == 0,
+              @"landscape clip: 1280×720, no metadata rotation");
+        Check(metadataItem && CGSizeEqualToSize(metadataItem.mediaSize, CGSizeMake(720, 1280)) && metadataItem.sourceRotation == 90 &&
+                  [metadataItem.mediaFile.pathExtension isEqualToString:@"mov"],
+              @"metadata clip: shown 720×1280, 90° detected, stored without transcoding");
+        [self->_settingsNav popToRootViewControllerAnimated:NO];
+    });
+    STEP(2.0, {
+        editor = [[NSClassFromString(@"HACEditorViewController") alloc] initWithItem:landscapeItem preferredSurface:HACSurfaceHome];
+        [self->_settingsNav pushViewController:editor animated:NO];
+        [editor setRotation:90];
+        [editor setFramingMode:HACFramingModeFillCrop];
+        CGAffineTransform t = editor.previewView.mediaTransform;
+        Check(editor.draft.rotation == 90 && fabs(t.b - 1) < 1e-9 && fabs(t.c + 1) < 1e-9,
+              @"Rotate 90°: the live preview turns clockwise");
+        CGRect f = editor.previewView.mediaFrame, b = editor.previewView.bounds;
+        Check(f.origin.x <= 0.01 && f.origin.y <= 0.01 && CGRectGetMaxX(f) >= b.size.width - 0.01 && CGRectGetMaxY(f) >= b.size.height - 0.01,
+              @"Fill / Crop: the turned landscape clip covers the portrait screen");
+        [self state:@"08-editor-rotate" caption:@"Editor: landscape clip rotated 90°, Fill / Crop — live preview"];
+        [self shot:@"08-editor-rotate"];
+    });
+    STEP(1.0, {
+        [editor setFlipHorizontal:YES vertical:NO];
+        [editor setFramingMode:HACFramingModeStretch];
+        HCGBackgroundPreset *d = editor.draft;
+        Check(d.flipHorizontal && d.stretch && CGRectEqualToRect(CGRectIntegral(editor.previewView.mediaFrame), editor.previewView.bounds),
+              @"Flip + Stretch: the picture fills the screen exactly");
+        [self state:@"09-editor-flip-stretch" caption:@"Editor: rotated 90°, flipped horizontally, Stretch"];
+        [self shot:@"09-editor-flip-stretch"];
+    });
+    STEP(1.0, {
+        [editor setFlipHorizontal:NO vertical:NO];
+        [editor setRotation:0];
+        [editor setFramingMode:HACFramingModeFit];
+        [editor setZoom:1.6 centerX:0.3 centerY:0.5];
+        HCGBackgroundPreset *d = editor.draft;
+        Check(d.scaling == HCGBackgroundScalingFit && d.hasTransform && fabs(editor.zoom - 1.6) < 0.01 && editor.position.x < 0.45,
+              @"Fit with zoom 1.6× and position: kept in the preset (layout.transform)");
+        [self state:@"10-editor-fit-zoom" caption:@"Editor: Fit, zoom 1.6×, moved left — bars in the background colour"];
+        [self shot:@"10-editor-fit-zoom"];
+    });
+    STEP(1.0, {
+        editor.placement = HACSurfaceLock;
+        Check(!editor.lockHasOwnSettings && editor.draft.scaling == HCGBackgroundScalingFit, @"Lock Screen starts from the Home settings");
+        [editor setRotation:270];
+        [editor setFramingMode:HACFramingModeFillCrop];
+        Check(editor.lockHasOwnSettings, @"changing the Lock Screen gives it its own settings");
+        NSError *error = nil;
+        Check([editor save:&error], @"both placements saved");
+        HACLibrary *lib = [HACLibrary shared];
+        Check([lib presetForItem:landscapeItem placement:HACSurfaceLock].rotation == 270 &&
+                  [lib presetForItem:landscapeItem placement:HACSurfaceHome].rotation == 0 &&
+                  [lib presetForItem:landscapeItem placement:HACSurfaceHome].scaling == HCGBackgroundScalingFit,
+              @"settings persisted per placement (Home: Fit 0°, Lock: Fill / Crop 270°)");
+        [self state:@"11-editor-lock-placement" caption:@"Editor: Lock Screen placement, its own rotation (270°)"];
+        [self shot:@"11-editor-lock-placement"];
+    });
+    STEP(1.0, {
+        [editor resetTransformations];
+        HCGBackgroundPreset *d = editor.draft;
+        Check(d.isTransformIdentity && !d.hasTransform && d.scaling == HCGBackgroundScalingFill && CGAffineTransformIsIdentity(editor.previewView.mediaTransform),
+              @"Reset Transformations: back to the source as recorded");
+        for (UIView *v in editor.view.subviews)
+            if ([v isKindOfClass:[UIScrollView class]]) [(UIScrollView *)v setContentOffset:CGPointMake(0, 470) animated:NO];
+        [self state:@"12-editor-controls" caption:@"Editor: Orientation and Framing controls (after Reset)"];
+        [self shot:@"12-editor-controls"];
+    });
+    STEP(1.5, {
+        [self->_settingsNav popViewControllerAnimated:NO];
+        editor = [[NSClassFromString(@"HACEditorViewController") alloc] initWithItem:metadataItem preferredSurface:HACSurfaceHome];
+        [self->_settingsNav pushViewController:editor animated:NO];
+        Check(CGAffineTransformIsIdentity(editor.previewView.mediaTransform) && editor.previewView.mediaBounds.height > editor.previewView.mediaBounds.width,
+              @"metadata rotation applied automatically: upright portrait, no editor rotation");
+        [self state:@"13-editor-metadata" caption:@"Editor: a phone clip stored landscape with 90° metadata shows upright"];
+        [self shot:@"13-editor-metadata"];
+    });
+    STEP(1.0, {
+        [self->_settingsNav popToRootViewControllerAnimated:NO];
+    });
     // AI: preview first, nothing stored until an explicit choice.
     __block HACAIViewController *ai = nil;
     STEP(1.0, {

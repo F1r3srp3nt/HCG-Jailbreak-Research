@@ -55,6 +55,20 @@ static CMSampleBufferRef SilenceBuffer(CMAudioFormatDescriptionRef format, int64
 }
 
 BOOL HACWriteTestVideo(NSURL *url, CGSize size, double seconds, double hue, BOOL withAudio, NSError **error) {
+    return HACWriteTestVideoWithOrientation(url, size, seconds, hue, withAudio, CGAffineTransformIdentity, NO, error);
+}
+
+CGAffineTransform HACTestRotationTransform(CGSize natural, NSInteger degrees) {
+    switch (degrees) {
+        case 90: return CGAffineTransformMake(0, 1, -1, 0, natural.height, 0);
+        case 180: return CGAffineTransformMake(-1, 0, 0, -1, natural.width, natural.height);
+        case 270: return CGAffineTransformMake(0, -1, 1, 0, 0, natural.width);
+        default: return CGAffineTransformIdentity;
+    }
+}
+
+BOOL HACWriteTestVideoWithOrientation(NSURL *url, CGSize size, double seconds, double hue, BOOL withAudio,
+                                      CGAffineTransform transform, BOOL marker, NSError **error) {
     [[NSFileManager defaultManager] removeItemAtURL:url error:NULL];
     AVAssetWriter *writer = [AVAssetWriter assetWriterWithURL:url fileType:AVFileTypeQuickTimeMovie error:error];
     if (!writer) return NO;
@@ -65,6 +79,7 @@ BOOL HACWriteTestVideo(NSURL *url, CGSize size, double seconds, double hue, BOOL
                                                                        AVVideoHeightKey : @(size.height),
                                                                    }];
     video.expectsMediaDataInRealTime = NO;
+    video.transform = transform; // orientation metadata (the track's preferred transform)
     AVAssetWriterInputPixelBufferAdaptor *adaptor = [AVAssetWriterInputPixelBufferAdaptor
         assetWriterInputPixelBufferAdaptorWithAssetWriterInput:video
                                    sourcePixelBufferAttributes:@{
@@ -134,6 +149,13 @@ BOOL HACWriteTestVideo(NSURL *url, CGSize size, double seconds, double hue, BOOL
                                                      (size_t)size.height, 8, CVPixelBufferGetBytesPerRow(buffer), space,
                                                      kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
             DrawFrame(ctx, size, i / (double)fps, hue);
+            if (marker) {
+                // Pure red square in the stored picture's top-left corner (CG's
+                // y axis points up, so the top is at size.height).
+                double side = round(MIN(size.width, size.height) * 0.22);
+                CGContextSetRGBFillColor(ctx, 1, 0, 0, 1);
+                CGContextFillRect(ctx, CGRectMake(0, size.height - side, side, side));
+            }
             CGContextRelease(ctx);
             CVPixelBufferUnlockBaseAddress(buffer, 0);
             ok = [adaptor appendPixelBuffer:buffer withPresentationTime:CMTimeMake(i, fps)];

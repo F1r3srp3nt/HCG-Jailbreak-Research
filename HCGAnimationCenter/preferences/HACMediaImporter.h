@@ -4,9 +4,12 @@
 //
 //  Turns a user's file into a library item (docs/LIVE-BACKGROUNDS.md):
 //
-//    video (MOV / MP4 / M4V, H.264 or HEVC)  →  video track only, passthrough;
-//        downscaled to 1920 × 1080 (H.264) if a side exceeds 2688 px or
-//        passthrough fails. The audio track is dropped: backgrounds are muted.
+//    video (MOV / MP4 / M4V, H.264 or HEVC)  →  video track only, passthrough
+//        (no transcoding; orientation metadata kept and recorded as
+//        media.sourceRotation) when the long side is at most 4096 px and the
+//        frame at most 4.19 MP (2048 x 2048). Larger, or not copyable: an
+//        upright H.264 copy with the same aspect ratio inside that budget.
+//        The audio track is dropped: backgrounds are muted.
 //    animated GIF (2+ frames)  →  H.264 MP4, longer side at most 1080 px,
 //        browser frame timing, repeated to at least 1 s.
 //    still images, Live Photos  →  refused with a reason (not live backgrounds).
@@ -18,6 +21,7 @@
 
 #import <Foundation/Foundation.h>
 
+#import "HACPolicy.h"
 #import "HCGBackgroundPreset.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -31,7 +35,12 @@ typedef NS_ENUM(NSInteger, HACMediaKind) {
 
 FOUNDATION_EXPORT NSString *const HACImportErrorDomain;
 FOUNDATION_EXPORT const unsigned long long HACMaxSourceBytes; // 512 MB
-FOUNDATION_EXPORT const double HACMaxStoredLongSide;          // 2688 px: larger videos are downscaled
+FOUNDATION_EXPORT const double HACMaxStoredLongSide;          // 4096 px: longer videos are converted
+FOUNDATION_EXPORT const double HACMaxStoredPixels;            // 2048 x 2048: larger frames are converted
+/// Whether a video of this display size is stored as is (passthrough).
+FOUNDATION_EXPORT BOOL HACVideoFitsWithoutConversion(CGSize size);
+/// The size a larger video is converted to (aspect kept, even sides).
+FOUNDATION_EXPORT CGSize HACConvertedVideoSize(CGSize size);
 FOUNDATION_EXPORT const double HACGIFMaxLongSide;             // 1080 px
 FOUNDATION_EXPORT const NSUInteger HACGIFMaxFrames;           // 3000
 
@@ -58,6 +67,9 @@ typedef void (^HACImportCompletion)(HCGBackgroundPreset *_Nullable item, NSError
 
 /// (Re)writes the item's still at its stillTime, and the thumbnail. Synchronous.
 + (BOOL)writeStillAndThumbnailForItem:(HCGBackgroundPreset *)item error:(NSError **)error;
+/// (Re)writes a placement's still (<ID>-still.jpg / <ID>-still-lock.jpg) and
+/// sets item.stillFile; the Home Screen also rewrites the thumbnail.
++ (BOOL)writeStillForItem:(HCGBackgroundPreset *)item placement:(HACSurface)placement error:(NSError **)error;
 
 @end
 

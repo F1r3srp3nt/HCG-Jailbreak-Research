@@ -14,4 +14,4 @@
 #import "HCGBackgroundView.h"
 
 /// Version of this component (independent of the preset format version).
-#define HCG_BACKGROUND_KIT_VERSION "1.0.0"
+#define HCG_BACKGROUND_KIT_VERSION "1.1.0"

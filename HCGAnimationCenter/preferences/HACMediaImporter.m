@@ -14,7 +14,8 @@
 
 NSString *const HACImportErrorDomain = @"com.hakmicapitalgroup.animationcenter.import";
 const unsigned long long HACMaxSourceBytes = 512ull * 1024 * 1024;
-const double HACMaxStoredLongSide = 2688;
+const double HACMaxStoredLongSide = 4096;
+const double HACMaxStoredPixels = 2048.0 * 2048.0;
 const double HACGIFMaxLongSide = 1080;
 const NSUInteger HACGIFMaxFrames = 3000;
 
@@ -175,6 +176,8 @@ static NSURL *StagingFolder(void) {
     HACMediaKind kind = [HACMediaImporter kindOfFileAtURL:url];
     NSString *origin = nil;
     NSURL *output = nil;
+    NSInteger sourceRotation = 0;
+    BOOL converted = NO;
     report(0.02, @"Checking");
     switch (kind) {
         case HACMediaKindStillImage:
@@ -193,7 +196,12 @@ static NSURL *StagingFolder(void) {
         case HACMediaKindVideo:
         case HACMediaKindUnknown:
             origin = @"video";
-            output = [self importVideo:url identifier:identifier report:report error:error];
+            output = [self importVideo:url
+                            identifier:identifier
+                        sourceRotation:&sourceRotation
+                             converted:&converted
+                                report:report
+                                 error:error];
             if (!output) return nil;
             break;
     }
@@ -218,7 +226,9 @@ static NSURL *StagingFolder(void) {
                                                                   origin:origin];
     item.identifier = identifier;
     item.name = base.length ? base : ([origin isEqualToString:@"gif"] ? @"GIF" : @"Video");
-    item.generator = @{@"kind" : @"import", @"source" : origin};
+    item.sourceRotation = sourceRotation;
+    item.generator = converted ? @{@"kind" : @"import", @"source" : origin, @"converted" : @YES}
+                               : @{@"kind" : @"import", @"source" : origin};
     item.mediaSHA256 = [HACMediaImporter sha256OfFile:output];
     item.stillFile = [HACLibrary stillFileForIdentifier:identifier];
     NSError *presetError = nil;
@@ -256,6 +266,14 @@ static NSURL *StagingFolder(void) {
 }
 
 + (BOOL)probe:(AVAsset *)asset size:(CGSize *)size duration:(NSTimeInterval *)duration error:(NSError **)error {
+    return [self probe:asset size:size duration:duration rotation:NULL error:error];
+}
+
++ (BOOL)probe:(AVAsset *)asset
+         size:(CGSize *)size
+     duration:(NSTimeInterval *)duration
+     rotation:(NSInteger *)rotation
+        error:(NSError **)error {
     if (![self loadAsset:asset error:error]) return NO;
     AVAssetTrack *track = [asset tracksWithMediaType:AVMediaTypeVideo].firstObject;
     if (!asset.playable || !track) {
@@ -265,6 +283,12 @@ static NSURL *StagingFolder(void) {
     CGRect r = CGRectApplyAffineTransform(CGRectMake(0, 0, track.naturalSize.width, track.naturalSize.height),
                                           track.preferredTransform);
     *size = CGSizeMake(round(fabs(r.size.width)), round(fabs(r.size.height)));
+    if (rotation) {
+        // The quarter turn the file's orientation metadata applies (players and
+        // the still generator honour it; it is recorded as media.sourceRotation).
+        CGAffineTransform t = track.preferredTransform;
+        *rotation = hcgbg_rotation_from_matrix(t.a, t.b, t.c, t.d, NULL);
+    }
     *duration = CMTimeGetSeconds(asset.duration);
     if (!isfinite(*duration) || *duration < HCGBG_MIN_CLIP_SECONDS) {
         if (error) *error = ImportError(@"The video is shorter than half a second.");
@@ -283,11 +307,52 @@ static NSURL *StagingFolder(void) {
     return YES;
 }
 
-- (NSURL *)importVideo:(NSURL *)url identifier:(NSString *)identifier report:(void (^)(double, NSString *))report error:(NSError **)error {
+BOOL HACVideoFitsWithoutConversion(CGSize size) {
+    return MAX(size.width, size.height) <= HACMaxStoredLongSide && size.width * size.height <= HACMaxStoredPixels;
+}
+
+CGSize HACConvertedVideoSize(CGSize size) {
+    if (size.width < 1 || size.height < 1) return CGSizeZero;
+    double scale = MIN(1.0, MIN(HACMaxStoredLongSide / MAX(size.width, size.height),
+                                sqrt(HACMaxStoredPixels / (size.width * size.height))));
+    // Even sides (4:2:0 video), at least the smallest supported side.
+    double w = MAX((double)HCGBG_MIN_DIMENSION, 2 * floor(size.width * scale / 2));
+    double h = MAX((double)HCGBG_MIN_DIMENSION, 2 * floor(size.height * scale / 2));
+    return CGSizeMake(w, h);
+}
+
+/// Renders the track upright (its orientation metadata applied) at `target`.
+static AVMutableVideoComposition *UprightComposition(AVAssetTrack *source, AVCompositionTrack *track, CMTime duration,
+                                                     CGSize target) {
+    CGAffineTransform t = source.preferredTransform;
+    CGRect r = CGRectApplyAffineTransform(CGRectMake(0, 0, source.naturalSize.width, source.naturalSize.height), t);
+    if (r.size.width < 1 || r.size.height < 1) return nil;
+    t = CGAffineTransformConcat(t, CGAffineTransformMakeTranslation(-r.origin.x, -r.origin.y));
+    t = CGAffineTransformConcat(t, CGAffineTransformMakeScale(target.width / r.size.width, target.height / r.size.height));
+    AVMutableVideoComposition *composition = [AVMutableVideoComposition videoComposition];
+    composition.renderSize = target;
+    float fps = source.nominalFrameRate;
+    composition.frameDuration = CMTimeMake(1, fps >= 1 && fps <= 120 ? (int32_t)lroundf(fps) : 30);
+    AVMutableVideoCompositionInstruction *instruction = [AVMutableVideoCompositionInstruction videoCompositionInstruction];
+    instruction.timeRange = CMTimeRangeMake(kCMTimeZero, duration);
+    AVMutableVideoCompositionLayerInstruction *layer =
+        [AVMutableVideoCompositionLayerInstruction videoCompositionLayerInstructionWithAssetTrack:track];
+    [layer setTransform:t atTime:kCMTimeZero];
+    instruction.layerInstructions = @[ layer ];
+    composition.instructions = @[ instruction ];
+    return composition;
+}
+
+- (NSURL *)importVideo:(NSURL *)url
+            identifier:(NSString *)identifier
+        sourceRotation:(NSInteger *)sourceRotation
+             converted:(BOOL *)converted
+                report:(void (^)(double, NSString *))report
+                 error:(NSError **)error {
     AVURLAsset *asset = [AVURLAsset URLAssetWithURL:url options:@{AVURLAssetPreferPreciseDurationAndTimingKey : @YES}];
     CGSize size = CGSizeZero;
     NSTimeInterval duration = 0;
-    if (![HACMediaImporter probe:asset size:&size duration:&duration error:error]) return nil;
+    if (![HACMediaImporter probe:asset size:&size duration:&duration rotation:sourceRotation error:error]) return nil;
     AVAssetTrack *track = [asset tracksWithMediaType:AVMediaTypeVideo].firstObject;
 
     // Video track only: the stored file has no audio at all.
@@ -299,21 +364,36 @@ static NSURL *StagingFolder(void) {
         if (error) *error = ImportError(@"The video track can't be copied (%@).", insertError.localizedDescription ?: @"?");
         return nil;
     }
-    video.preferredTransform = track.preferredTransform;
-
     NSURL *media = [HACPreferences mediaFolder];
-    BOOL fits = MAX(size.width, size.height) <= HACMaxStoredLongSide;
+    // Passthrough (no transcoding, original quality, orientation metadata kept)
+    // whenever the decoder budget allows; otherwise an upright H.264 copy that
+    // keeps the aspect ratio (ultrawide stays ultrawide); 1920 x 1080 last.
+    AVMutableVideoComposition *upright =
+        UprightComposition(track, video, composition.duration, HACConvertedVideoSize(size));
     NSMutableArray<NSArray *> *attempts = [NSMutableArray array];
-    if (fits) [attempts addObject:@[ AVAssetExportPresetPassthrough, AVFileTypeQuickTimeMovie, @"mov" ]];
-    [attempts addObject:@[ AVAssetExportPreset1920x1080, AVFileTypeMPEG4, @"mp4" ]];
+    if (HACVideoFitsWithoutConversion(size))
+        [attempts addObject:@[ AVAssetExportPresetPassthrough, AVFileTypeQuickTimeMovie, @"mov", NSNull.null ]];
+    if (upright) [attempts addObject:@[ AVAssetExportPresetHighestQuality, AVFileTypeMPEG4, @"mp4", upright ]];
+    [attempts addObject:@[ AVAssetExportPreset1920x1080, AVFileTypeMPEG4, @"mp4", NSNull.null ]];
     NSError *lastError = nil;
     for (NSArray *attempt in attempts) {
         NSURL *output = [media URLByAppendingPathComponent:[identifier stringByAppendingPathExtension:attempt[2]]];
         [[NSFileManager defaultManager] removeItemAtURL:output error:NULL];
-        report(0.05, [attempt[0] isEqualToString:AVAssetExportPresetPassthrough] ? @"Copying the video"
-                                                                                 : @"Converting the video");
-        if ([self export:composition preset:attempt[0] fileType:attempt[1] to:output report:report error:&lastError])
+        BOOL passthrough = [attempt[0] isEqualToString:AVAssetExportPresetPassthrough];
+        AVVideoComposition *vc = attempt[3] == NSNull.null ? nil : attempt[3];
+        // A video composition renders the orientation itself.
+        video.preferredTransform = vc ? CGAffineTransformIdentity : track.preferredTransform;
+        report(0.05, passthrough ? @"Copying the video" : @"Converting the video");
+        if ([self export:composition
+                      preset:attempt[0]
+            videoComposition:vc
+                    fileType:attempt[1]
+                          to:output
+                      report:report
+                       error:&lastError]) {
+            if (converted) *converted = !passthrough;
             return output;
+        }
         [[NSFileManager defaultManager] removeItemAtURL:output error:NULL];
         if (_cancelled) break;
     }
@@ -324,8 +404,9 @@ static NSURL *StagingFolder(void) {
 }
 
 - (BOOL)export:(AVAsset *)asset
-        preset:(NSString *)preset
-      fileType:(AVFileType)fileType
+              preset:(NSString *)preset
+    videoComposition:(AVVideoComposition *)videoComposition
+            fileType:(AVFileType)fileType
             to:(NSURL *)output
         report:(void (^)(double, NSString *))report
          error:(NSError **)error {
@@ -335,6 +416,7 @@ static NSURL *StagingFolder(void) {
         return NO;
     }
     session.outputURL = output;
+    if (videoComposition) session.videoComposition = videoComposition;
     session.outputFileType = fileType;
     session.shouldOptimizeForNetworkUse = NO;
     _export = session;
@@ -528,13 +610,21 @@ static NSURL *StagingFolder(void) {
 }
 
 + (BOOL)writeStillAndThumbnailForItem:(HCGBackgroundPreset *)item error:(NSError **)error {
+    return [self writeStillForItem:item placement:HACSurfaceHome error:error];
+}
+
++ (BOOL)writeStillForItem:(HCGBackgroundPreset *)item placement:(HACSurface)placement error:(NSError **)error {
     NSURL *folder = [HACPreferences mediaFolder];
+    BOOL thumbnail = placement == HACSurfaceHome;
     NSURL *mediaURL = [item mediaURLInFolder:folder];
     if (!mediaURL) {
         if (error) *error = ImportError(@"The background has no video file.");
         return NO;
     }
-    if (!item.stillFile) item.stillFile = [HACLibrary stillFileForIdentifier:item.identifier];
+    // Each placement writes only its own still file. The still is the frame as
+    // the source shows it (orientation metadata applied, no editor transform):
+    // renderers apply the placement's transform to still and video alike.
+    item.stillFile = [HACLibrary stillFileForIdentifier:item.identifier placement:placement];
     AVURLAsset *asset = [AVURLAsset URLAssetWithURL:mediaURL options:nil];
     AVAssetImageGenerator *generator = [AVAssetImageGenerator assetImageGeneratorWithAsset:asset];
     generator.appliesPreferredTrackTransform = YES;
@@ -549,7 +639,7 @@ static NSURL *StagingFolder(void) {
         return NO;
     }
     BOOL ok = [self writeJPEG:still to:[item stillURLInFolder:folder] quality:0.9 error:error];
-    if (ok) {
+    if (ok && thumbnail) {
         // Thumbnail: at most 360 px on the longer side.
         CGFloat w = CGImageGetWidth(still), h = CGImageGetHeight(still);
         CGFloat s = MIN(1.0, 360.0 / MAX(w, h));

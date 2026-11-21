@@ -148,6 +148,75 @@ HCGBGSize hcgbg_even_fit(HCGBGSize source, double maxLongSide);
 /// Parses "#RRGGBB" (case-insensitive) into components in [0, 1].
 bool hcgbg_parse_hex_colour(const char *text, double *r, double *g, double *b);
 
+// ---- Orientation and transformation (kit 1.1; format v1 minor addition) ------
+//
+// A preset's optional "layout.transform" rotates (clockwise, in quarter turns)
+// and flips the picture AFTER the source's own orientation metadata, and can
+// stretch it to the container. Everything above this section is unchanged, so
+// renderers that predate it (and copies vendored elsewhere) keep their exact
+// behaviour; they simply ignore the transform.
+//
+// Frames: "media" is the display size after the source's metadata rotation
+// (as in a preset); "oriented" is that size after the user's rotation (sides
+// swapped for 90 / 270). The crop rectangle (zoom and position) is normalised
+// to the ORIENTED, flipped picture — what the viewer sees.
+
+typedef struct {
+    int rotation;          ///< 0, 90, 180 or 270 degrees clockwise
+    bool flipHorizontal;   ///< mirror left / right (after rotating)
+    bool flipVertical;     ///< mirror top / bottom (after rotating)
+    bool stretch;          ///< fill the container exactly, ignoring the aspect ratio
+    /// The preset has a transform object: "fit" and "stretch" then use the
+    /// crop rectangle as the region to show (zoom and position for every
+    /// mode). Without it, "fit" shows the whole frame, as before.
+    bool regionAllModes;
+} HCGBGTransform;
+
+/// No rotation, no flip, no stretch, legacy region rules.
+HCGBGTransform hcgbg_transform_identity(void);
+/// True if it changes nothing (rotation 0, no flips, no stretch).
+bool hcgbg_transform_is_identity(HCGBGTransform t);
+
+/// Degrees to the nearest quarter turn in [0, 360): 450 → 90, -90 → 270,
+/// 100 → 90. *exact is set to whether the input already was a quarter turn
+/// (finite and a multiple of 90). Non-finite → 0, not exact.
+int hcgbg_rotation_normalize(double degrees, bool *exact);
+
+/// The quarter turn a video track's preferred transform (a, b, c, d of its
+/// affine matrix) applies, for reporting the source's orientation metadata;
+/// -1 if it is not a quarter turn (skew or arbitrary angle). Mirroring in the
+/// metadata is reported through *mirrored.
+int hcgbg_rotation_from_matrix(double a, double b, double c, double d, bool *mirrored);
+
+/// The media size after a rotation (width and height swapped for 90 / 270).
+HCGBGSize hcgbg_oriented_size(HCGBGSize media, int rotation);
+
+typedef struct {
+    HCGBGRect frame;       ///< the transformed picture's bounding box, container coordinates
+    HCGBGSize bounds;      ///< the untransformed layer's size (frame size, swapped for 90 / 270)
+    double a, b, c, d;     ///< 2×2 matrix to apply about the frame's centre: rotate, then flip
+} HCGBGPlacement;
+
+/// Lays out a transformed picture:
+///   stretch          — the region (crop with regionAllModes, else the whole
+///                      frame) is scaled non-uniformly onto the container;
+///   fit              — the region fits inside the container, centred on the
+///                      region's centre (whole frame without regionAllModes);
+///   fill / crop      — exactly hcgbg_layout() on the oriented size.
+/// Without a transform (identity, no regionAllModes) the frame equals
+/// hcgbg_layout()'s for the same inputs and the matrix is the identity.
+HCGBGPlacement hcgbg_layout_transformed(HCGBGSize container, HCGBGSize media, HCGBGScaling scaling, HCGBGRect crop,
+                                        HCGBGTransform transform);
+
+/// The region (crop rectangle) for an editor's zoom (>= 1) and centre, in
+/// the oriented frame: fill / crop as hcgbg_crop_from_zoom(); fit and stretch
+/// start from the whole frame. Kept inside the frame.
+HCGBGRect hcgbg_region_from_zoom(HCGBGScaling scaling, bool stretch, HCGBGSize container, HCGBGSize oriented,
+                                 double zoom, double centerX, double centerY);
+/// Inverse of hcgbg_region_from_zoom() (zoom >= 1).
+double hcgbg_zoom_for_region(HCGBGScaling scaling, bool stretch, HCGBGSize container, HCGBGSize oriented,
+                             HCGBGRect region);
+
 #ifdef __cplusplus
 }
 #endif

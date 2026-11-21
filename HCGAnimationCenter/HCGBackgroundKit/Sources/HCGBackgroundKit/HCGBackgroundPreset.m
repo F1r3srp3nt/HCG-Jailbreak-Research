@@ -69,6 +69,7 @@ static double Round6(double v) {
         _scaling = HCGBackgroundScalingFill;
         _crop = CGRectMake(0, 0, 1, 1);
         _backgroundColor = @"#000000";
+        _sourceRotation = -1;
         _warnings = [NSMutableArray array];
     }
     return self;
@@ -102,6 +103,12 @@ static double Round6(double v) {
     c->_crop = _crop;
     c->_backgroundColor = [_backgroundColor copy];
     c->_generator = [_generator copy];
+    c->_rotation = _rotation;
+    c->_flipHorizontal = _flipHorizontal;
+    c->_flipVertical = _flipVertical;
+    c->_stretch = _stretch;
+    c->_hasTransform = _hasTransform;
+    c->_sourceRotation = _sourceRotation;
     c->_warnings = [_warnings mutableCopy];
     return c;
 }
@@ -217,6 +224,12 @@ static double Round6(double v) {
     p.duration = duration.doubleValue;
     NSString *origin = Typed(media, @"origin", [NSString class]);
     if (origin.length) p.origin = origin;
+    NSNumber *sourceRotation = Number(media, @"sourceRotation");
+    if (sourceRotation) {
+        bool exact = false;
+        int r = hcgbg_rotation_normalize(sourceRotation.doubleValue, &exact);
+        p.sourceRotation = exact ? r : -1;
+    }
     NSString *sha = Typed(media, @"sha256", [NSString class]);
     if (sha.length == 64) p.mediaSHA256 = sha.lowercaseString;
 
@@ -257,6 +270,27 @@ static double Round6(double v) {
             [p->_warnings addObject:@"backgroundColor must be #RRGGBB: using black."];
         }
     }
+    id transformValue = layout[@"transform"];
+    if (transformValue && ![transformValue isKindOfClass:[NSDictionary class]]) {
+        [p->_warnings addObject:@"layout.transform is not an object: ignored."];
+    } else if (transformValue) {
+        NSDictionary *transform = transformValue;
+        p.hasTransform = YES;
+        NSNumber *rotation = Number(transform, @"rotation");
+        if (rotation) {
+            bool exact = false;
+            int r = hcgbg_rotation_normalize(rotation.doubleValue, &exact);
+            if (!exact)
+                [p->_warnings addObject:[NSString stringWithFormat:@"Rotation %@ is not a quarter turn: using %d°.",
+                                                                   rotation, r]];
+            p.rotation = r;
+        } else if (transform[@"rotation"]) {
+            [p->_warnings addObject:@"layout.transform.rotation must be 0, 90, 180 or 270: using 0."];
+        }
+        p.flipHorizontal = BooleanValue(transform, @"flipHorizontal").boolValue;
+        p.flipVertical = BooleanValue(transform, @"flipVertical").boolValue;
+        p.stretch = BooleanValue(transform, @"stretch").boolValue;
+    }
     NSDictionary *generator = Typed(d, @"generator", [NSDictionary class]);
     if (generator && [NSJSONSerialization isValidJSONObject:generator]) p.generator = generator;
 
@@ -291,6 +325,7 @@ static double Round6(double v) {
         return NO;
     }
     if (!hcgbg_scaling_id((HCGBGScaling)_scaling)) _scaling = HCGBackgroundScalingFill;
+    _rotation = hcgbg_rotation_normalize((double)_rotation, NULL);
     if (!hcgbg_parse_hex_colour(_backgroundColor.UTF8String, NULL, NULL, NULL)) _backgroundColor = @"#000000";
 
     HCGBGPlayback c = [self corePlayback];
@@ -346,6 +381,7 @@ static double Round6(double v) {
         @"origin" : _origin ?: @"video",
     } mutableCopy];
     if (_mediaSHA256) media[@"sha256"] = _mediaSHA256;
+    if (_sourceRotation >= 0) media[@"sourceRotation"] = @(_sourceRotation);
     NSMutableDictionary *still = [@{@"time" : @(_stillTime)} mutableCopy];
     if (_stillFile) still[@"file"] = _stillFile;
     NSMutableDictionary *d = [@{
@@ -362,20 +398,59 @@ static double Round6(double v) {
             @"speed" : @(_speed),
             @"muted" : @YES,
         },
-        @"layout" : @{
-            @"scaling" : [HCGBackgroundPreset identifierForScaling:_scaling],
-            @"crop" : @{
-                @"x" : @(_crop.origin.x),
-                @"y" : @(_crop.origin.y),
-                @"width" : @(_crop.size.width),
-                @"height" : @(_crop.size.height),
-            },
-            @"backgroundColor" : _backgroundColor ?: @"#000000",
-        },
+        @"layout" : [self layoutRepresentation],
     } mutableCopy];
     if (_created) d[@"created"] = [[HCGBackgroundPreset dateFormatter] stringFromDate:_created];
     if (_generator) d[@"generator"] = _generator;
     return d;
+}
+
+- (NSDictionary *)layoutRepresentation {
+    NSMutableDictionary *layout = [@{
+        @"scaling" : [HCGBackgroundPreset identifierForScaling:_scaling],
+        @"crop" : @{
+            @"x" : @(_crop.origin.x),
+            @"y" : @(_crop.origin.y),
+            @"width" : @(_crop.size.width),
+            @"height" : @(_crop.size.height),
+        },
+        @"backgroundColor" : _backgroundColor ?: @"#000000",
+    } mutableCopy];
+    // Only when used, so presets that never had a transform keep their exact bytes.
+    if (self.usesRegionInAllModes) {
+        layout[@"transform"] = @{
+            @"rotation" : @(_rotation),
+            @"flipHorizontal" : @(_flipHorizontal),
+            @"flipVertical" : @(_flipVertical),
+            @"stretch" : @(_stretch),
+        };
+    }
+    return layout;
+}
+
+#pragma mark - Transform
+
+- (BOOL)isTransformIdentity {
+    return hcgbg_rotation_normalize((double)_rotation, NULL) == 0 && !_flipHorizontal && !_flipVertical && !_stretch;
+}
+
+- (BOOL)usesRegionInAllModes {
+    return _hasTransform || !self.isTransformIdentity;
+}
+
+- (CGSize)orientedMediaSize {
+    HCGBGSize o = hcgbg_oriented_size((HCGBGSize){_mediaSize.width, _mediaSize.height}, (int)_rotation);
+    return CGSizeMake(o.width, o.height);
+}
+
+- (void)resetTransform {
+    _rotation = 0;
+    _flipHorizontal = NO;
+    _flipVertical = NO;
+    _stretch = NO;
+    _hasTransform = NO;
+    _scaling = HCGBackgroundScalingFill;
+    _crop = CGRectMake(0, 0, 1, 1);
 }
 
 - (NSData *)JSONDataWithError:(NSError **)error {

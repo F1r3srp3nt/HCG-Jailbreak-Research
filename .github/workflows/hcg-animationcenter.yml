@@ -134,6 +134,45 @@ jobs:
           xcrun --sdk iphonesimulator --show-sdk-version
           xcrun simctl list runtimes
 
-      - name: Runtime tests in the iOS Simulator (preset format, importer, renderer, preferences, AI rules)
+      - name: Runtime tests in the iOS Simulator (preset format, importer, renderer, orientation, placements, packs, AI rules)
         timeout-minutes: 18
         run: scripts/run-simulator-tests.sh
+
+      # The .hcgpack and .hcgbackground the importer / library code exported in
+      # the Simulator, for checking with HCG Animation Center for Mac's readers.
+      - name: Upload exported preset and pack
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hcg-animationcenter-sim-exports
+          path: HCGAnimationCenter/tests/build/sim/exports
+          if-no-files-found: warn
+          retention-days: 30
+
+      # Best effort and read-only: if this run can read the Mac repository, its
+      # own Python validator and Swift reader (hcgpack) check the exported pack.
+      # Never fails the run; the step log says whether it ran.
+      - name: Check out HCG Animation Center for Mac (read-only, best effort)
+        id: mac
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: F1r3srp3nt/animation-centre
+          ref: claude/hcg-animation-center-macos-j103uc
+          path: mac-animation-centre
+          persist-credentials: false
+
+      - name: Mac readers on the exported pack (best effort)
+        continue-on-error: true
+        working-directory: .
+        run: |
+          if [ "${{ steps.mac.outcome }}" != success ] || [ ! -d mac-animation-centre ]; then
+            echo "HCG Animation Center for Mac is not readable from this run: Mac reader check NOT run here."
+            exit 0
+          fi
+          EXPORTS=HCGAnimationCenter/tests/build/sim/exports
+          python3 -m pip install --quiet --break-system-packages 'jsonschema>=4.18' 2>/dev/null || python3 -m pip install --quiet 'jsonschema>=4.18'
+          for p in "$EXPORTS"/*.hcgpack; do python3 -I mac-animation-centre/scripts/validate_pack.py "$p"; done
+          (cd mac-animation-centre/Packages/HCGAnimationKit && swift build -c release --product hcgpack)
+          HCGPACK=mac-animation-centre/Packages/HCGAnimationKit/.build/release/hcgpack
+          for p in "$EXPORTS"/*.hcgpack; do "$HCGPACK" validate "$p" && "$HCGPACK" info "$p"; done

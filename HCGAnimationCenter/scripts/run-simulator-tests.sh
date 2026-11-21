@@ -4,7 +4,7 @@
 #   scripts/run-simulator-tests.sh
 #
 # Builds tests/test_runtime.m with the preset format, renderer, preferences,
-# importer, library and AI interface for the iOS Simulator, boots an iPhone
+# importer, library, orientation / transformation and AI interface for the iOS Simulator, boots an iPhone
 # simulator and runs it there with `simctl spawn`. This exercises AVFoundation,
 # ImageIO, Core Animation and CFPreferences for real, but NOT SpringBoard: it
 # is no substitute for a device test. (Adapted from HCG Halo's script.)
@@ -29,10 +29,11 @@ xcrun --sdk iphonesimulator clang -fobjc-arc -fobjc-arc-exceptions -arch "$ARCH"
 	-Wall -Wextra -Wno-unused-parameter -Werror \
 	-DHAC_VERSION="\"$VERSION\"" -DHAC_BUILD_ID="\"simulator-test\"" \
 	-DHAC_EXAMPLE_PRESET="\"$PWD/HCGBackgroundKit/Examples/Aurora.hcgbackground\"" \
+	-DHAC_EXPORT_DIR="\"$PWD/$OUT/exports\"" \
 	-Isrc -I"$KIT/include" -Ipreferences -Ipreview \
 	tests/test_runtime.m preview/HACTestMedia.m \
 	src/HACPreferences.m src/HACPolicy.c src/HACProbe.m src/HACHosts.m \
-	preferences/HACLibrary.m preferences/HACMediaImporter.m preferences/HACAIGeneration.m \
+	preferences/HACLibrary.m preferences/HACMediaImporter.m preferences/HACAIGeneration.m preferences/HACTheme.m \
 	"$KIT/HCGBackgroundView.m" "$KIT/HCGBackgroundPreset.m" "$KIT/HCGBackgroundCore.c" \
 	-framework UIKit -framework QuartzCore -framework CoreGraphics -framework AVFoundation -framework CoreMedia \
 	-framework CoreVideo -framework ImageIO -o "$OUT/test_runtime"
@@ -62,5 +63,6 @@ stamp "running the tests (limit 480 s)"
 limit 480 xcrun simctl spawn "$UDID" "$PWD/$OUT/test_runtime" || status=$?
 [ "$status" -eq 142 ] && stamp "test_runtime timed out (SIGALRM)"
 stamp "finished with status $status"
+ls -R "$OUT/exports" 2>/dev/null | head -20 || true
 xcrun simctl shutdown "$UDID" 2>/dev/null || true
 exit "$status"

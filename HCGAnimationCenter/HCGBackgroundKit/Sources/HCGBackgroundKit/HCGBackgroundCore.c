@@ -209,3 +209,115 @@ bool hcgbg_parse_hex_colour(const char *text, double *r, double *g, double *b) {
     if (b) *b = (v[4] * 16 + v[5]) / 255.0;
     return true;
 }
+
+// ---- Orientation and transformation (kit 1.1) -------------------------------
+// Additions only: nothing above this line changed, so hcgbg_layout() and the
+// other functions behave exactly as in kit 1.0 (and in vendored copies).
+
+HCGBGTransform hcgbg_transform_identity(void) {
+    HCGBGTransform t = {0, false, false, false, false};
+    return t;
+}
+
+bool hcgbg_transform_is_identity(HCGBGTransform t) {
+    return hcgbg_rotation_normalize((double)t.rotation, NULL) == 0 && !t.flipHorizontal && !t.flipVertical && !t.stretch;
+}
+
+int hcgbg_rotation_normalize(double degrees, bool *exact) {
+    if (!isfinite(degrees)) {
+        if (exact) *exact = false;
+        return 0;
+    }
+    double quarters = round(degrees / 90.0);
+    if (exact) *exact = fabs(degrees / 90.0 - quarters) < 1e-9;
+    long q = (long)fmod(quarters, 4.0);
+    if (q < 0) q += 4;
+    return (int)(q * 90);
+}
+
+int hcgbg_rotation_from_matrix(double a, double b, double c, double d, bool *mirrored) {
+    if (mirrored) *mirrored = false;
+    if (!isfinite(a) || !isfinite(b) || !isfinite(c) || !isfinite(d)) return -1;
+    double det = a * d - b * c;
+    if (fabs(fabs(det) - 1) > 1e-6) return -1; // scaled or skewed
+    bool axisAligned = (fabs(a) < 1e-6 && fabs(d) < 1e-6) || (fabs(b) < 1e-6 && fabs(c) < 1e-6);
+    if (!axisAligned) return -1; // not a quarter turn
+    if (mirrored) *mirrored = det < 0;
+    return hcgbg_rotation_normalize(atan2(b, a) * 57.29577951308232, NULL); // degrees
+}
+
+HCGBGSize hcgbg_oriented_size(HCGBGSize media, int rotation) {
+    int r = hcgbg_rotation_normalize((double)rotation, NULL);
+    if (r == 90 || r == 270) {
+        HCGBGSize s = {media.height, media.width};
+        return s;
+    }
+    return media;
+}
+
+HCGBGPlacement hcgbg_layout_transformed(HCGBGSize container, HCGBGSize media, HCGBGScaling scaling, HCGBGRect crop,
+                                        HCGBGTransform t) {
+    int rot = hcgbg_rotation_normalize((double)t.rotation, NULL);
+    HCGBGSize o = hcgbg_oriented_size(media, rot);
+    HCGBGPlacement p;
+    memset(&p, 0, sizeof p);
+    if (!size_ok(container) || !size_ok(o)) {
+        p.frame = hcgbg_layout(container, media, scaling, crop);
+        p.bounds.width = p.frame.width;
+        p.bounds.height = p.frame.height;
+        p.a = p.d = 1;
+        return p;
+    }
+    HCGBGRect whole = {0, 0, 1, 1};
+    HCGBGRect c = t.regionAllModes ? hcgbg_crop_clamp(crop) : whole;
+    HCGBGRect f;
+    if (t.stretch) {
+        double sx = container.width / (c.width * o.width), sy = container.height / (c.height * o.height);
+        f.width = o.width * sx;
+        f.height = o.height * sy;
+        f.x = -c.x * f.width;
+        f.y = -c.y * f.height;
+    } else if (scaling == HCGBGScalingFit && t.regionAllModes) {
+        double s = fmin(container.width / (c.width * o.width), container.height / (c.height * o.height));
+        f.width = o.width * s;
+        f.height = o.height * s;
+        f.x = container.width / 2 - (c.x + c.width / 2) * f.width;
+        f.y = container.height / 2 - (c.y + c.height / 2) * f.height;
+    } else {
+        f = hcgbg_layout(container, o, scaling, crop);
+    }
+    p.frame = f;
+    bool swap = rot == 90 || rot == 270;
+    p.bounds.width = swap ? f.height : f.width;
+    p.bounds.height = swap ? f.width : f.height;
+    // Rotation by quarter turns (exact values), then the flips in screen axes.
+    static const double kCos[4] = {1, 0, -1, 0}, kSin[4] = {0, 1, 0, -1};
+    double cs = kCos[rot / 90], sn = kSin[rot / 90];
+    double fx = t.flipHorizontal ? -1 : 1, fy = t.flipVertical ? -1 : 1;
+    p.a = cs * fx;
+    p.b = sn * fy;
+    p.c = -sn * fx;
+    p.d = cs * fy;
+    return p;
+}
+
+HCGBGRect hcgbg_region_from_zoom(HCGBGScaling scaling, bool stretch, HCGBGSize container, HCGBGSize oriented,
+                                 double zoom, double centerX, double centerY) {
+    if (!stretch && scaling != HCGBGScalingFit) return hcgbg_crop_from_zoom(container, oriented, zoom, centerX, centerY);
+    if (!isfinite(zoom) || zoom < 1) zoom = 1;
+    zoom = fmin(zoom, HCGBG_ZOOM_MAX);
+    if (!isfinite(centerX)) centerX = 0.5;
+    if (!isfinite(centerY)) centerY = 0.5;
+    HCGBGRect r = {0, 0, 1 / zoom, 1 / zoom};
+    r.x = clampd(centerX - r.width / 2, 0, 1 - r.width);
+    r.y = clampd(centerY - r.height / 2, 0, 1 - r.height);
+    return hcgbg_crop_clamp(r);
+}
+
+double hcgbg_zoom_for_region(HCGBGScaling scaling, bool stretch, HCGBGSize container, HCGBGSize oriented,
+                             HCGBGRect region) {
+    if (!stretch && scaling != HCGBGScalingFit) return hcgbg_zoom_for_crop(container, oriented, region);
+    HCGBGRect c = hcgbg_crop_clamp(region);
+    double z = fmax(1 / c.width, 1 / c.height);
+    return isfinite(z) && z > 1 ? z : 1;
+}

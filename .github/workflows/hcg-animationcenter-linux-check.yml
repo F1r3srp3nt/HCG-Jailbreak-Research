@@ -48,6 +48,9 @@ jobs:
       - name: Preset schema, examples and code constants agree
         run: make -C tests schema
 
+      - name: C core 1.0 unchanged (kit 1.1 is additions only; Mac app's vendored copy)
+        run: make -C tests compat
+
       - name: Packaging format regression tests (gzip-only members)
         run: make -C tests deb-format
 

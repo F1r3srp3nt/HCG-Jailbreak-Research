@@ -20,6 +20,13 @@ UIButton *HACMakeButton(NSString *title, NSString *_Nullable systemImage, BOOL p
 NSString *HACFormatSeconds(NSTimeInterval seconds);
 /// "1080 × 1920 · 12.4 s · from GIF"
 NSString *HACDescribePreset(HCGBackgroundPreset *preset);
+/// "Rotated 90° · flipped horizontally · stretch", or "Original orientation".
+NSString *HACDescribeTransform(HCGBackgroundPreset *preset);
+/// "1920 × 1080 · metadata rotation 90° applied" (what the importer detected).
+NSString *HACDescribeSource(HCGBackgroundPreset *preset);
+/// The image (a still in the source's display orientation) with the preset's
+/// rotation and flips applied: the same matrix the renderer uses. No scaling.
+UIImage *HACOrientedImage(UIImage *image, HCGBackgroundPreset *preset);
 
 typedef NS_ENUM(NSInteger, HACStageOverlay) {
     HACStageOverlayNone = 0,

@@ -75,6 +75,11 @@ if out=$(python3 -I tests/test_deb_format.py 2>&1); then
 else
 	echo "$out" | tail -10; fail "packaging format tests failed"
 fi
+if out=$(python3 -I tests/test_core_compat.py 2>&1); then
+	pass "$out"
+else
+	echo "$out"; fail "the C core changed kit 1.0 code that HCG Animation Center for Mac vendors"
+fi
 if out=$(python3 -I tests/test_schema.py 2>&1); then
 	pass "preset format: $(echo "$out" | tail -1)"
 else

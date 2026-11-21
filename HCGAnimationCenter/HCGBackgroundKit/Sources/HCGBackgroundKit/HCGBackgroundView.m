@@ -251,10 +251,11 @@ static NSData *MediaSignature(HCGBackgroundPreset *preset, NSURL *folder) {
 
 - (CGSize)decodeSize {
     if (_maximumDecodeSize.width > 0 && _maximumDecodeSize.height > 0) return _maximumDecodeSize;
-    CGRect frame = self.mediaFrame;
+    // The layer's untransformed size is in the source's display orientation, like mediaSize.
+    CGSize bounds = self.mediaBounds;
     CGFloat scale = [self screenScale];
     CGSize media = _preset.mediaSize;
-    CGSize size = CGSizeMake(MIN(frame.size.width * scale, media.width), MIN(frame.size.height * scale, media.height));
+    CGSize size = CGSizeMake(MIN(bounds.width * scale, media.width), MIN(bounds.height * scale, media.height));
     if (size.width < 1 || size.height < 1) size = UIScreen.mainScreen.nativeBounds.size;
     return size;
 }
@@ -470,25 +471,53 @@ static NSData *MediaSignature(HCGBackgroundPreset *preset, NSURL *folder) {
 
 #pragma mark Layout
 
-- (CGRect)mediaFrame {
-    if (!_preset) return self.bounds;
+- (HCGBGPlacement)placement {
     CGSize b = self.bounds.size;
+    if (!_preset) {
+        HCGBGPlacement p = {{0, 0, b.width, b.height}, {b.width, b.height}, 1, 0, 0, 1};
+        return p;
+    }
     CGSize m = _preset.mediaSize;
     CGRect c = _preset.crop;
-    HCGBGRect r = hcgbg_layout((HCGBGSize){b.width, b.height}, (HCGBGSize){m.width, m.height},
-                               (HCGBGScaling)_preset.scaling,
-                               (HCGBGRect){c.origin.x, c.origin.y, c.size.width, c.size.height});
-    return CGRectMake(r.x, r.y, r.width, r.height);
+    HCGBGTransform t = {(int)_preset.rotation, _preset.flipHorizontal, _preset.flipVertical, _preset.stretch,
+                        _preset.usesRegionInAllModes};
+    return hcgbg_layout_transformed((HCGBGSize){b.width, b.height}, (HCGBGSize){m.width, m.height},
+                                    (HCGBGScaling)_preset.scaling,
+                                    (HCGBGRect){c.origin.x, c.origin.y, c.size.width, c.size.height}, t);
+}
+
+- (CGRect)mediaFrame {
+    HCGBGPlacement p = [self placement];
+    return CGRectMake(p.frame.x, p.frame.y, p.frame.width, p.frame.height);
+}
+
+- (CGSize)mediaBounds {
+    HCGBGPlacement p = [self placement];
+    return CGSizeMake(p.bounds.width, p.bounds.height);
+}
+
+- (CGAffineTransform)mediaTransform {
+    HCGBGPlacement p = [self placement];
+    return CGAffineTransformMake(p.a, p.b, p.c, p.d, 0, 0);
 }
 
 - (void)layoutSubviews {
     [super layoutSubviews];
+    // The still and the video get the SAME bounds, position and transform, so the
+    // static fallback, the editor preview and playback always line up.
+    HCGBGPlacement p = [self placement];
+    CGRect bounds = CGRectMake(0, 0, p.bounds.width, p.bounds.height);
+    CGPoint centre = CGPointMake(p.frame.x + p.frame.width / 2, p.frame.y + p.frame.height / 2);
+    CGAffineTransform transform = CGAffineTransformMake(p.a, p.b, p.c, p.d, 0, 0);
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     _clip.frame = self.bounds;
-    CGRect frame = self.mediaFrame;
-    _stillLayer.frame = frame;
-    _playerLayer.frame = frame;
+    for (CALayer *layer in @[ _stillLayer, _playerLayer ]) {
+        layer.affineTransform = CGAffineTransformIdentity;
+        layer.bounds = bounds;
+        layer.position = centre;
+        layer.affineTransform = transform;
+    }
     [CATransaction commit];
     CGSize decode = [self decodeSize];
     if (_item && !CGSizeEqualToSize(decode, _appliedDecodeSize)) {

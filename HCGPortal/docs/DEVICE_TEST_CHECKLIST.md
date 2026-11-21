@@ -1,6 +1,55 @@
-# Device test — HCG Portal 0.1.0~beta3 (lifecycle hardening), 0.1.0~beta2 and 0.1.0~beta1
+# Device test — HCG Portal 0.1.0~beta4 (unlock gating, touch repair), 0.1.0~beta3, 0.1.0~beta2 and 0.1.0~beta1
 
-## 0.1.0~beta3: short test (do this first)
+## 0.1.0~beta4 (do this first, only after the owner approves installing it)
+
+Before installing:
+- If the iPhone is in Safe Mode, follow `RECOVERY.md` §0 first and save the SpringBoard crash report.
+- Record at the top of your notes:
+  - **iPhone model, iOS version, jailbreak and version**;
+  - `dpkg-query -W 'com.hakmicapitalgroup.*'`;
+  - whether the iPhone has a passcode, and whether Face ID or Touch ID is set up.
+- Keep Settings › HCG Portal open in the App Switcher. Its status section is the evidence for each row.
+
+**Portal alone.** Turn off HCG Halo, HCG Animation Center and HCG Nexus for this part.
+
+| # | Scenario | Steps | Expected |
+|---|---|---|---|
+| D1 | **Sileo installation** | Install the 0.1.0~beta4 `.deb` with Sileo, as before; let Sileo respring; respring once more | no Safe Mode, no crash; Settings › HCG Portal: *Off* |
+| D2 | **Device locked** | Enable HCG Portal; lock; wake the screen | Lock Screen exactly as without Portal: no portal, no menu, nothing under VoiceOver where it would be |
+| D3 | **Lock Screen visible after Face ID matched** | Raise the iPhone so Face ID matches (padlock opens) but do **not** swipe up | still no portal |
+| D4 | **Face ID unlock** | Unlock with Face ID, swipe up; pull down the Cover Sheet from the top | the portal appears below the clock (brief opening animation) |
+| D5 | **Touch ID unlock** (Touch ID iPhones) | as D4 with Touch ID | as D4 |
+| D6 | **Passcode unlock** | lock; unlock with the passcode (Face ID covered or *Use Passcode*); pull down | as D4 |
+| D7 | **Portal gesture** | Tap the orb; tap outside it | menu opens with Nexus / Backgrounds / Devices / HCG Apps; tapping outside closes it |
+| D8 | **Portal buttons** | Devices; Nexus; HCG Apps (with apps chosen in Settings) then an app; Backgrounds (Animation Center installed) | *Not connected*; *Not installed* or *Update needed*; the app ring then the app opens once; the Cover Sheet closes and Settings opens once |
+| D9 | **Device relocked** | Pull down, open the menu, press the side button | portal and menu gone; after unlocking and pulling down again: a fresh, closed portal |
+| D10 | **Rapid lock/unlock** | Pull down, tap Backgrounds and immediately press the side button twice (lock, wake) and unlock | nothing opens from that tap |
+| D11 | **First unlock after reboot** | Reboot, re-jailbreak with Dopamine, do **not** unlock yet; wake; pull down on the Lock Screen | no portal; after the first unlock and a pull-down: the portal |
+| D12 | **SpringBoard restart** | With the portal on screen, respring | after the respring, on the locked Lock Screen: nothing; unlock and pull down: exactly one portal |
+| D13 | **Ordinary gestures** | On the pulled-down Cover Sheet: swipe up to close, swipe left/right, scroll notifications, long-press the wallpaper (if available), flashlight, camera | all work as without Portal; a swipe that starts on the orb is a swipe |
+| D14 | **Evidence** | Settings › HCG Portal: screenshot the status section | send *iPhone lock state*, *Touches*, *Breadcrumb* and *Diagnostics* |
+
+**Then with HCG Animation Center:**
+- **D15 (Animation Center enabled).** Enable it, including Lock Screen playback if you use it, and respring. Repeat D2,
+  D4, D7, D8 and D9. Both run; Portal still appears only when unlocked.
+- **D16 (Animation Center disabled).** Disable it and respring. Repeat D2 and D7: the same as D15. Backgrounds says
+  *Not installed* only if the package is removed.
+
+Then, one at a time, HCG Halo and HCG Nexus: respring, repeat D2, D4 and D7.
+
+**If the orb does not respond (D7):** send the *Touches* line.
+- *down 0* means touches never reach Portal (something above the Cover Sheet).
+- *cancelled* with *last cancelled by …* names the recognizer that won. See
+  `docs/DIAGNOSIS_0.1.0-beta3-unresponsive.md`.
+
+**If SpringBoard crashes or enters Safe Mode at any step:**
+- Note the step.
+- Follow `RECOVERY.md` §0.
+- Send the newest `SpringBoard-*.ips` and the *Breadcrumb* / *Diagnostics* lines.
+
+The fix counts as verified only after D1, D2, D4, D7, D8 and D9 pass on the physical iPhone.
+
+## 0.1.0~beta3: short test
 
 Before installing: if the phone is in Safe Mode, follow `RECOVERY.md` §0 first, and save the SpringBoard crash report.
 Record at the top of your notes: **iPhone model, iOS version, jailbreak and version**, and the output of

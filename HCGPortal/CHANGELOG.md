@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.1.0~beta4
+
+Unlock-gated access, and a repair for "the portal is drawn but does not respond". **Development build: Simulator
+validated; the iPhone test is pending.** The screen recording and device logs mentioned in the report did not reach
+this session, so the cause comes from iOS 17.0.3 header evidence and the code. A Simulator run reproduces the
+mechanism. See `docs/DIAGNOSIS_0.1.0-beta3-unresponsive.md`.
+
+- **Only on an unlocked iPhone** (`docs/SECURITY.md`).
+  - Portal is granted only while data protection (`isProtectedDataAvailable`), SpringBoard's lock state (Darwin
+    `com.apple.springboard.lockstate`) and `-[SBLockScreenManager isUILocked]` all say unlocked, no secure app is up
+    and the screen is on.
+  - Any "locked", or any source this iOS cannot provide, keeps it closed.
+  - Nothing of Portal exists on the locked Lock Screen. It appears on the Cover Sheet pulled down after unlocking.
+  - Face ID matched while the Lock Screen is still up does not count as unlocked.
+  - Locking removes Portal at once.
+- **No authentication code at all.** The `unlockWithRequest:` path (`PortalAuth`) is removed. Portal never requests,
+  performs or observes Face ID, Touch ID or passcode verification. `validate.sh` fails the build if an unlock request
+  is referenced.
+- **Race-free actions.** An action carries its access epoch, which changes on every lock and unlock. It runs only if
+  the epoch is still current, with checks:
+  - at selection;
+  - after the Cover Sheet closes;
+  - in the launcher right before it calls iOS.
+
+  A lock while something is opening discards it, even if the iPhone is unlocked again at once.
+- **Touches reach Portal.** The orb and the items activate through Portal's own tap recognizer. SpringBoard's tap
+  recognizers on the Cover Sheet scroll view (iOS 17.0.3: background content, quick note) wait for it, only for touches
+  on Portal's controls. Long presses (poster switcher) and pans (scrolling, dismissing) are untouched, and nothing in
+  SpringBoard is hooked or reconfigured.
+- **Opening a destination closes the Cover Sheet first**, as a swipe up would, then opens Settings, the app or Nexus.
+- **Settings › HCG Portal diagnostics:** *iPhone lock state* (and why), *Touches* (down, up, cancelled, taps,
+  activations, last cancelled by), *Breadcrumb*.
+- *Opening Animation on Unlock* now plays the first time the portal appears after an unlock.
+- Tests:
+  - host: all 3⁵ access inputs, lock/unlock epoch storms;
+  - runtime: recognizer arbitration, the launcher gate;
+  - preview: real UIKit touch events injected into a Cover Sheet stand-in with SpringBoard-like recognizers, the
+    locked / before-first-unlock / unlocked matrix, relock while opening, missing sources, Animation Center present
+    and absent, and 20 finger lock/unlock cycles.
+
 ## 0.1.0~beta3
 
 Lock Screen lifecycle hardening after the SpringBoard Safe Mode incident with 0.1.0~beta1. **Test build only. The

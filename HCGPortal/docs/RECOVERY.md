@@ -73,6 +73,27 @@ sudo apt remove com.hakmicapitalgroup.portal
 sbreload
 ```
 
+## 7. Installing a test build, and rolling back (0.1.0~beta4)
+
+Install a test build only after the owner has approved it. Nothing is installed on a device automatically.
+
+1. Copy the `.deb` to the iPhone (for example over SSH, or AirDrop to Filza) and check it before installing:
+   `shasum -a 256 com.hakmicapitalgroup.portal_0.1.0~beta4_iphoneos-arm64.deb`. It must match the published SHA-256.
+2. Install it: `sudo dpkg -i com.hakmicapitalgroup.portal_0.1.0~beta4_iphoneos-arm64.deb` (or open it in Sileo).
+   Respring. Portal is off after installing and keeps your existing settings.
+3. Turn it on in Settings › HCG Portal. It appears only after you unlock and pull down the Cover Sheet.
+
+To roll back, use the first option that fits:
+- **Turn it off:** Settings › HCG Portal › Enable off. It is gone at once.
+- **Remove it** (recommended if anything goes wrong): `sudo apt remove com.hakmicapitalgroup.portal`, then
+  `sbreload`. Settings are kept. `sudo apt purge com.hakmicapitalgroup.portal` also removes them.
+- **Stop it loading but keep it installed:** the kill switch (§3).
+- **Go back to 0.1.0~beta3** (HCG Repo Candidate): `sudo apt install com.hakmicapitalgroup.portal=0.1.0~beta3`,
+  then respring. Note that 0.1.0~beta3 shows the portal on the **locked** Lock Screen and asks for authentication per
+  item. It also has the unresponsive-tap problem this build addresses. Use it only to compare, not as the fix.
+
+If SpringBoard enters Safe Mode after installing, follow §0.
+
 ## Files HCG Portal creates
 
 | Path | Content | Removed by |

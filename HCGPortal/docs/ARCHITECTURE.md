@@ -15,11 +15,11 @@ SpringBoard process                                              Settings app (P
   ├─ Reduce Motion / Low Power Mode observers
   │
   ├─ PortalController (main thread) ── decisions in PortalCore.c (pure C, host-tested)
-  │    ├─ PortalHost: find the Lock Screen's main page; measure clock/widgets and obstacles (frames only)
+  │    ├─ PortalHost: find the Cover Sheet's main page; measure clock/widgets and obstacles (frames only)
   │    ├─ PortalOverlayView (interactive only on visible controls)
   │    │    ├─ orb (PortalCircleControl) └─ PortalView (Core Animation: rings, glow, particles, core)
   │    │    └─ radial menu items (64 pt discs), message line
-  │    ├─ PortalAuth: SpringBoard's own unlock request (Face ID / Touch ID / passcode)
+  │    ├─ access gate: reads iOS's lock state (never requests authentication; docs/SECURITY.md)
   │    ├─ PortalLauncher: LSApplicationWorkspace (as HCG Nexus 0.3.1)
   │    └─ PortalCompanions: Nexus / Animation Center / Halo, all optional
   │
@@ -40,13 +40,13 @@ from Portal's own state and installed files only. Nothing in SpringBoard's Lock 
 SpringBoard has finished launching. Then `MSHookMessageEx` is resolved with `dlsym`; if it is missing, Portal stays
 inactive (*Incompatible: inactive*, with the reason in Settings) and nothing is hooked or attached.
 
-## Lock Screen lifecycle (0.1.0~beta3)
+## Cover Sheet lifecycle (0.1.0~beta3; access-gated since 0.1.0~beta4)
 
-- **Eligible** = SpringBoard launched, screen on, Cover Sheet visible, phone locked. Only then does Portal attach.
+- **Eligible** = SpringBoard launched, screen on, Cover Sheet visible, and access granted (iOS reports unlocked). Only then does Portal attach.
 - **Attach** once per host: `addSubview:` into the main page, breadcrumb *on the Lock Screen*. Later updates only lay
   out; `bringSubviewToFront:` runs at most once a second and only if something else is above the portal. If the host
   is not ready yet, up to 6 retries 250 ms apart, then *no-host*.
-- **Detach** when no longer eligible (Cover Sheet gone, screen off, unlocked, disabled, fault): stop the measure timer,
+- **Detach** when no longer eligible (Cover Sheet gone, screen off, locked, disabled, fault): stop the measure timer,
   `-prepareForDetach` (bump the callback generations, collapse, hide the message, pause, remove animations), remove
   from the superview, breadcrumb *off the Lock Screen*.
 - **Delayed work** (idle collapse, message fade, tap-outside collapse, relayout) holds the overlay or controller
@@ -57,7 +57,9 @@ inactive (*Incompatible: inactive*, with the reason in Settings) and nothing is 
 
 ## Where the portal lives
 
-`PortalHost` uses `CSCoverSheetViewController.mainPageContentViewController.view` (the Lock Screen's main page) only.
+Portal appears only while iOS reports the iPhone unlocked (`docs/SECURITY.md`), on the Cover Sheet pulled down over
+the unlocked iPhone. `PortalHost` uses `CSCoverSheetViewController.mainPageContentViewController.view` (the Cover
+Sheet's main page) only.
 If it is missing, not loaded, not a `CSMainPageContentViewController` or not in a visible window, Portal stays hidden
 with the reason *Lock Screen container unavailable: …*; there is no fallback to `CSCoverSheetViewController.view`. The Cover Sheet controller comes from the hook or from
 `+[SBLockScreenManager sharedInstance].coverSheetViewController`. Living inside the main page means the portal
@@ -91,16 +93,28 @@ clock, never rises above the anchor, never enters the bottom reserve and keeps a
 |---|---|---|
 | collapsed | the orb's **circle** (≥ 44 pt; the square corners pass through) | passes through |
 | expanded | the orb and each 64 pt item disc | passes through **and** collapses the menu (tap outside) |
-| hidden / no room / disabled | nothing | passes through |
+| hidden / no room / disabled / locked | nothing (locked: the overlay is not even in the hierarchy) | passes through |
 
-Rings, glow, particles, labels and the message line never take touches; the overlay adds **no gesture recognisers**.
-The unlock swipe, the home indicator, Notification Centre, the camera page swipe, notifications, media controls,
-the flashlight and the camera keep working because their touches never reach Portal (Simulator-checked with the
-window's own hit-test; device rows U1–U6). The menu also collapses after 12 s idle, on screen-off and when the Cover
-Sheet disappears.
+**Activation (0.1.0~beta4).** On iOS 17, SpringBoard installs its own recognizers on the Cover Sheet's scroll view,
+an ancestor of Portal: background-content and quick-note taps, complication and poster-switcher long presses, and
+pans. They decide by location and do not know Portal is there (`docs/DIAGNOSIS_0.1.0-beta3-unresponsive.md`).
+0.1.0~beta1–3 relied on `UIControl` touch tracking, which such a tap recognizer cancels.
 
-Accessibility: the orb is a button (*HCG Portal*, hint *Shows Portal destinations*); when expanded each destination is
-a button, unavailable ones carry *Not enabled* and their status as value. Messages are announced.
+Now each control (the orb and the items) owns a `PortalTapRecognizer` (`cancelsTouchesInView = NO`, no delays). Its
+delegate makes other **tap** recognizers that saw the same touch wait for it to fail
+(`gestureRecognizer:shouldBeRequiredToFailByGestureRecognizer:`). It only ever receives touches that land on Portal's
+controls, so a tap anywhere else still reaches SpringBoard. Long presses and pans are never held back. Nothing is
+hooked or reconfigured in SpringBoard. VoiceOver, Switch Control and Voice Control activate through
+`accessibilityActivate`.
+
+The rings, glow, particles, labels and the message line never take touches. The overlay view itself has no gesture
+recognizers.
+
+**Diagnostics.** The controls count touches down, up and cancelled, recognized taps and activations, and record which
+recognizer last cancelled a touch. Settings › HCG Portal shows them as *Touches*.
+
+Accessibility: the orb is a button (*HCG Portal*, hint *Shows Portal destinations*). When the menu is expanded, each
+destination is a button; unavailable ones carry *Not enabled* and their status as value. Messages are announced.
 
 ## Rendering (`PortalView`)
 
@@ -139,31 +153,34 @@ Screen** (a lock happened since it appeared — Notification Centre pulled over 
 authentication UI not up, the plan draws, and the layout found room. Each failing condition has a name shown in
 Settings (*Paused: screen off*, *Hidden: no room*, …). Host tests check all 2,048 input combinations.
 
-## Authentication and the pending action
+## Access and actions (0.1.0~beta4)
 
-1. Tapping **Nexus**, **Backgrounds** or an **app** (all open something outside the Lock Screen) checks availability
-   first. Unavailable → a message, nothing else (no authentication request).
-2. Otherwise `portal_pending_begin` records exactly that destination and item with a new generation; a second request
-   while one waits is ignored.
-3. The portal collapses and hides; `PortalAuth` asks SpringBoard: the Cover Sheet context's own `createUnlockRequest`
-   (fallback: an `SBLockScreenUnlockRequest` with source 17, intent 3), named *HCG Portal: <destination>*, biometrics
-   allowed, sent to `-[SBLockScreenManager unlockWithRequest:completion:]`. iOS shows its normal Face ID / Touch ID /
-   passcode UI. Portal never sees or handles a passcode.
-4. `portal_pending_resolve`: only the waiting generation, reporting **success**, within 90 s, performs — once.
-   Cancellation, failure, a refused request, a stale or repeated callback, screen-off, disabling, a fault or the
-   timeout discard it (host-tested over 200,000 random sequences; Simulator-tested end to end).
-5. Perform: an app → the launcher; Backgrounds → Settings; Nexus → `HCGNexusPortalInterface` (when it exists).
+See `docs/SECURITY.md` for the full model.
 
-If `unlockWithRequest:completion:` is missing, every protected destination fails closed (*Unlock your iPhone first*).
-`validate.sh` fails the build if either binary references a passcode, keybag or unlock-without-authentication API
-(`attemptUnlockWithPasscode`, `unlockUIFromSource`, `MKBUnlockDevice`, `LAContext`, …) or notification-content API.
+1. **Access.** Every update, lock-state notification, screen change, data-protection notification and Cover Sheet
+   appearance re-reads the sources: `isProtectedDataAvailable`, Darwin lockstate, `-isUILocked`, `-isInSecureApp` and
+   the screen. `portal_access()` decides; a missing source means closed. A revocation removes the overlay and discards
+   anything pending at once. The epoch changes on every opening and closing of access.
+2. **Selection.** Tapping a destination first re-reads access. If closed, nothing happens. Unavailable → a message,
+   nothing else. HCG Apps → its ring.
+3. **Opening.** `portal_pending_begin` records the destination, item and current access epoch. The portal hides
+   (*opening*), and the Cover Sheet is closed as a swipe up would close it
+   (`setCoverSheetPresented:NO animated:YES withCompletion:`).
+4. **Resolve.** When the Cover Sheet has closed, access is re-read. `portal_pending_resolve` runs only the waiting
+   generation, within 10 s, and only if its epoch is still current. Any lock since the selection, even if the iPhone was
+   unlocked again, discards it.
+5. **Perform.** An app → the launcher; Backgrounds → Settings; Nexus → `HCGNexusPortalInterface` (when it exists).
+   The launcher asks the access gate again on the main thread right before it calls LaunchServices, and again before
+   its SpringBoard fallback.
 
-## Unlock
+Portal never requests authentication. The 0.1.0~beta1–3 `unlockWithRequest:` path (`PortalAuth`) is removed.
+`validate.sh` fails the build if any unlock request, or any passcode, keybag, authentication-controller,
+LocalAuthentication or notification-content API, is referenced.
 
-When `com.apple.springboard.lockstate` goes from locked to unlocked while the portal is visible, the menu collapses and
-a 0.5 s flourish plays (rings expand and fade, the core opens). It is decoration inside the Cover Sheet, which is
-already sliding away: nothing waits for it (the Simulator measures Portal's dismissal handler returning in < 50 ms).
-Skipped with Reduce Motion, in Low Power Mode, or when *Opening Animation on Unlock* is off.
+## Unlock animation
+
+The first time the portal appears after an unlock, a 0.5 s flourish plays (the rings expand and fade, the core
+opens). It is skipped with Reduce Motion, in Low Power Mode, or when *Opening Animation on Unlock* is off.
 
 ## Safety
 
@@ -173,7 +190,8 @@ Skipped with Reduce Motion, in Low Power Mode, or when *Opening Animation on Unl
 | **Master switch** | Off removes the overlay, cancels any pending action, stops observers and timers; the hooks then return after the original method. Immediate, no respring |
 | **Kill switch** | `/var/mobile/Library/Preferences/com.hakmicapitalgroup.portal.disabled` at launch → Portal does nothing (respring to apply) |
 | **Interface gate** | No `CSCoverSheetViewController` / `SBLockScreenManager` → nothing, *Incompatible* |
-| **Launch guard** | Three SpringBoard launches in a row ending within 30 s while enabled → *Auto-disabled*. Enable off/on + respring re-arms |
+| **Access gate** | Closed unless iOS reports unlocked through every required source; locking removes Portal at once (`docs/SECURITY.md`) |
+| **Launch guard** | Three SpringBoard launches in a row ending within 30 s with Portal installed (enabled or not) → *Auto-disabled*. Enable off/on + respring re-arms |
 | **Fault fallback** | Every entry point is in `@try`; an Objective-C exception removes the overlay and reports *Fault*. Enable off/on retries |
 | **Hooks** | Three, call the original method first, installed once when first enabled, never change arguments or return values |
 

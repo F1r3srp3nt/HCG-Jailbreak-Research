@@ -39,15 +39,18 @@ Center used), CoverSheet.framework and SpringBoard.framework. No 17.4 dump was a
 | Interface | 17.0.3 evidence | Used for | If missing |
 |---|---|---|---|
 | `CSCoverSheetViewController` `viewWillAppear:` / `viewDidDisappear:` / `viewDidLayoutSubviews` (hooked, `%orig` first) | class present (UIViewController) | Lock Screen shown / hidden / laid out | class missing → *Incompatible*, nothing drawn. If the callbacks are not called, visibility falls back to `SBCoverSheetPresentationManager -isVisible` and the 1.5 s re-measure |
-| `+[SBLockScreenManager sharedInstance]`, `-coverSheetViewController`, `-isUILocked` | `SBLockScreenManager.h` lines 56, 64, 82 | find the Cover Sheet | *Incompatible* |
-| `-[SBLockScreenManager unlockWithRequest:completion:]` | line 286 | normal authentication before a protected action | protected destinations fail closed |
-| `-[CSCoverSheetViewController coverSheetContext]` → `-[SBDefaultCoverSheetContext createUnlockRequest]` | `CSCoverSheetViewController.h` 196; `SBDefaultCoverSheetContext.h` 115 | the request with CoverSheet's own defaults | constructed `SBLockScreenUnlockRequest` (source 17, intent 3: community-documented values, **unverified**; Settings › Status shows which route ran) |
-| `SBLockScreenUnlockRequest` `name`, `wantsBiometricPresentation` | `SBLockScreenUnlockRequest.h` | label, allow Face ID | not set |
-| `-mainPageContentViewController` | `CSCoverSheetViewController.h` 246 | host view (scrolls/slides with the page) | `CSCoverSheetViewController.view` |
+| `+[SBLockScreenManager sharedInstance]`, `-coverSheetViewController` | `SBLockScreenManager.h` lines 56, 64 | find the Cover Sheet | *Incompatible* |
+| `-[SBLockScreenManager isUILocked]` (0.1.0~beta4: access source, required) | `SBLockScreenManager.h` 64, 239 | the Lock Screen UI is still locked | access **closed** (*unverified*) |
+| `-[UIApplication isProtectedDataAvailable]` (public; required) | UIKit | data protection unlocked; NO before the first unlock after a restart | always present |
+| `-[SBCoverSheetPresentationManager isInSecureApp]` | `SBCoverSheetPresentationManager.h` 301 | camera over the Lock Screen → closed | ignored (the other sources still decide) |
+| `-[SBCoverSheetPresentationManager setCoverSheetPresented:animated:withCompletion:]` | `SBCoverSheetPresentationManager.h` 355 | close the Cover Sheet before opening a destination | the destination opens directly |
+| `CSCoverSheetView` recognizers on its scroll view (`-_setup…GestureOnScrollView:`; background-content / quick-note `UITapGestureRecognizer`, complication `UILongPressGestureRecognizer`) | `CSCoverSheetView.h` 5–128, 262–267 | **not used**: the reason Portal's controls own a tap recognizer that SpringBoard's taps wait for | — |
+| (removed in 0.1.0~beta4) `unlockWithRequest:completion:`, `createUnlockRequest`, `SBLockScreenUnlockRequest` | — | no longer called; `validate.sh` fails the build if referenced | — |
+| `-mainPageContentViewController` | `CSCoverSheetViewController.h` 246 | host view (scrolls/slides with the page) | hidden: *container unavailable* (no fallback since 0.1.0~beta3) |
 | `-dateView`, `-complicationContainerViewController` | 193, 601 | anchor (clock and widgets) | class-name scan, then 30 % estimate |
 | `SBCoverSheetPresentationManager -isVisible` / `-isPresented` | (HCG Nexus uses it on 16.5) | Cover Sheet visibility | hook state |
-| `LSApplicationWorkspace openApplicationWithBundleID:` / `applicationIsInstalled:`; `-[SpringBoard launchApplicationWithIdentifier:suspended:]` | HCG Nexus 0.3.1~beta1 `HCGSpringBoardLauncher.m` | open an app / Settings after authentication | apps and Backgrounds: *Unavailable* |
-| Darwin `com.apple.springboard.lockstate`, `…hasBlankedScreen` | public; Halo, Animation Center, Nexus | lock, unlock, screen off | assume unlocked / lit (fail open for drawing; authentication still decides) |
+| `LSApplicationWorkspace openApplicationWithBundleID:` / `applicationIsInstalled:`; `-[SpringBoard launchApplicationWithIdentifier:suspended:]` | HCG Nexus 0.3.1~beta1 `HCGSpringBoardLauncher.m` | open an app / Settings on the unlocked iPhone | apps and Backgrounds: *Unavailable* |
+| Darwin `com.apple.springboard.lockstate`, `…hasBlankedScreen` | public; Halo, Animation Center, Nexus | lock state (access source, required), screen off | lock state unreadable → access **closed**; screen unreadable → not treated as off |
 | `+[UIImage _applicationIconImageForBundleIdentifier:format:scale:]` | Halo's app picker | app icons | first-letter-free symbol |
 
 Class-name tokens used for measuring (`NotificationListCell`, `AdjunctItemView`, `QuickActionsButton`, …) are listed
@@ -57,7 +60,7 @@ in `ARCHITECTURE.md`. Which ones the phone really has is reported in Settings �
 
 | With | Expectation | Evidence |
 |---|---|---|
-| **HCG Animation Center** (Lock Screen background) | It draws at index 0 of the Lock wallpaper view or the Cover Sheet window; Portal draws on top of the Lock Screen's main page. No shared hooks (AC hooks `frontDisplayDidChange:`), no shared preferences. | design; not run together |
+| **HCG Animation Center** (Lock Screen background) | It draws at index 0 of the Lock wallpaper view or the Cover Sheet window; Portal draws on top of the Cover Sheet's main page. No shared hooks (AC hooks `frontDisplayDidChange:`), no shared preferences. Its views never take touches (`HCGBackgroundView` `hitTest:` → nil, `userInteractionEnabled = NO`), and it has no say in Portal's visibility or access. Portal's only link to it is the optional Backgrounds destination (opens Settings). | source review of the published 0.1.0~beta1 (`2d642bd`); the 0.1.0~beta4 preview runs Portal with a view behaving like AC's (not AC's code) present and absent; not run together on a device |
 | **HCG Halo** | Halo's border may show on the Lock Screen (*Show Halo on: Always*); its overlay window (level 2050) never takes touches. Optional lighting events: `INTEGRATIONS.md` §3 | design; not run together |
 | **HCG Nexus** | Nexus shows only while unlocked; Portal only on the Lock Screen. Opening Nexus needs a Nexus update (`INTEGRATIONS.md` §1) | test double |
 | **HCG Vortex** | Home Screen only; no overlap | — |
